@@ -1,24 +1,60 @@
-TL;DR
-----
+
+# Abstract
+
+This repository hosts an **experimental compute kernel** designed for modular research into oscillatory inference loops, adversarially constrained optimization, and lawful trust-object auditing. It sits at the intersection of high-performance numerical computation, explainability, and secure validation — with an emphasis on reproducibility and infrastructure-grade rigor.
+
+At its core, the kernel implements **Projected Gradient Descent (PGD)**–style optimization, extended with cycle-fractured lattice partitioning for multi-device execution. The design leverages JAX (`pjit`, `mesh_utils`) for parallel sharding across available devices, enabling scale-out without dependence on cloud lock-in. Explainability is built directly into the inference loop via **SHAP and LIME integration**, bounded per cycle (`c/n`) to ensure interpretability remains tractable under heavy compute loads.
+
+A companion set of PoC modules demonstrates **trust-object auditing**, inspired by legal-grade inference validation models. Here, inference states are treated as packetized, tamper-evident entities that can be re-audited post-hoc or validated inline. This makes the kernel suitable not just for experimentation in optimization, but also as a foundation for regulated domains where provenance and auditability are non-negotiable.
+
+The repository is structured to maximize **developer usability and extension**. Continuous integration is managed via GitHub Actions with a **Conda-based workflow**, ensuring reproducible environments and straightforward dependency management. The included files represent modular research steps — from PGD foundations to PoC extensions — allowing contributors to selectively adopt, replace, or extend components without breaking the overall flow.
+
+In short, this project serves as a **sandbox for industrial-grade inference experimentation**, where advanced compute kernels meet explainability and lawful validation. Researchers, practitioners, and systems engineers are encouraged to extend this foundation — whether toward quantum-aligned optimization, distributed inference, or sovereign-grade trust architectures.
+
+---
+
 
 **Bash Utilities for Secure Operations and Workflow Automation**
 
 This repository provides a growing collection of secure, modular, and reusable shell scripts designed to support:
 
 - CI/CD pipeline validation
-- Environment bootstrapping
-- Code linting and testing
-- Log cleanup and operational hygiene
-- System readiness and runtime import checks
+- ecure environment bootstrapping (Conda, Venv, GPU checks)
+- Encrypted file handling and changelog management
+- Oscillatory inference cycles (PGD → Explainability → Trust Validation)
+- End-to-end proof-of-concept workflows
 
-Originally developed to support robust Conda-based validation and GitHub Actions workflows, this repo is evolving into a structured toolbox for managing operational scripts in a clean, testable, and reusable way.
+Originally developed to support robust Conda-based validation and GitHub Actions workflows, the repo has evolved into a hybrid toolbox:
 
----
+- Bash utilities for operational hygiene, encryption, and workflow automation.
+
+- Python kernel modules for modular inference, lawful computation, and explainability.
+
+
+```bash
+
+├── ci/                 # CI checks: env validation, import readiness
+├── scripts/            # General-purpose ops automation & cleanup tools
+├── src/kernel/         # Python inference modules (PGD → PoC pipeline)
+│   ├── entropy_pgd.py
+│   ├── locale_entropy.py
+│   ├── explainability_pipeline.py
+│   ├── validation_chain.py
+│   ├── kernel_driver.py
+│   └── poc_runner.py
+├── config/             # Static configs (conda env, flake8, etc.)
+├── tests/              # Test coverage for ops and kernel modules
+├── docs/               # Internal documentation
+├── bin/legacy/         # Archived legacy scripts
+├── .github/            # GitHub Actions workflows
+└── README.md           # Project overview
+
+
 
 ## Directory Structure
 
-```bash
-.
+
+
 ├── ci/             # CI and workflow-specific scripts (import tests, env checks)
 ├── scripts/        # General-purpose automation and cleanup tools
 ├── config/         # Static configuration files (.flake8, environment.yml, etc.)
@@ -29,30 +65,6 @@ Originally developed to support robust Conda-based validation and GitHub Actions
 └── README.md       # Project overview and usage
 
 
-#### 1. Symmetric File Encryption Using OpenSSL
-
-Encrypt a file:
-
-```bash
-./generate.sh path/to/your_file.txt
-```
-
-Decrypt (interactive mode):
-
-```bash
-./read.sh ./files/your_file.txt.dat
-```
-
-Decrypt (with inline passphrase):
-
-```bash
-./read.sh ./files/your_file.txt.dat yourpassphrase
-```
-
-Decrypt and save to file:
-
-```bash
-./read.sh ./files/your_file.txt.dat > output.txt
 ```
 
 ---
