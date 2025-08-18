@@ -1,0 +1,13 @@
+name: ops-utilities
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - jax
+  - jaxlib
+  - jaxopt
+  - numpy
+  - shap
+  - lime
+  - pytest
+  - flake8
