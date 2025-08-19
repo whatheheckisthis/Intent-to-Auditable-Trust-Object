@@ -1,0 +1,9 @@
+{
+  "T_steps": 100,
+  "eta": 0.01,
+  "n_nodes": 5,
+  "tau_entropy": 0.1,
+  "quorum_threshold": 3,
+  "omega_list": [1.0, 2.0, 3.0],
+  "hydrogen_alpha": 1.0
+}
