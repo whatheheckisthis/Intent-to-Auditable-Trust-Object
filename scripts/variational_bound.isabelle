@@ -1,0 +1,11 @@
+locale variational_locale =
+  fixes ψ :: "real^n ⇒ complex^N"
+    and H :: "complex^N ⇒ complex^N"
+    and x* :: "real^n"
+  assumes normalized: "⟨ψ x*, ψ x*⟩ = 1"
+begin
+
+lemma rayleigh_ritz_bound:
+  shows "⟨ψ x* | H | ψ x*⟩ ≥ E0" sorry
+
+end
