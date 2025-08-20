@@ -1,0 +1,22 @@
+locale kkt_locale =
+  fixes f :: "real^n ⇒ real"
+    and g :: "real^n ⇒ real^m"
+    and h :: "real^n ⇒ real^p"
+    and K :: "real^n set"
+  assumes C1: "∀x. differentiable (f x) (…) "
+      and LICQ: "…"
+begin
+
+definition Lagrangian :: "real^n ⇒ real^m ⇒ real^p ⇒ real" where
+  "Lagrangian x λ ν = f x + λ ⋅ g x + ν ⋅ h x"
+
+lemma kkt_stationarity:
+  assumes "x* is local min" shows "∃λ ν. grad_x (Lagrangian x* λ ν) = 0" sorry
+
+lemma primal_feasibility:
+  shows "g x* ≤ 0 ∧ h x* = 0 ∧ x* ∈ K" sorry
+
+lemma dual_feasibility:
+  shows "λ ≥ 0 ∧ λ ⋅ g x* = 0" sorry
+
+end
