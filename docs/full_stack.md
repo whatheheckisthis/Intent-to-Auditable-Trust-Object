@@ -139,9 +139,4 @@ Each step in PGD can be chained into a **cryptographic audit log**.
 
 This repository is licensed under [MIT](LICENSE).
 
-```
 
-
-
-
-```
