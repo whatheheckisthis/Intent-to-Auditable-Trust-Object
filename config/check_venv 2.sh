@@ -20,3 +20,4 @@ if [[ "$VIRTUAL_ENV" != "" ]]; then
 else
   echo "No virtual environment detected"
 fi
+
