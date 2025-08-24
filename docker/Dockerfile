@@ -64,3 +64,48 @@ EXPOSE 80
 USER www-data
 
 ENTRYPOINT ["apache2ctl", "-D", "FOREGROUND"]
+# Base image
+FROM ubuntu:22.04
+
+LABEL maintainer="Dhruv <itsdhruvsetty@gmail.com>"
+LABEL description="Ops-Utilities Kernel + PHP/Apache Service (optional)"
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# Install system packages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        apache2 libapache2-mod-php php-cli php-curl php-mbstring \
+        python3.11 python3-pip python3-venv git bash zsh openssl \
+        imagemagick && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Locale
+RUN locale-gen en_US.UTF-8
+
+# Python dependencies for ops-utilities
+COPY config/requirements.txt /tmp/
+RUN python3 -m pip install --upgrade pip && pip install --no-cache-dir -r /tmp/requirements.txt
+
+# Workdir
+WORKDIR /workspace
+
+# Copy root repo
+COPY . .
+
+# Make all scripts executable
+RUN find scripts/ -type f -name "*.sh" -exec chmod +x {} \;
+
+# Apache config (optional)
+COPY src/000-default.conf /etc/apache2/sites-available/
+COPY src/99-local.ini /etc/php/8.1/apache2/conf.d/
+RUN a2enmod rewrite headers expires ext_filter
+
+# User
+USER www-data
+
+EXPOSE 80
+ENTRYPOINT ["apache2ctl", "-D", "FOREGROUND"]
