@@ -1,0 +1,12 @@
+training:
+  learning_rate: 0.01
+  batch_size: 32
+  num_epochs: 50
+
+model:
+  hidden_units: [128, 64, 32]
+  activation: relu
+
+optimization:
+  method: pgd
+  num_steps: 25
