@@ -1,0 +1,45 @@
+# docker/Dockerfile-python-kernel
+FROM ubuntu:jammy
+LABEL Author="whattheheckisthis" \
+      Description="Python kernel and ops utilities layer for 18.X Kernel and PoC scripts"
+
+# Prevent prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Basic utilities
+RUN apt-get update && \
+    apt-get install -y \
+        python3.11 \
+        python3.11-venv \
+        python3-pip \
+        git \
+        curl \
+        wget \
+        unzip \
+        build-essential \
+        libssl-dev \
+        libffi-dev \
+        && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Set up Python environment
+WORKDIR /root/ops-utilities
+COPY requirements.txt ./requirements.txt
+
+RUN python3 -m venv venv && \
+    . venv/bin/activate && \
+    pip install --upgrade pip && \
+    pip install -r requirements.txt
+
+# Copy kernel source code
+COPY src/kernel/ ./src/kernel/
+COPY scripts/ ./scripts/
+COPY config/ ./config/
+
+# Set environment variables for convenience
+ENV PATH="/root/ops-utilities/venv/bin:$PATH"
+
+# Expose any relevant ports (optional)
+EXPOSE 8888 5000
+
+# Default entrypoint: activate venv and open a bash shell
+ENTRYPOINT ["/bin/bash"]
