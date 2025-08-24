@@ -29,3 +29,23 @@ RUN ./init_environment.sh
 
 # Default command to keep container running
 CMD [ "bash" ]
+{
+  "name": "ops-utilities Dev Container",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "remoteUser": "root",
+  "workspaceFolder": "/workspace",
+  "extensions": [
+    "ms-python.python"
+  ],
+  "settings": {
+    "python.pythonPath": "/opt/venv/bin/python"
+  },
+  "postCreateCommand": "./init_environment.sh",
+  "forwardPorts": [],
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+  ]
+}
