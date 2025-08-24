@@ -1,0 +1,29 @@
+{
+  "generated": "2025-08-10T07:09:44.585963Z",
+  "hsm_compromise_table": [
+    {
+      "validator": "v5",
+      "compromise_prob": 0.02
+    },
+    {
+      "validator": "v12",
+      "compromise_prob": 0.015
+    }
+  ],
+  "collusion_scan": {
+    "max_coalition_detected": 3,
+    "detection_rate": 0.78
+  },
+  "causal_forging_stats": {
+    "forged_rate": 0.004,
+    "avg_time_to_detect_minutes": 45
+  },
+  "drift_detection": {
+    "days_simulated": 30,
+    "detected_days": [
+      12,
+      19,
+      25
+    ]
+  }
+}

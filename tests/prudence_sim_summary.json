@@ -1,0 +1,19 @@
+{
+  "generated": "2025-08-10T07:09:44.585963Z",
+  "ekr_baseline": 85.4075,
+  "top_config": {
+    "t": 10.0,
+    "H": 0.6,
+    "c": 0.02,
+    "TP": 0.9507,
+    "C_op": 0.0429,
+    "C_fraud": 0.008,
+    "EKR": 90.0194,
+    "approve_rate": 0.8588
+  },
+  "red_team_counts": {
+    "poisoning": 15,
+    "eds_flood": 10,
+    "collusion": 9
+  }
+}

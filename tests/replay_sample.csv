@@ -1,0 +1,9 @@
+timestamp,packet_id,validator_id,entropy,prov_hash,signature_meta,metadata,pi_new_prob,T_score,timestamp_skew,reason
+2025-08-10T07:03:55.615001Z,pkt-001650,v17,0.176171,sha256:f40ecad14f2aecd1cdfc,SIG:placeholder,"{""type"": ""inference"", ""size"": 271}",0.0096916540665113,0.010532,2288,timestamp_skew_replay
+2025-08-10T06:38:42.591248Z,pkt-000137,v10,0.969201,sha256:bcbfb4ef7e897f1ea535,SIG:placeholder,"{""type"": ""inference"", ""size"": 178}",0.0054363327454743935,0.01219,3555,timestamp_skew_replay
+2025-08-10T06:44:16.596316Z,pkt-000471,v11,0.10599,sha256:78625a07e09e4a4a504b,SIG:placeholder,"{""type"": ""inference"", ""size"": 368}",0.005255541815047892,0.009772,2450,timestamp_skew_replay
+2025-08-10T06:56:38.607635Z,pkt-001213,v2,0.812071,sha256:dee055737274a535e4b4,SIG:placeholder,"{""type"": ""inference"", ""size"": 252}",0.0037037131624099227,0.009292,622,timestamp_skew_replay
+2025-08-10T06:57:24.608375Z,pkt-001259,v7,0.127412,sha256:3e14424b330a5b2a3714,SIG:placeholder,"{""type"": ""inference"", ""size"": 214}",0.00590104950214752,0.007557,741,timestamp_skew_replay
+2025-08-10T07:00:55.612082Z,pkt-001470,v6,0.46651,sha256:0d6fc38fc65b3a566b98,SIG:placeholder,"{""type"": ""inference"", ""size"": 316}",0.00557185616922682,0.0,148,timestamp_skew_replay
+2025-08-10T06:38:26.590984Z,pkt-000121,v17,0.929872,sha256:691da9c5ce34ec4c6c59,SIG:placeholder,"{""type"": ""inference"", ""size"": 189}",0.016368016844555827,0.010109,1022,timestamp_skew_replay
+2025-08-10T06:58:37.609644Z,pkt-001332,v1,0.11689,sha256:51e81aa4fec24abaa969,SIG:placeholder,"{""type"": ""inference"", ""size"": 282}",0.020917643142690234,0.00521,618,timestamp_skew_replay
