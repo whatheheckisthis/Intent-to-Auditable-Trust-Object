@@ -1,1 +1,15 @@
-misc
+version: "3.9"
+
+services:
+  ops-utilities:
+    build:
+      context: .
+      dockerfile: Dockerfile   # uses the Dockerfile at repo root
+    container_name: ops-utilities
+    volumes:
+      - ./config:/app/config:rw   # mount config folder
+      - ./scripts:/app/scripts:rw # mount scripts folder
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: tail -f /dev/null   # keep container alive for running scripts
