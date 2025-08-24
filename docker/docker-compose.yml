@@ -1,15 +1,8 @@
-version: "3.9"
+# Build and start container
+docker compose -f docker/docker-compose.yml up -d
 
-services:
-  ops-utilities:
-    build:
-      context: .
-      dockerfile: Dockerfile   # uses the Dockerfile at repo root
-    container_name: ops-utilities
-    volumes:
-      - ./config:/app/config:rw   # mount config folder
-      - ./scripts:/app/scripts:rw # mount scripts folder
-    working_dir: /app
-    environment:
-      - PYTHONUNBUFFERED=1
-    command: tail -f /dev/null   # keep container alive for running scripts
+# Enter interactive shell
+docker exec -it ops-core bash
+
+# Run scripts like key generation inside container
+python scripts/generate_api_key.py
