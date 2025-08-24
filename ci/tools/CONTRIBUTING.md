@@ -1,5 +1,4 @@
-<details>
-<summary><strong>CI Environment Structure and Validation Workflow</strong></summary>
+
 
 ### Conda Environment Setup
 
