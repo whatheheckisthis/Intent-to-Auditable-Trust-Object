@@ -1,8 +1,0 @@
-# Build and start container
-docker compose -f docker/docker-compose.yml up -d
-
-# Enter interactive shell
-docker exec -it ops-core bash
-
-# Run scripts like key generation inside container
-python scripts/generate_api_key.py
