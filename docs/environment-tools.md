@@ -1,7 +1,3 @@
-
-
-
-
 ### Terminals & Shells
 
 #### **Bash – Primary Shell (Unix-like systems)**
