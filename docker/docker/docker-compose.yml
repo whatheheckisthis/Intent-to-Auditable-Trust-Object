@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  ops-core:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: ops-core
+    env_file:
+      - .env
+    volumes:
+      - ./config:/app/config
+      - ./scripts:/app/scripts
+      - ./data:/app/data
+    entrypoint: ["/app/docker/entrypoint.sh"]
+    tty: true
