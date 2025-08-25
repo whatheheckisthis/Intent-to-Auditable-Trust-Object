@@ -1,80 +1,46 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon August 24 2025
-@author: whattheheckisthis
+FastAPI wrapper for ops-utilities kernel
 """
-# pip install fastapi uvicorn
 
-# 1. Library imports
 import uvicorn
 from fastapi import FastAPI, Query
 from typing import Optional
+from pathlib import Path
+import subprocess
+import json
 
-# 2. Create the app object
-app = FastAPI()
+# Import your kernel functions
+from src.kernel.pgd_entropy import pgd_optimize  # Example kernel import
+# from scripts.trust_objects import log_trust_object  # Example
 
-# 3. Index route, opens automatically on http://47.72.156.147:8000
-@app.get('/')
+app = FastAPI(title="Ops-Utilities Kernel API", version="0.1.0")
+
+# Root endpoint
+@app.get("/")
 def index():
-    return {'message': 'Hello, World'}
+    return {"message": "Ops-Utilities Kernel API Running"}
 
-# 4. Route with a single parameter, returns the parameter within a message
-#    Located at: http://47.72.156.147:8000/welcome?name=whattheheckisthis
-@app.get('/welcome')
-def get_name(name: Optional[str] = Query("whattheheckisthis", description="Specify your name")):
-    if name:
-        return {'Welcome To My Workspace': name}
-    else:
-        return {'message': 'Welcome To My Workspace'}
+# Example endpoint for PGD optimization
+@app.get("/pgd")
+def run_pgd(x0: float = Query(0.0), lr: float = Query(0.1), steps: int = Query(25)):
+    # Run kernel function
+    result = pgd_optimize(lambda x: (x - 2) ** 2, x0, {"learning_rate": lr, "num_steps": steps})
+    
+    # Optional: log as trust object
+    # log_trust_object({"x0": x0, "lr": lr, "steps": steps, "result": result})
+    
+    return {"x0": x0, "learning_rate": lr, "num_steps": steps, "result": result}
 
-# 5. Run the API with uvicorn
-#    Will run on http://47.72.156.147:8000
-if __name__ == '__main__':
-    uvicorn.run(app, host='47.72.156.147', port=8000)
-# uvicorn whattheheckisthis:app --reload
+# Example endpoint for shell/utility scripts
+@app.get("/run-script")
+def run_script(script_name: str):
+    script_path = Path("scripts") / script_name
+    if not script_path.exists():
+        return {"error": "Script not found"}
+    
+    output = subprocess.getoutput(f"python {script_path}")
+    return {"script": script_name, "output": output}
 
-# -*- coding: utf-8 -*-
-"""
-Created on Mon August 24 2025
-@author: whattheheckisthis
-"""
-# pip install fastapi uvicorn openai
-
-# 1. Library imports
-import uvicorn
-from fastapi import FastAPI, Query
-from typing import Optional
-from openai import OpenAI
-
-# 2. Create the app object
-app = FastAPI()
-
-# 3. Index route, opens automatically on http://47.72.156.147:8000
-@app.get('/')
-def index():
-    return {'message': 'Hello, World'}
-
-# 4. Route with a single parameter, returns the parameter within a message
-#    Located at: http://47.72.156.147:8000/welcome?name=whattheheckisthis
-@app.get('/welcome')
-def get_name(name: Optional[str] = Query("whattheheckisthis", description="Specify your name")):
-    if name:
-        return {'Welcome To My Workspace': name}
-    else:
-        return {'message': 'Welcome To My Workspace'}
-
-# 5. New route for AI chat wrapper
-@app.get("/chat")
-def chat_endpoint(prompt: str):
-    client = OpenAI()  # assumes OPENAI_API_KEY is set in environment
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return {"response": response.choices[0].message.content}
-
-# 6. Run the API with uvicorn
-#    Will run on http://47.72.156.147:8000
-if __name__ == '__main__':
-    uvicorn.run(app, host='47.72.156.147', port=8000)
-# uvicorn main:app --reload
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
