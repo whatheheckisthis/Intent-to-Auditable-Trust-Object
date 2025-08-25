@@ -1,12 +1,26 @@
-# -*- coding: utf-8 -*-
-"""
-18.X Kernel: Multi-Cycle PGD Training with Trust-Object Logging and Explainability
-Created: August 25, 2025
-Author: whattheheckisthis
-"""
+# 18.X Kernel: Multi-Cycle PGD Training with Trust-Object Logging and Explainability
 
+This document combines **environment setup** and **Python training code** into one script. It can be executed in a Jupyter Notebook or via CLI.
+
+---
+
+## 1. Environment Setup & Execution (Bash + Python)
+
+```bash
+# Step 1: Create directories
+mkdir -p ./data ./checkpoints ./logs
+
+# Step 2: Optional: virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Step 3: Install required packages
+pip install jax jaxlib numpy pandas matplotlib shap lime pickle5
+
+# Step 4: Run the Python training script
+python - <<'END_PYTHON'
 # =========================
-# 1. Library Imports
+# Python Imports & Initialization
 # =========================
 import jax
 import jax.numpy as jnp
@@ -18,14 +32,11 @@ import matplotlib.pyplot as plt
 import logging
 from pathlib import Path
 from typing import Callable
-
 import shap
 from lime.lime_tabular import LimeTabularExplainer
 import pickle
 
-# =========================
-# 2. Environment Setup
-# =========================
+# Directories
 ROOT_DIR = Path("./")
 DATA_DIR = ROOT_DIR / "data"
 CHECKPOINT_DIR = ROOT_DIR / "checkpoints"
@@ -41,7 +52,7 @@ logging.basicConfig(
 )
 
 # =========================
-# 3. Synthetic Dataset
+# Synthetic Dataset
 # =========================
 def generate_synthetic_data(n_samples=1000, n_features=10, key=random.PRNGKey(0)):
     X = random.normal(key, (n_samples, n_features))
@@ -50,9 +61,10 @@ def generate_synthetic_data(n_samples=1000, n_features=10, key=random.PRNGKey(0)
     return np.array(X), np.array(y)
 
 X, y = generate_synthetic_data()
+print(f"Dataset Shape: {X.shape}, {y.shape}")
 
 # =========================
-# 4. PGD Optimizer
+# PGD Optimizer
 # =========================
 def pgd_step(params: jnp.ndarray, grad_fn: Callable, lr: float = 0.01, clip_val: float = 1.0):
     grads = grad_fn(params)
@@ -66,23 +78,22 @@ def quadratic_loss(params, X_batch, y_batch):
 grad_fn = jit(grad(quadratic_loss))
 
 # =========================
-# 5. Multi-Device Setup
+# Multi-Device Setup
 # =========================
 devices = jax.devices()
 n_devices = len(devices)
 mesh = mesh_utils.create_device_mesh((n_devices,))
+print("Available devices:", devices)
+print("Device mesh created:", mesh)
 
 # =========================
-# 6. Kernel State
+# Kernel State Initialization
 # =========================
 n_features = X.shape[1]
 key = random.PRNGKey(42)
 params = random.normal(key, (n_features,))
 trust_objects = []
 
-# =========================
-# 7. Training Loop
-# =========================
 num_epochs = 50
 batch_size = 32
 learning_rate = 0.05
@@ -91,6 +102,9 @@ entropy_scale = 0.02
 def batch_indices(n_samples, batch_size):
     return [slice(i, i+batch_size) for i in range(0, n_samples, batch_size)]
 
+# =========================
+# Training Loop
+# =========================
 for epoch in range(num_epochs):
     for idx in batch_indices(X.shape[0], batch_size):
         X_batch, y_batch = X[idx], y[idx]
@@ -100,7 +114,7 @@ for epoch in range(num_epochs):
     logging.info(f"Epoch {epoch} completed | Params sample: {params[:3]}")
 
 # =========================
-# 8. Convergence Visualization
+# Convergence Visualization
 # =========================
 params_array = np.array(trust_objects)
 plt.figure(figsize=(10,6))
@@ -113,7 +127,7 @@ plt.legend()
 plt.show()
 
 # =========================
-# 9. Explainability: SHAP & LIME
+# Explainability: SHAP & LIME
 # =========================
 explainer_shap = shap.Explainer(lambda X_: X_ @ params, X)
 shap_values = explainer_shap(X[:100])
@@ -124,22 +138,17 @@ exp = explainer_lime.explain_instance(X[0], lambda x: x @ params)
 exp.show_in_notebook(show_table=True)
 
 # =========================
-# 10. Checkpointing & Saving
+# Checkpoint & Audit
 # =========================
 checkpoint_file = CHECKPOINT_DIR / "params_checkpoint.pkl"
 with open(checkpoint_file, "wb") as f:
     pickle.dump(params, f)
 logging.info(f"Checkpoint saved at {checkpoint_file}")
 
-# =========================
-# 11. Trust-Object Audit Report
-# =========================
 audit_file = LOG_DIR / "trust_objects_audit.csv"
 pd.DataFrame(params_array).to_csv(audit_file, index=False)
 logging.info(f"Audit report saved at {audit_file}")
 
-# =========================
-# 12. Training Summary
-# =========================
 print("Training completed. Final parameters:", params)
 print("Trust objects logged:", len(trust_objects))
+END_PYTHON
