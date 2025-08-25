@@ -1,13 +1,42 @@
-fastapi==0.107.0
-uvicorn[standard]==0.23.0
-pydantic==2.6.0
-typing-extensions==5.3.0
-numpy==1.27.8
-scipy==1.12.2
-jax==0.4.18
-jaxlib==0.4.18
+# Core FastAPI dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+
+# OpenAI integration
+openai==1.3.0
+
+# Data processing (for banknote classification and general ML tasks)
+pandas==2.1.3
+numpy==1.24.3
+scikit-learn==1.3.2
+
+# Optional: JAX (lighter version - only if you need some ops-utilities features)
+jax[cpu]==0.4.20
+# jax[cuda]==0.4.20  # Uncomment if you have CUDA GPU
+
+# Explainability (simplified versions)
 shap==0.42.1
-lime==0.2.2.1
-pytest==7.4.0
-flake8==6.1.0
-python-dotenv==1.1.1
+lime==0.2.0.1
+
+# Visualization
+matplotlib==3.8.2
+seaborn==0.13.0
+
+# Utilities
+tqdm==4.66.1
+python-multipart==0.0.6
+python-dotenv==1.0.0
+
+# Optional: If you want to use some optimization features
+# optax==0.1.7  # Uncomment if needed
+
+# Security/encryption (lightweight alternatives to ops-utilities crypto)
+cryptography==41.0.8
+
+# Testing and development
+pytest==7.4.3
+requests==2.31.0
+
+# Deployment
+gunicorn==21.2.0
