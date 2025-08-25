@@ -260,6 +260,6 @@ This portfolio establishes a robust foundation for predictive, variance-aware, a
 ## License & Contact
 
 - **License:** MIT / Open Source  
-- **Contact:** Please submit issues or contact maintainers via the repository.
+- **Contact:** Please submit issues or contact maintainer via the repository.
 
 ***
