@@ -1,15 +1,5 @@
-from apscheduler.schedulers.blocking import BlockingScheduler
-from src.kernel.entropy_pgd import pgd_optimize
-from src.kernel.trust_objects import log_trust_object
+# Web process for FastAPI
+web: uvicorn fastapi.main:app --host 0.0.0.0 --port=${PORT:-8000}
 
-def scheduled_task():
-    # Example task: run PGD optimization on dummy data
-    result = pgd_optimize(lambda x: (x - 2) ** 2, 0.0, {"learning_rate": 0.1, "num_steps": 25})
-    log_trust_object({"task": "scheduled_pgd", "result": result})
-    print(f"Scheduled task completed: {result}")
-
-if __name__ == "__main__":
-    scheduler = BlockingScheduler()
-    scheduler.add_job(scheduled_task, 'interval', minutes=15)  # Run every 15 mins
-    print("Scheduler started...")
-    scheduler.start()
+# Worker process for scheduled tasks
+worker: python -m fastapi.scheduler
