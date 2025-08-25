@@ -1,55 +1,48 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Nov 17 21:40:41 2020
-
-@author: win10
+FastAPI wrapper for ops-utilities 18.X Kernel
 """
 
-# 1. Library imports
-import uvicorn
-from fastapi import FastAPI
-from Fast_Api.BankNotes import BankNote
+from fastapi import FastAPI, Query
+from typing import Optional
 import numpy as np
-import pickle
-import pandas as pd
-# 2. Create the app object
-app = FastAPI()
-pickle_in = open("classifier.pkl","rb")
-classifier=pickle.load(pickle_in)
+from pathlib import Path
+import os
+from src.kernel.entropy_pgd import pgd_optimize  # Your kernel function
+from src.kernel.trust_objects import log_trust_object  # Trust-object logging
+from dotenv import load_dotenv
 
-# 3. Index route, opens automatically on http://127.0.0.1:8000
-@app.get('/')
+# Load environment variables
+load_dotenv(dotenv_path=Path("config/.env"))
+
+app = FastAPI(title="Ops-Utilities 18.X Kernel API", version="0.1.0")
+
+@app.get("/")
 def index():
-    return {'message': 'Hello, World'}
+    return {"message": "Ops-Utilities 18.X Kernel API is running"}
 
-# 4. Route with a single parameter, returns the parameter within a message
-#    Located at: http://127.0.0.1:8000/AnyNameHere
-@app.get('/{name}')
-def get_name(name: str):
-    return {'Welcome To Krish Youtube Channel': f'{name}'}
+@app.get("/compute/quadratic")
+def compute_quadratic(
+    x0: float = Query(0.0, description="Initial guess for PGD optimization"),
+    lr: float = Query(0.1, description="Learning rate"),
+    steps: int = Query(25, description="Number of optimization steps")
+):
+    # Define simple quadratic function as an example
+    def f(x):
+        return (x - 2) ** 2
 
-# 3. Expose the prediction functionality, make a prediction from the passed
-#    JSON data and return the predicted Bank Note with the confidence
-@app.post('/predict')
-def predict_banknote(data:BankNote):
-    data = data.dict()
-    variance=data['variance']
-    skewness=data['skewness']
-    curtosis=data['curtosis']
-    entropy=data['entropy']
-   # print(classifier.predict([[variance,skewness,curtosis,entropy]]))
-    prediction = classifier.predict([[variance,skewness,curtosis,entropy]])
-    if(prediction[0]>0.5):
-        prediction="Fake note"
-    else:
-        prediction="Its a Bank note"
-    return {
-        'prediction': prediction
-    }
+    # Run PGD optimization
+    result = pgd_optimize(f, x0, {"learning_rate": lr, "num_steps": steps})
 
-# 5. Run the API with uvicorn
-#    Will run on http://127.0.0.1:8000
-if __name__ == '__main__':
-    uvicorn.run(app, host='127.0.0.1', port=8000)
-    
-#uvicorn app:app --reload
+    # Log as a trust object
+    log_trust_object({"input": x0, "lr": lr, "steps": steps, "result": result})
+
+    return {"optimized_value": result}
+
+@app.get("/welcome")
+def welcome(name: Optional[str] = Query("whattheheckisthis", description="Your name")):
+    return {"message": f"Welcome to the Ops-Utilities workspace, {name}"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
