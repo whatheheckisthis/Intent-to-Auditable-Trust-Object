@@ -11,21 +11,21 @@
 
 ## Table of Contents
 
-1. [Abstract](#abstract)  
-2. [System Architecture](#system-architecture)  
-3. [Oscillatory Inference Kernel](#oscillatory-inference-kernel)  
-4. [Linear and Non-Linear Derivative Computation](#linear-and-non-linear-derivative-computation)  
-5. [Multi-Device Sharding & Scalability](#multi-device-sharding--scalability)  
-6. [Trust-Object Framework & Adversarial Resilience](#trust-object-framework)  
-7. [Explainability & Feature Attribution](#explainability--feature-attribution)  
-8. [Controlled Entropy Injection](#controlled-entropy-injection)  
-9. [Differential Equation Solving](#differential-equation-solving)  
-10. [Bash Utilities & Workflow Automation](#bash-utilities--workflow-automation)  
-11. [Dockerization & CI/CD](#dockerization--cicd)  
-12. [Quantitative Performance Summary](#quantitative-performance-summary)  
-13. [Law Enforcement Applications](#law-enforcement-applications)  
-14. [Discussion & Operational Context](#discussion--operational-context)  
-15. [Conclusion](#conclusion)  
+# [Abstract](#abstract)  
+# [System Architecture](#system-architecture)  
+# [Oscillatory Inference Kernel](#oscillatory-inference-kernel)  
+# [Linear and Non-Linear Derivative Computation](#linear-and-non-linear-derivative-computation)  
+# [Multi-Device Sharding & Scalability](#multi-device-sharding--scalability)  
+# [Trust-Object Framework & Adversarial Resilience](#trust-object-framework)  
+# [Explainability & Feature Attribution](#explainability--feature-attribution)  
+# [Controlled Entropy Injection](#controlled-entropy-injection)  
+# [Differential Equation Solving](#differential-equation-solving)  
+# [Bash Utilities & Workflow Automation](#bash-utilities--workflow-automation)  
+# [Dockerization & CI/CD](#dockerization--cicd)  
+# [Quantitative Performance Summary](#quantitative-performance-summary)  
+# [Law Enforcement Applications](#law-enforcement-applications)  
+# [Discussion & Operational Context](#discussion--operational-context)  
+# [Conclusion](#conclusion)  
 
 ***
 
