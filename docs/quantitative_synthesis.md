@@ -9,25 +9,6 @@
 
 ***
 
-## Table of Contents
-
-# [Abstract](#abstract)  
-# [System Architecture](#system-architecture)  
-# [Oscillatory Inference Kernel](#oscillatory-inference-kernel)  
-# [Linear and Non-Linear Derivative Computation](#linear-and-non-linear-derivative-computation)  
-# [Multi-Device Sharding & Scalability](#multi-device-sharding--scalability)  
-# [Trust-Object Framework & Adversarial Resilience](#trust-object-framework)  
-# [Explainability & Feature Attribution](#explainability--feature-attribution)  
-# [Controlled Entropy Injection](#controlled-entropy-injection)  
-# [Differential Equation Solving](#differential-equation-solving)  
-# [Bash Utilities & Workflow Automation](#bash-utilities--workflow-automation)  
-# [Dockerization & CI/CD](#dockerization--cicd)  
-# [Quantitative Performance Summary](#quantitative-performance-summary)  
-# [Law Enforcement Applications](#law-enforcement-applications)  
-# [Discussion & Operational Context](#discussion--operational-context)  
-# [Conclusion](#conclusion)  
-
-***
 
 ## Abstract
 
