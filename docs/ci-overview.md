@@ -1,6 +1,6 @@
 ### Continuous Integration (CI) Overview
 
-This document outlines the CI strategy and implementation for the `ops-utilities` repository. The goal is to ensure every push or pull request is automatically tested, validated, and linted in a reproducible, minimal, and secure runtime environment.
+This document outlines the CI strategy and implementation for the `Intent-to-Auditable-Trust-Object` repository. The goal is to ensure every push or pull request is automatically tested, validated, and linted in a reproducible, minimal, and secure runtime environment.
 
 The CI system here supports reliability, maintainability, and onboarding transparency, especially for early-career contributors or changelog analysts working in operational or DevOps-adjacent roles.
 
