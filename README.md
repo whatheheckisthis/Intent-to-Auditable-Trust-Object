@@ -334,34 +334,47 @@ def test_quadratic_minimum():
 * **Efficiency:** JAX + CUDA provides **10x–50x acceleration** over CPU-only loops.
 * **Scalability:** Can handle large datasets for research or teaching.
 
----
 
-## **I. Core Mathematical Foundation (Expanded)**
+## **Technical Implementation Overview**
+
+| Topic                                        | Why it matters                                                                                              | Approach / Implementation                                                                                                                                                                                                                                               |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Algorithms & Data Structures**             | Efficient and auditable propagation of inference and trust scores across correlated evidence.               | DAGs model correlated evidence; Dijkstra’s algorithm bounds propagation paths; frontier reduction constrains admissible inference states; caching strategies optimize repeated computations in lattice partitions.                                                      |
+| **Machine Learning / AI**                    | Enables closed-loop, entropy-bounded inference for regulated, adversarial environments.                     | PGD-style optimization updates inference parameters; oscillatory closed-loop execution iteratively stabilizes latent states; Bayesian updates adjust beliefs; SHAP/LIME provide per-cycle explainability; graph-constrained retrieval enforces trust/policy boundaries. |
+| **Formal Methods / Verification**            | Guarantees reproducibility, deterministic outputs, and regulatory compliance.                               | Beta-Binomial proofs validate probabilistic correctness; cryptographically signed local certificates capture inference state, entropy, correlations, and dual variables; Pearl’s do-calculus checks causal validity before action execution.                            |
+| **Distributed Systems / Parallel Computing** | Supports scalable, reproducible inference across multiple devices while maintaining trust and auditability. | Multi-device sharding via JAX (pjit, mesh_utils); Kafka streams inference states with replayable, tamper-evident logs; rate-limiting and IAM/RBAC enforce secure, concurrent computation.                                                                               |
+| **Security / Cryptography**                  | Ensures auditability, tamper-evidence, and compliance with privacy and regulatory standards.                | HMAC and Merkle trees secure inference outputs; trust objects aggregate deterministic artifacts; RBAC/IAM enforce least-privilege access; TLS secures data streams; zero-knowledge proofs enable privacy-preserving verification.                                       |
+| **Numerical Methods / Scientific Computing** | Provides precise, stable, and efficient computation for optimization and inference loops.                   | JAX kernels perform high-performance tensor/matrix operations; lattice partitioning enables parallel execution; Kalman filtering smooths stochastic perturbations; entropy-controlled loops regulate inference stability.                                               |
+| **Compiler / Execution Semantics**           | Enforces deterministic evaluation and formal constraints in DAG-based inference.                            | Node-based computation networks implement DSL-style execution semantics; execution order and evaluation rules encode trust, compliance, and causal constraints within inference cycles.                                                                                 |
+| **Databases / Data Modeling**                | Maintains structured, traceable, and auditable storage of inference artifacts.                              | PostgreSQL/MySQL store IID/PII-aware inference states; metadata tagging enables traceability; ETL pipelines enforce governance and compliance; correlation-aware queries maintain trust-aware retrieval.                                                                |
+| **Software Testing / QA**                    | Ensures correctness, reproducibility, and robustness of inference under adversarial conditions.             | Unit tests validate PGD convergence; CI/CD (GitHub Actions, Conda) ensure reproducible environments; PoCs validate deterministic artifact replay and trust-object auditing over synthetic datasets.                                                                     |
+
+## **Core Mathematical Foundations**
 
 | Topic                            | Why it matters                                                                                                             | Approach / Practical Application                                                                                                                                                                                                                                                                                       |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Probability & Statistics**     | Bayesian reasoning, posterior updates, Monte Carlo simulation, correlated evidence underpin inference and risk assessment. | RAG/DAG nodes are probabilistic; Bayesian updates ensure posterior consistency. Monte Carlo simulations model correlated node outcomes; Bayesian filtering (Kalman filters) refines latent states over iterative oscillatory cycles.                                                                                   |
 | **Linear Algebra & Calculus**    | Hessians, derivatives, curvature-aware stability control inference sensitivity.                                            | Second-order derivatives of Lagrangians in KKT-constrained updates detect high-curvature regimes. Gradient adjustments in PGD loops stabilize inference; curvature-aware damping avoids overshoot in oscillatory loops.                                                                                                |
 | **Optimization**                 | KKT-constrained, PGD, convex/non-convex optimization ensures constrained convergence.                                      | PGD extended with cycle-fractured lattice partitioning across devices. Optimization respects probabilistic trust constraints; dual updates act as closed-loop feedback controllers in inference cycles.                                                                                                                |
-| **Information Theory**           | Entropy as a control signal governs stochasticity, triggers escalation, or permits automation.                             | Candidate computes (H(I) = -\sum p_i \log p_i) and (\frac{dH}{d\theta}) to track uncertainty per batch. Rising gradients induce throttling or human-in-the-loop review. All entropy manipulations are serialized for legal audit.                                                                                      |
+| **Information Theory**           | Entropy as a control signal governs stochasticity, triggers escalation, or permits automation.                             | Candidate computes Entropy of inference state: $H(I) = - \sum_{\imath} p_\imath \log p_\imath$ Derivative w.r.t parameters: $\frac{dH}{d\theta} = - \sum_{\imath} \frac{\partial p_\imath}{\partial \theta} (\log p_\imath + 1)$ to track uncertainty per batch. Rising gradients induce throttling or human-in-the-loop review. All entropy manipulations are serialized for legal audit.                                                                                      |
 | **Graph Theory & Causal Models** | DAG/RAG traversal and causal modeling enforce consistent inference under correlated evidence.                              | **Dijkstra’s algorithm** is used implicitly for shortest-path evaluation across correlated nodes (e.g., efficient propagation of trust scores in DAG layers). **Pearl’s do-calculus** guides counterfactual analysis and conditional causal reasoning when perturbing node outputs or evaluating regulatory scenarios. |
 | **Sequential State Estimation**  | Refines latent states over noisy observations.                                                                             | **Kalman filtering** is applied implicitly to update node beliefs across cycles, smoothing stochastic perturbations introduced by controlled entropy injections and correlated evidence.                                                                                                                               |
 
 ---
 
-## **II. Cybersecurity & Governance Integration (Expanded)**
+## **Cybersecurity & Governance Integration**
 
 | Topic                         | Why it matters                                                                             | Approach / Implementation                                                                                                                                      |
 | ----------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Regulatory frameworks         | MITRE, NIST, ISO, GRC principles guide operational compliance.                             | Frameworks map directly onto RAG/DAG node monitoring and escalation policies. E.g., ATT&CK mappings influence correlation thresholds and trust-object scoring. |
-| Auditability & Traceability   | Deterministic, tamper-evident pipelines are legally defensible.                            | Each inference packet is signed (HMAC/AES-256). Replay across devices preserves chronological and causal integrity.                                            |
-| Operational Risk Modeling     | Basel III and correlation-aware failure modeling prevent underestimation of systemic risk. | DAG simulations propagate correlated failures; beta-binomial and Monte Carlo validation quantify residual risk.                                                |
+| Regulatory frameworks         | MITRE, NIST, ISO, GRC principles guide operational compliance.                             | The framework integrates directly with RAG/DAG-based node monitoring and escalation policies. Specifically, MITRE ATT&CK and MITRE CAPEC mappings inform correlation thresholds and threat-context scoring, NIST SP 800-series and NIST SP 800-207 guidelines define system-level control validation, ISO/IEC 27001 and ISO/IEC 31000 standards guide risk management and auditability processes, and GRC-aligned policies enforce trust-object scoring and compliance escalation criteria. |
+| Auditability & Traceability   | Deterministic, tamper-evident pipelines are legally defensible.                            | AES.new(aes_key, AES.MODE_CBC).encrypt(packet_data) → encrypts the packet with AES-256 in CBC mode hmac.new(..., ..., hashlib.sha256).hexdigest() → generates HMAC-SHA256 signature over the ciphertext|
+| Operational Risk Modeling     | Basel III and correlation-aware failure modeling prevent underestimation of systemic risk. | DAG simulations propagate correlated failures; residual risk is estimated as DAG simulations propagate correlated failures; residual risk is estimated as [Residual Risk Formula](residual_risk_formula.png) |
 | Applied Security in Pipelines | Encrypt sensitive data, ensure integrity, enforce RBAC.                                    | HMAC/AES, RBAC, cryptographically bound audit logs, per-node trust-object generation.                                                                          |
 | Operationalization            | Serialization, deterministic replay, cryptography, governance integration.                 | PGD loops, DAG traversal, oscillatory kernel cycles generate fully auditable trust-object packets.                                                             |
 
 ---
 
-## **III. Key References & Citations (Expanded with Dijkstra, Kalman, Do-Calculus)**
+## **Key References & Citations**
 
 | Reference                       | Role / Why it matters                 | Application in candidate’s architecture                                                                       |
 | ------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
@@ -380,7 +393,7 @@ def test_quadratic_minimum():
 
 ---
 
-## **IV. Field-Conventional Approach vs Architecture Novelty (Expanded)**
+## **Field-Conventional Approach vs Architecture Novelty**
 
 | Field-Conventional                   | Candidate Architecture            | Novelty / Relevance                                                        |
 | ------------------------------------ | --------------------------------- | -------------------------------------------------------------------------- |
@@ -391,32 +404,25 @@ def test_quadratic_minimum():
 | Traditional DPI                      | DPI as inference validator        | Validates compliance, timing, and XAI alignment in real-time               |
 | External / implicit trust            | Zero-trust per-inference          | Trust earned based on latency, consensus, conformity, XAI alignment        |
 | Forecasting-only time series         | HMM legal latent sequences        | Anomalies invalidate inference packets, **system-level trust enforcement** |
-| Edge inference                       | STM32/Jetson fallback + DPI + XAI | Real-time compliance-aware inference on low-power devices                  |
 
 ---
 
-## **V. Extended Concepts / Tools (Expanded)**
+## **Extended Concepts / Tools**
+| Technology / Concept                                      | Purpose / Why it matters                              | Practical Implementation in IATO                                                                                                                                |
+| --------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Monolithic vs Microkernel, TEEs, Secure Containers**    | Protects sensitive computation and enforces isolation | Architecture-neutral inference loops; sensitive states secured using TEEs (Intel SGX / ARM TrustZone) to ensure privacy and integrity of intermediate artifacts |
+| **TLA+, Alloy, Isabelle/HOL, Runtime Assertion Checking** | Ensures correctness and formal verification of logic  | Applied to inference pipelines for verifying deterministic execution, constraint satisfaction, escalation triggers, and mathematically provable compliance      |
+| **Policy Optimization, DAG-driven Q-learning**            | Guides optimal decision-making under constraints      | Closed-loop reward shaping drives inference parameter updates along correlated DAG nodes                                                                        |
+| **PBFT, Raft, Tendermint, BFT**                           | Achieves consensus across distributed nodes           | Ensures validator agreement for local certificates and trust-object state propagation across DAG nodes; tolerant to Byzantine or adversarial failures           |
+| **Aadhaar / UPI / eKYC**                                  | Federated identity and access control                 | RBAC enforcement and capability-scoped identity management for inference packets and trust objects                                                              |
+| **Lattice Crypto, Hash-Chaining**                         | Provides tamper-evident, auditable artifacts          | Trust objects signed and chained via cryptographic hashes to preserve integrity and chronological order                                                         |
+| **JAX pjit / mesh_utils**                                 | Enables scalable, high-performance computation        | Multi-device parallel execution of PGD loops, linear algebra solvers, and entropy-controlled oscillatory inference                                              |
+| **Do-calculus (Pearl)**                                   | Ensures causal validity of decisions                  | Counterfactual propagation evaluates correlation-aware risk before action execution                                                                             |
+| **Kalman Filter**                                         | Stabilizes stochastic inference states                | Smooths latent variables in oscillatory loops, maintaining consistency across inference cycles                                                                  |
+| **Dijkstra**                                              | Efficient trust-score propagation                     | Computes shortest-paths across DAG nodes with risk-weighted traversal metrics                                                                                   |
+| **Federated Learning & Secure Aggregation**               | Privacy-preserving distributed inference              | Aggregates inference updates across devices without exposing raw data, maintaining IID/PII-aware security                                                       |
+| **LIME, SHAP**                                            | Provides explainability of model outputs              | Embedded per-cycle feature attribution ensures interpretability of trust-object evolution under complex inference states                                        |
 
-* **Monolithic vs Microkernel, TEEs, Secure Containers:** Candidate uses architecture-neutral inference loops; TEEs secure sensitive state (Intel SGX / ARM TrustZone).
-* **TLA+, Alloy, Runtime Assertion Checking:** Formal verification of inference logic.
-* **Policy optimization, DAG-driven Q-learning:** Closed-loop reward shaping of inference.
-* **PBFT, Raft, Tendermint:** Consensus across distributed DAG nodes.
-* **Aadhaar / UPI / eKYC:** Federated identity integration, RBAC enforcement.
-* **Lattice crypto, hash-chaining:** Tamper-evident trust objects.
-* **JAX pjit / mesh_utils:** Multi-device parallelism for PGD loops and linear/differential solvers.
-* **Do-calculus (Pearl):** Counterfactual propagation and correlation-aware risk modeling.
-* **Kalman filter:** Latent state smoothing in oscillatory inference loops.
-* **Dijkstra:** Optimal routing for trust propagation across DAG nodes.
-* **Federated learning & secure aggregation:** Multi-device, privacy-preserving inference.
-* **LIME, SHAP:** Embedded explainability; per-cycle interpretability of trust-object evolution.
-
----
-
-**Summary:**
-
-implicitly and explicitly uses Dijkstra, Kalman filtering, and do-calculus in tandem with DAG/RAG traversal, oscillatory PGD loops, and KKT-constrained optimization.
-* These are **not superficial inclusions**; they’re central to **trust propagation, latent state refinement, and causal reasoning**.
-* Combined with cryptographic enforcement, DPI integration, and inline XAI, the work **creates auditable, reproducible, and regulation-compliant inference**.
 
 
 ---
