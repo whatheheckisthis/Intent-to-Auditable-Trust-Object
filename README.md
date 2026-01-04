@@ -69,17 +69,15 @@ python src/kernel/explainability_pipeline.py
 
 ### Key Observations
 
-- Oscillatory Closed-Loop Execution: The kernel cycles through PGD updates, Bayesian feedback, and reinforcement-style adjustments, which allows it to iteratively refine results without manual intervention.
+| Execution Component                   | Formula / Operational Flow                                        | Notes / Outcome                                                                |                                                                                              |
+| ------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| **Oscillatory Closed-Loop Execution** | θₜ₊₁ = θₜ − ηₜ ∇𝓛(θₜ) + Bayesian feedback + RL-style adjustments | Iteratively refines results deterministically; no manual intervention required |                                                                                              |
+| **Multi-Device Parallelism**          | θₜ → shard(θₜ, devices) via JAX pjit/mesh_utils                   | Horizontal scaling across GPUs/CPU cores without hardware lock-in              |                                                                                              |
+| **Controlled Entropy Injection**      | θₜ ← θₜ + εₜ, subject to H(θₜ) ≤ H_max                            | Explores solution space efficiently; deterministic, auditable perturbation     |                                                                                              |
+| **Trust-Object Compliance**           | τₜ = Sign(θₜ, ∇𝓛(θₜ), λₜ, H(θₜ), P(Y                             | do(aₜ)))                                                                    
+| **Adaptive Resource Governance**      | resource_allocation = f(GPU, memory, bandwidth; workload)         | Dynamically adjusts computation resources for PoC → production pipelines       |                                                                                              |
+| **Explainability Integration**        | explain_batch(θₜ) via SHAP/LIME per cycle                         | Per-step interpretability; supports regulatory requirements and debugging      |                                                                                              |
 
-- Multi-Device Parallelism: Using JAX pjit and mesh_utils, it can shard computations across multiple GPUs or CPU cores, scaling horizontally without locking into a single hardware setup.
-
-- Controlled Entropy Injection: By perturbing states and stabilizing them with constrained optimization, the kernel can explore solution spaces efficiently — similar to reinforcement learning but deterministic and auditable.
-
-- Trust-Object Compliance: Every inference step is logged and packetized for auditability. This adds a small overhead but ensures that computations are traceable, tamper-evident, and legally defensible.
-
-- Adaptive Resource Governance: GPU acceleration, memory allocation, and bandwidth usage adjust dynamically based on workload, making the kernel suitable from PoC experiments to production-scale pipelines.
-
-- Explainability Integration: SHAP and LIME per-cycle ensure that each optimization step is interpretable, which is crucial for regulated domains and for debugging heavy numerical workloads.
 
 
 
@@ -368,9 +366,9 @@ def test_quadratic_minimum():
 | ----------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Regulatory frameworks         | MITRE, NIST, ISO, GRC principles guide operational compliance.                             | The framework integrates directly with RAG/DAG-based node monitoring and escalation policies. Specifically, MITRE ATT&CK and MITRE CAPEC mappings inform correlation thresholds and threat-context scoring, NIST SP 800-series and NIST SP 800-207 guidelines define system-level control validation, ISO/IEC 27001 and ISO/IEC 31000 standards guide risk management and auditability processes, and GRC-aligned policies enforce trust-object scoring and compliance escalation criteria. |
 | Auditability & Traceability   | Deterministic, tamper-evident pipelines are legally defensible.                            | AES.new(aes_key, AES.MODE_CBC).encrypt(packet_data) → encrypts the packet with AES-256 in CBC mode hmac.new(..., ..., hashlib.sha256).hexdigest() → generates HMAC-SHA256 signature over the ciphertext|
-| Operational Risk Modeling     | Basel III and correlation-aware failure modeling prevent underestimation of systemic risk. | DAG simulations propagate correlated failures; residual risk is estimated as DAG simulations propagate correlated failures; residual risk is estimated as [Residual Risk Formula](jupyter/training_notebook.ipynb) |
-| Applied Security in Pipelines | Encrypt sensitive data, ensure integrity, enforce RBAC.                                    | HMAC/AES, RBAC, cryptographically bound audit logs, per-node trust-object generation.                                                                          |
-| Operationalization            | Serialization, deterministic replay, cryptography, governance integration.                 | PGD loops, DAG traversal, oscillatory kernel cycles generate fully auditable trust-object packets.                                                             |
+| Operational Risk Modeling     | Basel III and correlation-aware failure modeling prevent underestimation of systemic risk. | DAG simulations encode node dependencies and correlation-aware propagation. Residual risk is computed via Monte Carlo sampling of Beta-Binomial node failures, producing min, max, mean, and std aggregates for audit-ready trust-object logging. Full formula and code are available in the [Residual Risk Formula](jupyter/training_notebook.ipynb) |
+| Applied Security in Pipelines | Encrypt sensitive data, ensure integrity, enforce RBAC.                                    | Scoped TLS 1.3, byte-level handshake & encryption → per-session trust-object integrity |
+| Operationalization            | Serialization, deterministic replay, cryptography, governance integration.                 | Per-packet trust-object generation via PGD loops, DAG traversal, and oscillatory kernel cycles → per-packet trust-objects, batch-streamed via Kafka|
 
 ---
 
