@@ -1,0 +1,30 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+  scrape_timeout: 4s
+
+rule_files:
+  - "/etc/prometheus/rules/iato_rules.yml"
+
+scrape_configs:
+
+  # IATO Kernel — inference, risk, entropy, trust objects
+  - job_name: "iato-kernel"
+    static_configs:
+      - targets: ["iato-kernel:8080"]
+    metrics_path: /metrics
+
+  # Node-level resources — adaptive governance
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # Redis — DAG state & Monte Carlo aggregation
+  - job_name: "redis"
+    static_configs:
+      - targets: ["redis:6379"]
+
+  # Kafka — trust-object batch streaming
+  - job_name: "kafka"
+    static_configs:
+      - targets: ["kafka:9092"]
