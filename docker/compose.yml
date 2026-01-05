@@ -1,0 +1,114 @@
+version: "3.9"
+
+networks:
+  iato-net:
+    driver: bridge
+
+volumes:
+  redis-data:
+  kafka-data:
+  grafana-data:
+  trust-logs:
+
+services:
+
+  # IATO Kernel
+  iato-kernel:
+    image: iato/kernel:latest
+    container_name: iato-kernel
+    entrypoint: ["/bin/bash", "-c"]
+    command: >
+      python src/api/main.py
+    volumes:
+      - trust-logs:/app/trust_logs
+    environment:
+      IATO_MODE: "audit"
+      REDIS_HOST: redis
+      KAFKA_BROKER: kafka:9092
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+      - kafka
+    networks:
+      - iato-net
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: iato-redis
+    volumes:
+      - redis-data:/data
+    networks:
+      - iato-net
+
+  # Zookeeper (Kafka dependency)
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    container_name: iato-zookeeper
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    networks:
+      - iato-net
+
+  # Kafka
+  kafka:
+    image: bitnami/kafka:3.7
+    container_name: iato-kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    volumes:
+      - kafka-data:/bitnami/kafka
+    networks:
+      - iato-net
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: iato-prometheus
+    entrypoint: ["/bin/bash", "-c"]
+    command: >
+      prometheus --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+      - ../rules/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../rules:/etc/prometheus/rules:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - iato-net
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: iato-grafana
+    volumes:
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - iato-net
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: iato-nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "443:443"
+    depends_on:
+      - iato-kernel
+    networks:
+      - iato-net
+
+  # Node Exporter for resource metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: iato-node-exporter
+    networks:
+      - iato-net
