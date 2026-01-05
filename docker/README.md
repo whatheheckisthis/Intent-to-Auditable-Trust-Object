@@ -1,58 +1,134 @@
-# Docker Environment for OPS Utilities
+# IATO Kernel — Unified Lawful Inference
 
-This Docker setup provides a streamlined, reproducible environment for deploying and managing the OPS Utilities kernel, including secure Bash operations, modular Python inference modules, and PoC pipelines. It is designed to facilitate experimentation, development, and safe deployment without modifying the host system.
+This repository hosts the **Intent-to-Auditable-Trust-Object (IATO) kernel**, a containerized framework for deterministic, auditable inference in regulated or adversarial environments. It focuses on **trust-object propagation, audit logging, and secure multi-device computation**.
 
-## Base Image
+## Features
 
-* Ubuntu 22.04 LTS
+* **Oscillatory Inference Loops** — PGD updates with Bayesian feedback and RL-style adjustments.
+* **Trust-Object Compliance** — Per-packet cryptographically signed audit artifacts (`HMAC/AES-256`) with RBAC and rate-limited access.
+* **Entropy-Guided Exploration** — Controlled stochastic injections, bounded by `H_max`.
+* **Multi-Device Execution** — Parallelized across CPUs, GPUs, or TPUs using JAX `pjit` / `mesh_utils`.
+* **Explainability** — Inline per-cycle SHAP/LIME outputs for regulated domains.
+* **Adaptive Resource Governance** — GPU, memory, and bandwidth dynamically adjusted per workload.
+* **Cryptographic & Tamper Evidence** — Logs, DAG state, and Monte Carlo residual risk aggregates auditable via trust-object packets.
+* **Mechanized Verification** — Optionally integrated with Isabelle/HOL for formal proof of invariants.
+
+---
+
+## Supported Platforms
+
+| Platform      | Notes                                                                            |
+| ------------- | -------------------------------------------------------------------------------- |
+| `linux/amd64` | Standard x86_64 desktop/server/VM                                                |
+| `linux/arm64` | ARM server, Apple M1/M2, Raspberry Pi 4+                                         |
+| Multi-arch    | Built via **QEMU + Docker Buildx** for reproducible cross-architecture execution |
+
+---
+
+## Base Image & Utilities
+
+* Ubuntu 22.04 LTS (slim)
 * Python 3.11-slim
-* Essential system utilities: `bash`, `openssl`, `curl`, `ca-certificates`
-* Optimized for secure, reproducible Python execution and containerized workflow automation.
+* Core utilities: `bash`, `openssl`, `curl`, `ca-certificates`
+* Optional: `jq`, `git`, `vim` (for debugging / PoC environments)
 
-*(Note: Unlike other legacy projects, this container does **not** include Apache/PHP unless explicitly added for legacy compatibility.)*
+This base ensures **secure, minimal, reproducible builds** optimized for cryptographic integrity and containerized workloads.
+
+---
+
+## Building the Docker Image
+
+Enable multi-arch builds and QEMU support:
+
+```bash
+# Enable Buildx
+docker buildx create --use
+
+# Register QEMU emulation
+docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
+# Build & push multi-arch image
+docker buildx build \
+    --platform linux/amd64,linux/arm64 \
+    -t iato/kernel:latest \
+    -f docker/Dockerfile \
+    --push .
+```
+
+> This produces images runnable on both x86_64 and ARM architectures without modification.
+
+---
+
+## Stack Composition
+
+The IATO Docker Compose stack includes:
+
+* **iato-kernel** — Core inference engine
+* **Redis** — DAG state storage and Monte Carlo aggregation
+* **Kafka + Zookeeper** — Batch streaming of trust-object packets
+* **Prometheus** — Metrics collection
+* **Grafana** — Dashboarding and visualization
+* **Nginx** — Reverse proxy and TLS termination
+* **Node-exporter** — Host-level metrics for adaptive resource governance
+
+All services are **networked on a dedicated bridge** and expose only necessary ports.
+
+---
+
+## Workflow Scripts
+
+| Script               | Purpose                                                                            |
+| -------------------- | ---------------------------------------------------------------------------------- |
+| `generate_certs.sh`  | Generates TLS certificates for Nginx and intra-stack encryption                    |
+| `start_stack.sh`     | Mounts certificates and runs Docker Compose                                        |
+| `integrity_check.sh` | Validates Kafka topics, Redis DAG state, Prometheus targets, and trust-object logs |
+
+---
 
 ## Configuration
 
-* The container mounts key project folders for live development:
+### Prometheus
 
-  * `config/` → `/app/config`
-  * `scripts/` → `/app/scripts`
-  * `data/` → `/app/data`
+* `monitoring/prometheus.yml` → scrape targets for iato-kernel, Redis, Kafka, node-exporter
+* `rules/` → Prometheus alerting rules
 
-* Entrypoint script (`docker/entrypoint.sh`) ensures:
+### Grafana
 
-  * Key directories are initialized (`keys`, `data`)
-  * The container is ready for interactive usage or running scripts directly
-  * Compliance with the root repo’s operational structure
+* `grafana/grafana.yml` → preconfigured dashboards for trust-object monitoring, DAG states, Monte Carlo aggregates
 
-* Dependency management uses the root `config/requirements.txt` for Python packages.
+### Nginx
 
-## Usage
+* `nginx/nginx.yml` → TLS termination and reverse proxy to iato-kernel
 
-```bash
-# Build and start container
-docker compose -f docker/docker-compose.yml up -d
+---
 
-# Enter interactive shell
-docker exec -it ops-core bash
+## Operational Notes
 
-# Run scripts (example: generate encrypted API keys)
-python scripts/generate_api_key.py
-```
+* **Execution Component**
 
-## Highlights
+  ```
+  θₜ₊₁ = θₜ − ηₜ ∇𝓛(θₜ) + Bayesian feedback + RL-style adjustments
+  ```
 
-* **Reproducibility:** Ensures a consistent environment across Linux, macOS (via Docker Desktop), or Windows (via WSL2).
-* **Separation of Concerns:** Keeps Docker assets isolated in `docker/` while mounting root repo folders.
-* **Extensibility:** Easily integrates with CI/CD, GPU-enabled containers, or additional services in the future.
-* **Security**: All API keys and trust objects can be generated and stored in encrypted form within the container.
+  Iterative, deterministic closed-loop inference; PGD updates respect KKT constraints and entropy bounds.
 
-| Feature                              | Description                                                                                                                  | Example / Code Snippet                                                                                        |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| **File Integrity & Tamper Evidence** | Bash utilities and Python scripts maintain file integrity and tamper-evident logs.                                           | `bash\n# Generate encrypted API key\npython scripts/generate_api_key.py\n`                                    |
-| **Minimal Base Image**               | Uses Ubuntu 22.04 LTS slim image with only essential services to reduce attack surface.                                      | `dockerfile\nFROM ubuntu:22.04\nRUN apt-get update && apt-get install -y bash openssl curl ca-certificates\n` |
-| **Secure Mounting**                  | Supports mounting host directories securely for sensitive data while maintaining container isolation.                        | `yaml\nvolumes:\n  - ./config:/app/config:ro\n  - ./data:/app/data:rw\n`                                      |
-| **Auditability**                     | Operations are traceable to root repo folders (`scripts/`, `config/`) with logs inside container directories.                | `bash\n# Example: tail audit logs\ntail -f /app/logs/operation.log\n`                                         |
-| **Workflow Integration**             | Fully compatible with CI/CD pipelines and test scripts for reproducible execution of PGD cycles and trust-object validation. | `bash\n# Run pre-configured tests inside container\npytest tests/\n`                                          |
+* **Resource Governance**
 
+  ```
+  resource_allocation = f(GPU, memory, bandwidth; workload)
+  ```
 
+  Adaptive allocation ensures reproducible PoC → production pipelines.
+
+* **Explainability**
+
+  ```
+  explain_batch(θₜ) via SHAP/LIME per cycle
+  ```
+
+  Per-step interpretability for regulatory compliance and debugging.
+
+* **Trust-Object Logging**
+  Cryptographically bound per-packet artifacts, streamed via Kafka, stored in Redis DAG states.
+
+---
