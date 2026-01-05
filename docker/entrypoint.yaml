@@ -1,0 +1,36 @@
+  iato-kernel:
+    image: iato/kernel:latest
+    container_name: iato-kernel
+    entrypoint: ["/bin/bash", "-c"]        # <--- explicit shell entry
+    command: "python src/api/main.py"
+    volumes:
+      - trust-logs:/app/trust_logs
+    environment:
+      IATO_MODE: "audit"
+      REDIS_HOST: redis
+      KAFKA_BROKER: kafka:9092
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+      - kafka
+    networks:
+      - iato-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: iato-prometheus
+    entrypoint: ["/bin/bash", "-c"]        # <--- explicit shell entry
+    command: >
+      prometheus
+      --config.file=/etc/prometheus/prometheus.yml
+      --storage.tsdb.path=/prometheus
+    volumes:
+      - ../rules/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../rules:/etc/prometheus/rules:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - iato-net
+    restart: unless-stopped
+
