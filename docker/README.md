@@ -1,17 +1,205 @@
-# IATO Kernel — Unified Lawful Inference
 
-This repository hosts the **Intent-to-Auditable-Trust-Object (IATO) kernel**, a containerized framework for deterministic, auditable inference in regulated or adversarial environments. It focuses on **trust-object propagation, audit logging, and secure multi-device computation**.
+# IATO Kernel — Deterministic Lawful Inference Engine
 
-## Features
+This repository hosts the **Intent-to-Auditable-Trust-Object (IATO) Kernel**:
+a **deterministic inference and enforcement system** designed for **regulated, adversarial, and sovereign environments**.
 
-* **Oscillatory Inference Loops** — PGD updates with Bayesian feedback and RL-style adjustments.
-* **Trust-Object Compliance** — Per-packet cryptographically signed audit artifacts (`HMAC/AES-256`) with RBAC and rate-limited access.
-* **Entropy-Guided Exploration** — Controlled stochastic injections, bounded by `H_max`.
-* **Multi-Device Execution** — Parallelized across CPUs, GPUs, or TPUs using JAX `pjit` / `mesh_utils`.
-* **Explainability** — Inline per-cycle SHAP/LIME outputs for regulated domains.
-* **Adaptive Resource Governance** — GPU, memory, and bandwidth dynamically adjusted per workload.
-* **Cryptographic & Tamper Evidence** — Logs, DAG state, and Monte Carlo residual risk aggregates auditable via trust-object packets.
-* **Mechanized Verification** — Optionally integrated with Isabelle/HOL for formal proof of invariants.
+IATO does **not** rely on probabilistic convergence, stochastic stabilization, or post-hoc justification.
+All execution is gated by **pre-proven admissibility**.
+
+> **Inference is permitted only if it is lawful, stable, and auditable *before* execution.**
+
+---
+
+## Architectural Scope (Corrected)
+
+### What IATO Is
+
+* A **pre-execution enforcement kernel** for inference systems
+* A **trust-object admission engine**, not a model optimizer
+* A **deterministic state transition system**
+* A **kernel-adjacent architecture** (eBPF / XDP / integer-bounded execution)
+* A system where **auditability is a consequence of correctness**, not a compensating control
+
+---
+
+### What IATO Is Not
+
+* ❌ Not a probabilistic AI framework
+* ❌ Not an online learning system
+* ❌ Not a stochastic control loop
+* ❌ Not container-authoritative
+* ❌ Not dependent on explainability for correctness
+* ❌ Not a convergence-based safety argument
+
+---
+
+## Core Principles
+
+| Principle               | Meaning                                    |
+| ----------------------- | ------------------------------------------ |
+| **Admissibility First** | Unsafe transitions are excluded *a priori* |
+| **Determinism**         | No stochastic elements in live enforcement |
+| **Contractivity**       | State transitions are provably shrinking   |
+| **Kernel Authority**    | Enforcement occurs below user space        |
+| **Audit as Evidence**   | Logs seal already-valid execution          |
+
+---
+
+## Core Capabilities (Current)
+
+### Deterministic Enforcement
+
+* Execution paths are **pre-verified**
+* State transitions must satisfy:
+
+  * Lyapunov decrease
+  * Contractive bounds
+  * Safety invariants
+  * Sovereignty constraints
+
+> If a transition violates an invariant, **it is never executed**.
+
+---
+
+### Trust-Object Lifecycle
+
+* Every action is represented as a **Trust Object**
+* Trust Objects carry:
+
+  * Deterministic state hash
+  * Admissibility proof reference
+  * Causal lineage
+* Cryptography **seals** admissible execution — it does not decide it
+
+---
+
+### Kernel-Level Gating
+
+* Enforcement occurs **pre-application**
+* Eliminates:
+
+  * TOCTOU vulnerabilities
+  * Scheduler drift
+  * Floating-point instability
+* User-space and containers are **observers only**
+
+---
+
+### Audit & Explainability (Non-Control Path)
+
+* Explainability exists **only for inspection**
+* Used for:
+
+  * Regulatory review
+  * Human verification
+  * Post-execution audit
+* It **cannot influence execution**
+
+---
+
+## Containerization (Explicitly Non-Authoritative)
+
+Docker exists **only** to support:
+
+* Reproducible research
+* Proof development
+* Simulation
+* Visualization
+* Documentation
+
+> **No containerized component participates in enforcement or trust admission.**
+
+This is a **hard architectural boundary**, not a configuration choice.
+
+---
+
+## Supported Platforms (Research Harness Only)
+
+| Platform      | Status                   |
+| ------------- | ------------------------ |
+| `linux/amd64` | Supported                |
+| `linux/arm64` | Supported                |
+| Multi-arch    | For reproducibility only |
+
+---
+
+## Docker Image Role
+
+### Base Image
+
+* Ubuntu 22.04 LTS (slim)
+* Python 3.11
+* Minimal cryptographic utilities
+
+Chosen for **reproducibility**, not authority.
+
+---
+
+## Building the Research Image
+
+```bash
+docker buildx create --use
+docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t iato/research:latest \
+  -f docker/Dockerfile \
+  --push .
+```
+
+---
+
+## Stack Components (Reclassified)
+
+| Component  | Role                        |
+| ---------- | --------------------------- |
+| Jupyter    | Proof sketches, simulations |
+| Redis      | Offline DAG inspection      |
+| Kafka      | Audit artifact streaming    |
+| Prometheus | Observation only            |
+| Grafana    | Visualization               |
+| Nginx      | TLS termination             |
+
+None of these components can:
+
+* Gate execution
+* Enforce invariants
+* Influence kernel decisions
+
+---
+
+## Removed Concepts (Post-Proof)
+
+The following were **intentionally removed** after formal review:
+
+* Online PGD enforcement
+* Bayesian stabilization loops
+* RL-style corrective feedback
+* Probabilistic safety arguments
+* Container-level trust
+* Explainability-driven control
+
+These were identified as **academically appealing but operationally unsound**.
+
+---
+
+## Summary
+
+**Old framing:**
+
+> Stress systems until they *appear* safe
+
+**Current framing:**
+
+> Prove safety so unsafe states **cannot exist**
+
+IATO is now a **law-bound inference kernel**, not an experimental AI platform.
+
+Determinism is not an optimization.
+It is the **only admissible basis for trust**.
+
 
 ---
 
@@ -59,76 +247,147 @@ docker buildx build \
 
 ---
 
-## Stack Composition
+Below is a **clean, post-proof, non-academic rewrite** that aligns with the **current IATO architecture** and explicitly removes **probabilistic enforcement, Monte-Carlo logic, RL language, and container authority**.
 
-The IATO Docker Compose stack includes:
-
-* **iato-kernel** — Core inference engine
-* **Redis** — DAG state storage and Monte Carlo aggregation
-* **Kafka + Zookeeper** — Batch streaming of trust-object packets
-* **Prometheus** — Metrics collection
-* **Grafana** — Dashboarding and visualization
-* **Nginx** — Reverse proxy and TLS termination
-* **Node-exporter** — Host-level metrics for adaptive resource governance
-
-All services are **networked on a dedicated bridge** and expose only necessary ports.
+This version can replace the section verbatim.
 
 ---
 
-## Workflow Scripts
+## Stack Composition (Reclassified)
 
-| Script               | Purpose                                                                            |
-| -------------------- | ---------------------------------------------------------------------------------- |
-| `generate_certs.sh`  | Generates TLS certificates for Nginx and intra-stack encryption                    |
-| `start_stack.sh`     | Mounts certificates and runs Docker Compose                                        |
-| `integrity_check.sh` | Validates Kafka topics, Redis DAG state, Prometheus targets, and trust-object logs |
+The IATO Docker Compose stack exists **solely as a research, inspection, and reproducibility harness**.
+No component in this stack participates in **execution gating, invariant enforcement, or trust admission**.
+
+| Component                        | Role (Corrected)                                                            |
+| -------------------------------- | --------------------------------------------------------------------------- |
+| **iato-kernel (research build)** | Deterministic inference prototype and invariant demonstration environment   |
+| **Redis**                        | Offline DAG inspection and trust-object lineage storage (non-authoritative) |
+| **Kafka**                        | Streaming of signed audit artifacts and trust-object events                 |
+| **Prometheus**                   | Observation-only metrics collection                                         |
+| **Grafana**                      | Visualization of audit, lineage, and stability indicators                   |
+| **Nginx**                        | TLS termination and read-only API exposure                                  |
+| **Node Exporter**                | Host telemetry for inspection only                                          |
+
+> **Important:**
+> All enforcement in IATO occurs **below user space**.
+> Containers and orchestration layers are **observers, not authorities**.
+
+All services are networked on a **dedicated bridge** and expose **only minimal read-only ports** required for inspection.
 
 ---
 
-## Configuration
+## Workflow Scripts (Clarified Scope)
+
+| Script               | Purpose                                                                 |
+| -------------------- | ----------------------------------------------------------------------- |
+| `generate_certs.sh`  | Generates TLS material for stack communication and inspection endpoints |
+| `start_stack.sh`     | Launches the Docker Compose research stack                              |
+| `integrity_check.sh` | Verifies log continuity, DAG consistency, and metric availability       |
+
+These scripts **do not** initialize trust, enable execution, or override kernel decisions.
+
+---
+
+## Configuration (Observation Only)
 
 ### Prometheus
 
-* `monitoring/prometheus.yml` → scrape targets for iato-kernel, Redis, Kafka, node-exporter
-* `rules/` → Prometheus alerting rules
+* `monitoring/prometheus.yml`
+  Scrape targets for kernel metrics, Redis state visibility, Kafka throughput, and host telemetry
+* `rules/`
+  Alerting rules for **operational visibility**, not enforcement
 
 ### Grafana
 
-* `grafana/grafana.yml` → preconfigured dashboards for trust-object monitoring, DAG states, Monte Carlo aggregates
+* `grafana/grafana.yml`
+  Preconfigured dashboards for:
+
+  * Trust-object lineage
+  * DAG evolution
+  * Invariant violation attempts (rejected transitions)
 
 ### Nginx
 
-* `nginx/nginx.yml` → TLS termination and reverse proxy to iato-kernel
+* `nginx/nginx.yml`
+  TLS termination and **read-only** proxying to inspection endpoints
 
 ---
 
-## Operational Notes
+## Operational Notes (Corrected)
 
-* **Execution Component**
+### Deterministic Execution Model
 
-  ```
-  θₜ₊₁ = θₜ − ηₜ ∇𝓛(θₜ) + Bayesian feedback + RL-style adjustments
-  ```
+The kernel no longer performs stochastic updates or online optimization.
 
-  Iterative, deterministic closed-loop inference; PGD updates respect KKT constraints and entropy bounds.
+**Removed:**
 
-* **Resource Governance**
+* PGD enforcement
+* Bayesian feedback
+* RL-style adjustments
+* Entropy-driven execution
 
-  ```
-  resource_allocation = f(GPU, memory, bandwidth; workload)
-  ```
+**Current model:**
 
-  Adaptive allocation ensures reproducible PoC → production pipelines.
+```
+xₜ₊₁ = f(xₜ)  subject to:
+  ΔV(xₜ) ≤ 0
+  ||xₜ₊₁ − xₜ|| ≤ ρ ||xₜ − xₜ₋₁||
+```
 
-* **Explainability**
-
-  ```
-  explain_batch(θₜ) via SHAP/LIME per cycle
-  ```
-
-  Per-step interpretability for regulatory compliance and debugging.
-
-* **Trust-Object Logging**
-  Cryptographically bound per-packet artifacts, streamed via Kafka, stored in Redis DAG states.
+Only **pre-verified contractive transitions** are admissible.
 
 ---
+
+### Resource Governance (Non-Authoritative)
+
+```
+resource_allocation = observe(GPU, memory, bandwidth)
+```
+
+* Resource metrics are **observed**, not controlled
+* No adaptive scheduling influences execution correctness
+* Used strictly for capacity planning and reproducibility
+
+---
+
+### Explainability (Audit-Only)
+
+```
+explain(xₜ) → SHAP / LIME
+```
+
+* Generated **after** execution
+* Used for:
+
+  * Regulatory inspection
+  * Human audit
+  * Documentation
+* Has **zero influence** on system behavior
+
+---
+
+### Trust-Object Logging
+
+* Every admissible transition emits a **signed trust-object record**
+* Artifacts are:
+
+  * Streamed via Kafka
+  * Indexed in Redis DAGs
+  * Visualized through Grafana
+* Cryptography **seals lawful execution**, it does not authorize it
+
+---
+
+## Summary
+
+This stack:
+
+* **Does not enforce safety**
+* **Does not decide trust**
+* **Does not gate execution**
+
+It exists to **observe, inspect, reproduce, and audit** a kernel whose correctness is established **before runtime**.
+
+The authority remains where it belongs:
+**in proven invariants, not infrastructure.**
+
