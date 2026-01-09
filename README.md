@@ -71,7 +71,6 @@ This repository is a **self-directed research workflow** for exploring whether Z
 All listed threats are treated as **external constraints** on the system environment rather than failures of computation, inference, or formal verification. The system is designed to remain *internally sound* under these assumptions, not to resolve them.
 
 
-
 ## Research Intent
 
 **This work focuses on**:
@@ -86,25 +85,6 @@ All listed threats are treated as **external constraints** on the system environ
 
 ---
 
-## Foundational Influences (Non-Operational)
-
-While IATO represents a departure from probabilistic and stochastic security models, it is informed by decades of prior research that served as **conceptual and historical foundations**, not as operational mechanisms.
-
-### Influential Domains
-
-| Domain                                     | Role in IATO                                                                                        |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| Early Neural Networks (e.g., AlexNet)      | Demonstrated large-scale representation learning and system complexity                              |
-| Stochastic Optimization & Probabilistic AI | Motivated the limitations of probability-based trust and inference                                  |
-| Causal Reasoning (J. Pearl)                | Informed early thinking around causality, intervention, and counterfactuals                         |
-| Explainable AI (XAI)                       | Highlighted the insufficiency of post-hoc explanations without enforceability                       |
-| DARPA Programs & ArXiv Literature          | Provided empirical insight into distributed systems, adversarial ML, and high-assurance computation |
-
-
-These bodies of work **shaped the questions**, but **do not define the solution space** of IATO.
-
----
-
 
 ## Current Architectural Direction
 
@@ -115,16 +95,16 @@ IATO intentionally moves beyond:
 * Post-hoc explainability
 * Probabilistic risk registers
 
-and instead explores:
+**and instead explores**:
 
 * **Invariant-based security**
 * **Deterministic state transitions**
 * **Kernel-enforced correctness**
 * **Trust objects carrying executable proofs**
 
-This direction reflects an experimental hypothesis:
+**This direction reflects an experimental hypothesis:**
 
-**That security, trust, and auditability can be enforced as physical properties of computation rather than inferred statistically.*
+>**That security, trust, and auditability can be enforced as physical properties of computation rather than inferred statistically.**
 
 ---
 
@@ -157,7 +137,7 @@ Academic review may be valuable in the future, but **correctness here is measure
 
 ---
 
-## 1. Pre-Mapped System Surfaces
+### 1. Pre-Mapped System Surfaces
 
 IATO begins by explicitly enumerating and formalizing all relevant system surfaces. Unlike conventional security models that discover attack vectors reactively, IATO **defines the admissible state space in advance** and constrains all behavior within mathematically verified boundaries.
 
@@ -179,7 +159,7 @@ IATO begins by explicitly enumerating and formalizing all relevant system surfac
 
 ## Architectural Implication
 
-By pre-mapping system surfaces into a formal state space, IATO eliminates the distinction between “known” and “unknown” attacks. Any interaction—regardless of novelty, throughput, or execution medium—must satisfy the same invariant constraints. If it does not, it cannot progress through the system.
+>By pre-mapping system surfaces into a formal state space, IATO eliminates the distinction between “known” and “unknown” attacks. Any interaction—regardless of novelty, throughput, or execution medium—must satisfy the same invariant constraints. If it does not, it cannot progress through the system.
 
 **This ensures that**:
 
@@ -221,7 +201,7 @@ Attacks cannot accumulate energy over time
   >Parallel execution offers no advantage
   >Physical leakage does not correlate with logical state
 
-The system remains stable, contractive, and auditable regardless of execution environment or adversarial strategy.
+>**The system remains stable, contractive, and auditable regardless of execution environment or adversarial strategy.**
 
 ---
 
@@ -229,15 +209,15 @@ The system remains stable, contractive, and auditable regardless of execution en
 
 In IATO, attack surfaces are not monitored—they are **formalized**.
 
-> Mitigations are not applied after the fact—they are **mathematically inseparable from execution**.
-> Security emerges as a *property* of invariant-preserving dynamics, *not probabilistic* defense.
+>Mitigations are not applied after the fact—they are **mathematically inseparable from execution**.
+>Security emerges as a *property* of invariant-preserving dynamics, *not probabilistic* defense.
 
 
 ---
 
 ## 3. Enforcement Layer (Kernel-Level Determinism)
 
->IATO enforcement is not advisory or policy-driven. It is **mechanical, deterministic, and inline**, operating at the kernel boundary where state transitions either satisfy invariants or are rejected.
+>**IATO enforcement is not advisory or policy-driven. It is **mechanical, deterministic, and inline**, operating at the kernel boundary where state transitions either satisfy invariants or are rejected.**
 
 ### Enforcement Components
 
@@ -370,8 +350,7 @@ When deployed across multiple nodes, IATO preserves determinism and safety throu
 
 **IGD-HDD Update Law (Python / JAX):**
 
-<details>
-<summary>Click to expand</summary>
+
 
 ```python
 import jax
@@ -427,8 +406,7 @@ print("Distance:", hilbertian_distance(x_curr, x_next))
 
 **Montgomery REDC (C / eBPF):**
 
-<details>
-<summary>Click to expand</summary>
+
 
 ```c
 #define Q 8380417
@@ -475,7 +453,7 @@ A trust object transition ( x_t \to x_{t+1} ) is **accepted and logged** only if
 * ( x_{t-1} ) — previous state vector
 * ( ρ \in (0,1] ) — contraction factor (defines maximum allowed growth)
 
-> Meaning: The next state must not "overshoot" beyond a fraction ( ρ ) of the previous step. Any perturbation exceeding this bound is **rejected** inline.
+>Meaning: The next state must not "overshoot" beyond a fraction ( ρ ) of the previous step. Any perturbation exceeding this bound is **rejected** inline.
 
 ---
 
@@ -493,7 +471,7 @@ Each state transition must **non-increasingly evolve the system energy** ( V(x) 
 * ( ΔV ) — change in system energy
 * Condition ( ΔV ≤ 0 ) ensures **stability**: no transition can increase the energy beyond its previous value.
 
-> Interpretation: This guarantees that the system **self-damps any perturbations**, enforcing deterministic trust propagation.
+>Interpretation: This guarantees that the system **self-damps any perturbations**, enforcing deterministic trust propagation.
 
 ---
 
@@ -512,7 +490,6 @@ V(x_{t+1}) - V(x_t) ≤ 0
 * Only transitions satisfying both are **accepted, logged, and propagated as valid Trust Objects**.
 
 ---
-
 
 
 ## Hilbertian Contractivity: Trust Object Conditions
@@ -542,8 +519,7 @@ V(x_{t+1}) - V(x_t) ≤ 0
 
 All RAG outcomes are derived from deterministic IGD-HDD updates: 
 
-<details>
-<summary>Click to expand</summary>
+
   
 ```markdown
 [
@@ -557,10 +533,9 @@ x_{t+1} = x_t - \eta (H_t + \alpha I)^{-1} \nabla f(x_t) - \beta H_t (x_t - x_{t
 
 ---
 
-### 4. Example: RAG Evaluation in JAX
+### 4. RAG Evaluation in JAX
 
-<details>
-<summary>Click to expand</summary>
+
 
 ```python
 distance = hilbertian_distance(x_curr, x_next)
@@ -589,7 +564,7 @@ print("RAG Score:", rag)
 
 ---
 
-### 6. Diagram Placeholder
+### 6. Packet Lifecycle 
 
 ```
 [Attack Surface] --> [Invariant Mapping] --> [Kernel Enforcement / IGD-HDD] --> [RAG Evaluation / Operational Escalation]
@@ -611,7 +586,7 @@ print("RAG Score:", rag)
 
 ### Deprecated Concepts (Historical Scaffolding)
 
-**This appendix documents architectural constructs explored in early IATO research** phases that are **no longer part of the trust core**. They are **retained** here for (completeness, lineage transparency, and to clarify why deterministic invariants superseded probabilistic aggregation).
+**This appendix documents architectural constructs explored in early IATO research** phases that are **no longer part of the trust core**. They are **retained** here for completeness, lineage transparency, and to clarify why deterministic invariants superseded probabilistic aggregation.
 
 These constructs were not failures; they were **necessary** intermediate abstractions that enabled later proof discovery.
 
@@ -628,11 +603,6 @@ These constructs were not failures; they were **necessary** intermediate abstrac
 ---
 
 
-<details>
-<summary>Click to expand</summary>
-
-
----
 
 ## Getting Started
 
@@ -658,15 +628,50 @@ pip install --upgrade pip
 pip install jax jaxlib numpy matplotlib
 ```
 
-> JAX is required for accelerated linear algebra, Hessian evaluation, and IGD-HDD updates.
+>**JAX is required for accelerated linear algebra, Hessian evaluation, and IGD-HDD updates.**
 
 ---
 
-### 3. Launch the Jupyter Notebook
 
-```bash
-jupyter notebook
-```
+## 3. Jupyter Proof & Analysis Workspace
+
+All **formal derivations, empirical tests, and qualitative literature analyses** for IATO are consolidated in a single, auditable workspace.
+
+**Jupyter Workspace:**
+
+
+### Scope and Purpose
+
+* This [directory](https://github.com/whatheheckisthis/Intent-to-Auditable-Trust-Object/tree/whatheheckisthis/root/jupyter) is the **sole authoritative location** for:
+
+  * Mathematical derivations and proof sketches
+  * Empirical validation notebooks (latency, drift, noise, contractivity)
+  * Post-quantum threat analysis and implementation constraints
+  * Qualitative literature synthesis (standards, journals, arXiv)
+
+* All material is maintained **exclusively** as:
+
+  * `.ipynb` — executable, reproducible analysis notebooks
+  * `.md` — structured explanatory and literature documentation
+
+### Important Disclaimer
+
+* No claims of correctness, performance, or security are made **outside** what is explicitly derived or demonstrated within this folder.
+* Architectural conclusions referenced elsewhere in the repository **must trace back** to a notebook or markdown artifact in this directory.
+* Where formal proofs (e.g. Isabelle/HOL) assume idealized models, corresponding notebooks document **real-world deviations** (latency, arithmetic domain, noise, scheduling effects).
+
+### Rationale
+
+This structure ensures that:
+
+* All reasoning is **inspectable and reproducible**
+* Mathematical assumptions are **explicitly tested against reality**
+* Future reviewers can distinguish **formal proof soundness** from **implementation soundness**
+
+> In IATO, documentation is not commentary — it is an executable artifact.
+
+---
+
 
 Open `IATO_IGD-HDD_Simulation.ipynb` in your browser. The notebook includes:
 
@@ -686,12 +691,10 @@ Open `IATO_IGD-HDD_Simulation.ipynb` in your browser. The notebook includes:
 
    * Generate machine-checkable proof logs for every accepted state.
 
-<details>
-<summary>Click to expand</summary>
   
 ---
 
-### 4. Example: **Run a Single Trust Object** Update
+### 4. **Run a Single Trust Object Update** 
 
 ```python
 import jax.numpy as jnp
@@ -746,7 +749,7 @@ print(f"Distance: {distance:.6f}, ΔV: {delta_V:.6f}, RAG Score: {rag}")
 3. **Reference kernel enforcement** by integrating REDC and XDP drop logic.
 4. **Audit logs** are automatically generated for each trust object with RAG scoring.
 
->By following this notebook, you can **reproduce deterministic, provably safe trust object transitions** in IATO, including **real-time** RAG evaluation and audit logging.
+>**By following this notebook, you can **reproduce deterministic, provably safe trust object transitions** in IATO, including **real-time** RAG evaluation and audit logging.**
 
 ---
 
@@ -770,7 +773,7 @@ IATO is designed to scale from individual nodes to **enterprise-scale, distribut
   * **Red:** Full invariant violation → rejected inline at kernel level
   * **Amber:** Partial deviation → flagged for operational escalation
   * **Green:** Compliant → accepted and logged
-* RAG evaluation **integrates directly with IGD-HDD dynamics**, ensuring that high-dimensional updates are continuously verified.
+  * **RAG evaluation** **integrates directly with IGD-HDD dynamics**, ensuring that high-dimensional updates are continuously verified.
 
 
 ---
@@ -779,13 +782,13 @@ IATO is designed to scale from individual nodes to **enterprise-scale, distribut
 
 In the context of the **IATO architecture**, the **Lyapunov-Lattice Integration** is more than a side-channel mitigation mechanism—it is the **Sovereign Unification** of dynamical safety and cryptographic hardness.
 
-It bridges **Adversarial Noise (Stochasticity)** with **System State (Determinism)**: in traditional systems, side-channel leaks (timing, power, EM) act as “waste” information for attackers. In IATO, these leaks are treated as **Entropy Injections** that must be actively damped by the Lyapunov gate.
+>**It bridges** **Adversarial Noise (Stochasticity)** with **System State (Determinism)**: in traditional systems, side-channel leaks (timing, power, EM) act as “waste” information for attackers. In IATO, these leaks are treated as **Entropy Injections** that must be actively damped by the Lyapunov gate.
 
 ---
 
 ### 1. The Side-Channel Equation: Energy Bound
 
-Let ( \mathbf{n}_t ) denote the side-channel noise vector, which includes both cryptographic noise and unintentional EM/power leakage. The Lyapunov-Lattice constraint ensures:
+>**Let ( \mathbf{n}_t )** **denote the side-channel noise vector, which includes both cryptographic noise and unintentional EM/power leakage. The Lyapunov-Lattice constraint ensures:**
 
 [
 \Delta V_t = V(x_{t+1}) - V(x_t) \le 0 \quad \forall t
@@ -798,7 +801,7 @@ Where:
 * ( \mathbf{n}_t ) — noise/perturbation vector
 * **Constraint:** Any perturbation must **decrease the system energy**, preventing adversarial amplification
 
-**Interpretation:** Any side-channel attack is mathematically treated as a perturbation. The Hessian-damped IGD-HDD dynamics “smooth out” the injected entropy before it can affect system state.
+**Interpretation:** Any side-channel attack is mathematically treated as a perturbation. The Hessian-damped IGD-HDD dynamics “smooth out” the injected entropy before it can affect the system state.
 
 ---
 
@@ -823,15 +826,15 @@ lemma pointwise_stability_invariant:
 
 ### 3. Efficiency Through NTT & REDC
 
->IATO converts classical ( O(n^2) ) matrix multiplication into **NTT-based ( O(n \log n) )** operations:
+>**IATO converts** classical ( O(n^2) ) matrix multiplication into **NTT-based ( O(n \log n) )** operations:
 
 | Traditional Matrix | IATO NTT         | Efficiency Gain   |
 | ------------------ | ---------------- | ----------------- |
 | ~14.7M ops/check   | ~2,048 ops/check | ~7,000× reduction |
 
-* >**Result:** CPU overhead drops from ~30% to <2%, freeing compute for AI inference.
-* >**Mechanism:** Montgomery REDC ensures modular arithmetic without timing leaks.
-* >**Execution:** eBPF/XDP offload keeps verification inside the kernel, bypassing OS-induced context switches.
+>**Result:** CPU overhead drops from ~30% to <2%, freeing compute for AI inference.
+>**Mechanism:** Montgomery REDC ensures modular arithmetic without timing leaks.
+>**Execution:** eBPF/XDP offload keeps verification inside the kernel, bypassing OS-induced context switches.
 
 
 ---
@@ -852,12 +855,12 @@ lemma pointwise_stability_invariant:
 ---
 
 
-> *This subsection demonstrates how NTT and Montgomery REDC transform a formally verified 3,840-dimensional Lyapunov invariant into a line-rate, constant-time kernel primitive, making post-quantum trust enforcement computationally feasible.*
+>**This subsection demonstrates how NTT and Montgomery REDC transform a formally verified 3,840-dimensional Lyapunov invariant into a line-rate, constant-time kernel primitive, making post-quantum trust enforcement computationally feasible.**
 
 
 ---
 
-### 4. ### Eliminating TOCTOU via Hilbertian-Lyapunov Enforcement
+### 4. Eliminating TOCTOU via Hilbertian-Lyapunov Enforcement
 
 IATO prevents **Time-of-Check to Time-of-Use (TOCTOU)** attacks by enforcing:
 
@@ -866,7 +869,7 @@ IATO prevents **Time-of-Check to Time-of-Use (TOCTOU)** attacks by enforcing:
 \Delta V \le 0 \quad\text{(Lyapunov Energy)}
 ]
 
-directly **at the network boundary**, before packets traverse the OS stack:
+>directly **at the network boundary**, **before** packets traverse the OS stack:
 
 ```
 Packet → NIC → XDP/XDP_DROP → Montgomery REDC → Kernel → Application
@@ -920,7 +923,7 @@ qed
 end
 ```
 
-> **Interpretation:** Local module-level invariants imply **provable global stability**, but in real deployments, **compute noise and packet jitter** can introduce minor deviations. Enforcement via XDP_DROP and Montgomery REDC ensures these deviations do not violate the global Lyapunov mesh.
+>**Interpretation:** Local module-level invariants imply **provable global stability**, but in real deployments, **compute noise and packet jitter** can introduce minor deviations. Enforcement via XDP_DROP and Montgomery REDC ensures these deviations do not violate the global Lyapunov mesh.
 
 ---
 
@@ -958,7 +961,7 @@ IATO’s **core verification gate** fuses:
 >**Operational Noise Handling:** “Noise deviations” are treated **operationally**, not mathematically; enforcement mechanisms (XDP_DROP + REDC) ensure ΔV ≤ 0 even under real-world drift.
 >**Real-World Deviations:** Latency and state drift can skew curvature assumptions beyond 0.12–0.5, which invalidates prior idealized proofs if applied directly.
 
->**Note:** Full computational testing of these operational bounds and the effect of network/packet latency on ΔV stability is **yet to be completed**. Current assertions rely on formal derivation and operational enforcement logic.*
+>**Full computational testing** of these operational bounds and the effect of network/packet latency on ΔV stability is **yet to be completed**. Current assertions rely on formal derivation and operational enforcement logic.
 
 ## Implementation & Mathematical Disclaimers
 
@@ -1000,14 +1003,16 @@ x_{t+1}^{(i)} = x_t^{(i)} - \eta \nabla_{x^{(i)}} \mathcal{H}(X_t) + B_t^{(i)} +
 
 ### Evaluation Conditions
 
-| Condition                | Formula                                | Outcome                           |          |               |   |                       |
-| ------------------------ | -------------------------------------- | --------------------------------- | -------- | ------------- | - | --------------------- |
-| Hilbertian Contractivity | (                                      | x_{t+1} - x_t                     | \le \rho | x_t - x_{t-1} | ) | System remains stable |
-| Lyapunov Energy          | (\Delta V = V(x_{t+1}) - V(x_t) \le 0) | Invariant maintained              |          |               |   |                       |
-| Invariant Violation      | Any bound exceeded                     | Inline rejection via **XDP_DROP** |          |               |   |                       |
+| Condition                    | Formal Constraint                                                      | Enforcement Outcome                         |
+| ---------------------------- | ---------------------------------------------------------------------- | ------------------------------------------- |
+| **Hilbertian Contractivity** | ( \lVert x_{t+1} - x_t \rVert \le \rho , \lVert x_t - x_{t-1} \rVert ) | System state remains contractive and stable |
+| **Lyapunov Energy Decay**    | ( \Delta V = V(x_{t+1}) - V(x_t) \le 0 )                               | Global invariant preserved                  |
+| **Invariant Violation**      | Any constraint violated                                                | Immediate inline rejection via **XDP_DROP** |
 
-> Enforcement occurs **pre-application**, eliminating TOCTOU and mitigating drift in real-world network/compute conditions.
-
+>**Both constraints are evaluated in the same normed space, and rejection is enforced inline via XDP_DROP upon violation.**
+```bash
+​∥xt+1​−xt​∥≤ρ∥xt​−xt−1​∥∧V(xt+1​)−V(xt​)≤0​
+```
 ---
 
 ### Key Observations
@@ -1017,7 +1022,7 @@ x_{t+1}^{(i)} = x_t^{(i)} - \eta \nabla_{x^{(i)}} \mathcal{H}(X_t) + B_t^{(i)} +
 3. **Operational Noise Handling:** Noise deviations are **enforced operationally**, not mathematically; XDP_DROP + REDC ensure ΔV ≤ 0.
 4. **Real-World Deviations:** Latency and state drift can skew curvature assumptions beyond 0.12–0.5, which invalidates prior idealized proofs if applied directly.
 
-> **Note:** Full computational testing of these operational bounds and network/packet latency effects on ΔV stability is **yet to be completed**; current assurances rely on formal derivation and operational enforcement logic.
+> **Note:** **Full** computational testing of these operational bounds and network/packet latency effects on ΔV stability is **yet to be completed**; current assurances rely on formal derivation and operational enforcement logic.
 
 
 ---
@@ -1044,7 +1049,7 @@ x_{t+1}^{(i)} = x_t^{(i)} - \eta \nabla_{x^{(i)}} \mathcal{H}(X_t) + B_t^{(i)} +
 3. **Factorization / Lattice Sensitivity:** High-dimensional operations (Modular-LWE, NTT) are sensitive to kernel-level delays, which can **skew invariants or slow deterministic updates**.
 4. **Scope Limitation:** Current architecture focuses on **pre-application enforcement and Master Invariant**. Extra layers do not significantly improve security but **may impair throughput or deterministic behavior**.
 
-> **Note:** This disclaimer reflects operational testing and observed real-world deviations; computational testing is ongoing to quantify thresholds and performance impacts.
+>**Note:** This disclaimer reflects operational testing and observed real-world deviations; computational testing is ongoing to quantify thresholds and performance impacts.
 
 
 ---
@@ -1094,6 +1099,8 @@ x_{t+1}^{(i)} = x_t^{(i)} - \eta \nabla_{x^{(i)}} \mathcal{H}(X_t) + B_t^{(i)} +
 3. **PQC compute bottlenecks** require NTT + Montgomery + XDP; otherwise line-rate guarantees fail.
 4. Both tables together justify the **architectural deviations from prior assumptions**, making the updated IATO enforcement model **mathematically sound and operationally realistic**.
 
+
+
 ---
 
 
@@ -1120,7 +1127,7 @@ IATO represents a **new architectural direction** in secure AI and Zero Trust: i
 * **High-dimensional trust objects** are mapped to modular-lattice structures, enabling **global stability** in enterprise-scale distributed networks.
 * **RAG scoring** is deterministic, replacing stochastic risk registers with invariant-based evaluation (Red = critical violation, Amber = partial deviation, Green = compliant).
 * **Post-quantum integrity** via lattice-based hashes ensures the audit trail remains **immutable over decades**, even against quantum adversaries.
-* **Byzantine resilience** guarantees that global system state remains secure under malicious or faulty nodes, while side-channel obfuscation protects physical execution paths.
+* **Byzantine resilience** guarantees that the global system state remains secure under malicious or faulty nodes, while side-channel obfuscation protects physical execution paths.
 
 ### Summary
 
@@ -1256,117 +1263,33 @@ The table below reflects this transition explicitly.
 
 ---
 
-## Component-Level Clarification
 
-### Entropy PGD (Reclassified)
+| Component              | Old Architecture                                                                        | New Architecture                                                                                                       | Key Notes / Motivation                                                                                        |
+| ---------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **Entropy PGD**        | Online perturbation mechanism; empirically tests convergence under adversarial pressure | Offline research harness only; validates invariant boundaries, explores worst-case curvature, supports proof discovery | Removed from live enforcement; avoids stochastic decision-making                                              |
+| **Closed-Loop Driver** | Stochastic filters (Kalman-style) to stabilize latent variables                         | Pre-verified deterministic transition paths; stability via Lyapunov decay, Hessian damping, contractive admissibility  | Guarantees stability without probabilistic estimation                                                         |
+| **Parallel PJIT**      | Probabilistic redundancy and Byzantine tolerance via replication                        | Deterministic sharding; each shard enforces identical invariants; Byzantine tolerance emerges from invariant agreement | Equivalence is mathematically proven, not assumed                                                             |
+| **Formal Gate**        | Post-hoc validation of inference outputs                                                | Primary enforcement boundary; execution blocked if safety, sovereignty, or stability invariants violated               | Defines “allowed transitions” strictly; ensures correctness by construction                                   |
+| **Causal Explain**     | Active feedback for decision-making                                                     | Audit-only: traceability, compliance, regulatory inspection                                                            | Demoted from control path; does not influence behavior                                                        |
+| **Hash-Chaining**      | Ensures tamper-evident lineage; supports probabilistic trust                            | Same cryptographic protection; seals already-proven admissible transitions                                             | Architectural framing shifted from complementing probabilistic trust to enforcing deterministic admissibility |
 
-**Then:**
-Used as an online mechanism to maximize perturbations and empirically test convergence under adversarial pressure.
+> **Observation:** Iterative refinement removed stochastic and heuristic assumptions, grounding the architecture fully in **first principles, real hardware constraints, and formal proofs**, preparing the system for post-quantum threat models (Q-Day) while avoiding any “vaporware” or hand-waving about compute.
 
-**Now:**
-Retained only as an **offline research harness** to:
-
-* Validate invariant boundaries
-* Explore worst-case curvature conditions
-* Support proof discovery
-
-It no longer participates in live decision-making or enforcement.
-
----
-
-### Closed-Loop Driver (Determinized)
-
-**Then:**
-Relied on stochastic filters (e.g., Kalman-style smoothing) to stabilize latent variables across repeated cycles.
-
-**Now:**
-Executes **pre-verified transition paths only**. Stability is guaranteed by:
-
-* Lyapunov energy decrease
-* Hessian-driven damping
-* Contractive admissibility
-
-No stochastic estimation is required.
-
----
-
-### Parallel PJIT (Clarified Role)
-
-**Then:**
-Framed as collective determinism through probabilistic redundancy and Byzantine tolerance via replication.
-
-**Now:**
-Functions as a **deterministic sharding mechanism**:
-
-* Each shard enforces identical invariants
-* Equivalence across shards is proven, not assumed
-* Byzantine tolerance emerges from invariant agreement, not voting
-
----
-
-### Formal Gate (Promoted to Primary)
-
-**Then:**
-Intercepted inference outputs to validate compliance post hoc.
-
-**Now:**
-Defines **whether execution is permitted at all**.
-
-If a transition violates:
-
-* Safety invariants
-* Sovereignty constraints
-* Stability conditions
-
-…it is never executed.
-
-This is the core enforcement boundary.
-
----
-
-### Causal Explain (Demoted from Control Path)
-
-**Then:**
-Actively mapped entropy states to causal explanations to inform decision-making.
-
-**Now:**
-Provides **audit transparency only**:
-
-* Traceability
-* Compliance justification
-* Human and regulatory inspection
-
-It does not influence system behavior.
-
----
-
-### Hash-Chaining (Unchanged but Recontextualized)
-
-**Then and Now:**
-Ensures tamper-evident, post-quantum-secure lineage of trust objects.
-
-The difference is architectural framing:
-
-* Earlier: cryptographic assurance complemented probabilistic trust
-* Now: cryptography seals **already-proven admissible transitions**
 
 ---
 
 ## Architectural Summary
 
-| Old Framing                  | Current Framing                      |
-| ---------------------------- | ------------------------------------ |
-| Stress-test to infer safety  | Prove admissibility before execution |
-| Stabilize uncertainty        | Eliminate unsafe state space         |
-| Explain to justify decisions | Explain to audit decisions           |
-| Probabilistic convergence    | Deterministic contractivity          |
 
----
+| Old Framing                  | Current Framing                          |
+| ---------------------------- | ---------------------------------------- |
+| Stress-test to infer safety  | **Prove admissibility before execution** |
+| Stabilize uncertainty        | **Eliminate unsafe state space**         |
+| Explain to justify decisions | **Explain to audit decisions**           |
+| Probabilistic convergence    | **Deterministic contractivity**          |
 
-### Key Statement
+>**Summary:** After iterative proofs and sketches, it became clear that the old direction relied heavily on assumptions, stochastic approximations, and academic “vaporware.” The new IATO direction is grounded in **first principles, formal verification, and real-world enforceable invariants**, focusing on deterministic, auditable, and provably safe operations.
 
-> The implementation stack no longer *discovers* whether a state is safe.
-> It **enforces the conditions under which unsafe states cannot occur**.
 
 
 ---
@@ -1395,7 +1318,7 @@ The difference is architectural framing:
 2. **New Direction:**
 
    * All state transitions are now **pre-verified and contractive**.
-   * No stochastic exploration occurs inline; all probabilistic or DAG-based reasoning is offline **research-only**.
+   * No stochastic exploration occurs in-line; all probabilistic or DAG-based reasoning is offline **research-only**.
    * Enforcement occurs at the kernel, using **Hessian-damped, invariant-constrained updates**, guaranteeing that **unsafe states cannot execute**.
 
 3. **Operational Implications:**
@@ -1406,7 +1329,7 @@ The difference is architectural framing:
 
 4. **Key Takeaway:**
 
-   > The architecture has shifted from **probabilistic observation** to **deterministic enforcement**. Legacy layers exist only for historical context and **proof lineage**, not runtime execution.
+>**The architecture has shifted from **probabilistic observation** to **deterministic enforcement**. Legacy layers exist only for historical context and **proof lineage**, not runtime execution**.
 
 
 ---
@@ -1436,7 +1359,7 @@ The difference is architectural framing:
 2. **Pivoted Approach**
 
    * The architecture now **removes stochastic or cycle-fractured execution**.
-   * Updates are evaluated **deterministically** using a **Murphy-theory-inspired differential calculus model**, analyzing overall compute load, Hessian curvature, and energy flow.
+   * Updates are evaluated **deterministically** using a **Murphy-theory differential calculus model**, analyzing overall compute load, Hessian curvature, and energy flow.
    * Trust-object generation, enforcement, and logging occur **inline, invariant-gated, and contractive**, eliminating risks introduced by parallelism or random perturbation.
 
 3. **Operational Benefits**
@@ -1467,104 +1390,318 @@ For details on the prior modular oscillatory inference and its deprecation in fa
 
 **Rationale / New Direction:**
 
-* These components **collapse under the new invariant-based architecture** because the underlying computational proofs are no longer valid.
+**These components** **collapse under the new invariant-based architecture** because the underlying computational proofs are no longer valid.
 * Pivot to **Murphy’s law in differential calculus** allows the system to **self-regulate load across compute nodes**, rather than rely on illustrative equation solving or scripts.
 * Trust, stability, and observability are now **formally enforced at the kernel level**, and operational tooling aligns only with **provable invariants**.
 
 > For historical context and experimental workflows, see the [IATO Deprecated Concepts Appendix](https://github.com/whatheheckisthis/Intent-to-Auditable-Trust-Object#deprecated-modular-oscillatory-inference).
 
----
-
-
-## **Technical Implementation Overview**
-
-| Topic                                        | Why it matters                                                                                              | Approach / Implementation                                                                                                                                                                                                                                               |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Algorithms & Data Structures**             | Efficient and auditable propagation of inference and trust scores across correlated evidence.               | DAGs model correlated evidence; Dijkstra’s algorithm bounds propagation paths; frontier reduction constrains admissible inference states; caching strategies optimize repeated computations in lattice partitions.                                                      |
-| **Machine Learning / AI**                    | Enables closed-loop, entropy-bounded inference for regulated, adversarial environments.                     | PGD-style optimization updates inference parameters; oscillatory closed-loop execution iteratively stabilizes latent states; Bayesian updates adjust beliefs; SHAP/LIME provide per-cycle explainability; graph-constrained retrieval enforces trust/policy boundaries. |
-| **Formal Methods / Verification**            | Guarantees reproducibility, deterministic outputs, and regulatory compliance.                               | Beta-Binomial proofs validate probabilistic correctness; cryptographically signed local certificates capture inference state, entropy, correlations, and dual variables; Pearl’s do-calculus checks causal validity before action execution.                            |
-| **Distributed Systems / Parallel Computing** | Supports scalable, reproducible inference across multiple devices while maintaining trust and auditability. | Multi-device sharding via JAX (pjit, mesh_utils); Kafka streams inference states with replayable, tamper-evident logs; rate-limiting and IAM/RBAC enforce secure, concurrent computation.                                                                               |
-| **Security / Cryptography**                  | Ensures auditability, tamper-evidence, and compliance with privacy and regulatory standards.                | HMAC and Merkle trees secure inference outputs; trust objects aggregate deterministic artifacts; RBAC/IAM enforce least-privilege access; TLS secures data streams; zero-knowledge proofs enable privacy-preserving verification.                                       |
-| **Numerical Methods / Scientific Computing** | Provides precise, stable, and efficient computation for optimization and inference loops.                   | JAX kernels perform high-performance tensor/matrix operations; lattice partitioning enables parallel execution; Kalman filtering smooths stochastic perturbations; entropy-controlled loops regulate inference stability.                                               |
-| **Compiler / Execution Semantics**           | Enforces deterministic evaluation and formal constraints in DAG-based inference.                            | Node-based computation networks implement DSL-style execution semantics; execution order and evaluation rules encode trust, compliance, and causal constraints within inference cycles.                                                                                 |
-| **Databases / Data Modeling**                | Maintains structured, traceable, and auditable storage of inference artifacts.                              | PostgreSQL/MySQL store IID/PII-aware inference states; metadata tagging enables traceability; ETL pipelines enforce governance and compliance; correlation-aware queries maintain trust-aware retrieval.                                                                |
-| **Software Testing / QA**                    | Ensures correctness, reproducibility, and robustness of inference under adversarial conditions.             | Unit tests validate PGD convergence; CI/CD (GitHub Actions, Conda) ensure reproducible environments; PoCs validate deterministic artifact replay and trust-object auditing over synthetic datasets.                                                                     |
-
-## **Core Mathematical Foundations**
-
-| Topic                            | Why it matters                                                                                                             | Approach / Practical Application                                                                                                                                                                                                                                                                                       |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Probability & Statistics**     | Bayesian reasoning, posterior updates, Monte Carlo simulation, correlated evidence underpin inference and risk assessment. | RAG/DAG nodes are probabilistic; Bayesian updates ensure posterior consistency. Monte Carlo simulations model correlated node outcomes; Bayesian filtering (Kalman filters) refines latent states over iterative oscillatory cycles.                                                                                   |
-| **Linear Algebra & Calculus**    | Hessians, derivatives, curvature-aware stability control inference sensitivity.                                            | Second-order derivatives of Lagrangians in KKT-constrained updates detect high-curvature regimes. Gradient adjustments in PGD loops stabilize inference; curvature-aware damping avoids overshoot in oscillatory loops.                                                                                                |
-| **Optimization**                 | KKT-constrained, PGD, convex/non-convex optimization ensures constrained convergence.                                      | PGD extended with cycle-fractured lattice partitioning across devices. Optimization respects probabilistic trust constraints; dual updates act as closed-loop feedback controllers in inference cycles.                                                                                                                |
-| **Information Theory**           | Entropy as a control signal governs stochasticity, triggers escalation, or permits automation.                             | Candidate computes Entropy of inference state: $H(I) = - \sum_{\imath} p_\imath \log p_\imath$ Derivative w.r.t parameters: $\frac{dH}{d\theta} = - \sum_{\imath} \frac{\partial p_\imath}{\partial \theta} (\log p_\imath + 1)$ to track uncertainty per batch. Rising gradients induce throttling or human-in-the-loop review. All entropy manipulations are serialized for legal audit.                                                                                      |
-| **Graph Theory & Causal Models** | DAG/RAG traversal and causal modeling enforce consistent inference under correlated evidence.                              | **Dijkstra’s algorithm** is used implicitly for shortest-path evaluation across correlated nodes (e.g., efficient propagation of trust scores in DAG layers). **Pearl’s do-calculus** guides counterfactual analysis and conditional causal reasoning when perturbing node outputs or evaluating regulatory scenarios. |
-| **Sequential State Estimation**  | Refines latent states over noisy observations.                                                                             | **Kalman filtering** is applied implicitly to update node beliefs across cycles, smoothing stochastic perturbations introduced by controlled entropy injections and correlated evidence.                                                                                                                               |
 
 ---
 
-## **Cybersecurity & Governance Integration**
+# **Technical Implementation Overview**
 
-| Topic                         | Why it matters                                                                             | Approach / Implementation                                                                                                                                      |
-| ----------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Regulatory frameworks         | MITRE, NIST, ISO, GRC principles guide operational compliance.                             | The framework integrates directly with RAG/DAG-based node monitoring and escalation policies. Specifically, MITRE ATT&CK and MITRE CAPEC mappings inform correlation thresholds and threat-context scoring, NIST SP 800-series and NIST SP 800-207 guidelines define system-level control validation, ISO/IEC 27001 and ISO/IEC 31000 standards guide risk management and auditability processes, and GRC-aligned policies enforce trust-object scoring and compliance escalation criteria. |
-| Auditability & Traceability   | Deterministic, tamper-evident pipelines are legally defensible.                            | AES.new(aes_key, AES.MODE_CBC).encrypt(packet_data) → encrypts the packet with AES-256 in CBC mode hmac.new(..., ..., hashlib.sha256).hexdigest() → generates HMAC-SHA256 signature over the ciphertext|
-| Operational Risk Modeling     | Basel III and correlation-aware failure modeling prevent underestimation of systemic risk. | DAG simulations encode node dependencies and correlation-aware propagation. Residual risk is computed via Monte Carlo sampling of Beta-Binomial node failures, producing min, max, mean, and std aggregates for audit-ready trust-object logging. Full formula and code are available in the [Residual Risk Formula](jupyter/training_notebook.ipynb) |
-| Applied Security in Pipelines | Encrypt sensitive data, ensure integrity, enforce RBAC.                                    | Scoped TLS 1.3, byte-level handshake & encryption → per-session trust-object integrity |
-| Operationalization            | Serialization, deterministic replay, cryptography, governance integration.                 | Per-packet trust-object generation via PGD loops, DAG traversal, and oscillatory kernel cycles → per-packet trust-objects, batch-streamed via Kafka|
+---
+
+## **1. Algorithms & Data Structures**
+
+| Aspect            | Old Architecture                    | New Architecture                                                   | Key References                   |
+| ----------------- | ----------------------------------- | ------------------------------------------------------------------ | -------------------------------- |
+| Evidence modeling | DAGs with probabilistic propagation | **DAGs with admissible-path constraints and deterministic gating** | Dijkstra (1959); Pearl (1988)    |
+| Trust propagation | Dijkstra-style weighted traversal   | **Shortest-path + frontier reduction enforcing invariant bounds**  | Dijkstra (1959); NIST SP 800-207 |
+| Caching           | Heuristic memoization               | **Lattice-partitioned, replay-safe caching**                       | Langlois & Stehlé (2016)         |
+| Failure mode      | Silent drift under correlated noise | **Hard rejection of inadmissible inference states**                | Lyapunov (1892); Hilbert (1904)  |
+
+**Revelation:** Efficient traversal alone is insufficient; admissibility must be *provable*.
+
+---
+
+## **2. Machine Learning / AI**
+
+| Aspect           | Old Architecture                       | New Architecture                                     | Key References                               |
+| ---------------- | -------------------------------------- | ---------------------------------------------------- | -------------------------------------------- |
+| Learning loop    | PGD with stochastic smoothing          | **PGD with deterministic convergence checks only**   | Boyd & Vandenberghe (2004)                   |
+| Bayesian updates | Runtime belief updates                 | **Beliefs updated outside enforcement boundary**     | Murphy (2012); Bishop (2006)                 |
+| Entropy handling | Injected noise for robustness          | **Entropy measured, never injected into invariants** | Cover & Thomas (2006)                        |
+| XAI              | Inline SHAP/LIME influencing execution | **Post-hoc XAI only**                                | Lundberg & Lee (2017); Ribeiro et al. (2016) |
+
+**Revelation:** Any stochasticity inside the trust boundary invalidates reproducibility.
+
+---
+
+## **3. Formal Methods & Verification**
+
+| Aspect               | Old Architecture             | New Architecture                                    | Key References                |
+| -------------------- | ---------------------------- | --------------------------------------------------- | ----------------------------- |
+| Proof assumptions    | Ideal arithmetic             | **Integer-only arithmetic aligned with proofs**     | Cadé & Blanchet (2013)        |
+| Verification tools   | TLA+, Alloy, Isabelle/HOL    | **Same tools, stricter implementation constraints** | Lamport (2002); Nipkow et al. |
+| Probabilistic proofs | Beta-Binomial runtime checks | **Probabilistic reasoning moved to analysis layer** | Gelman et al. (2013)          |
+| Causality            | Runtime do-calculus          | **Offline causal validation only**                  | Pearl (1988)                  |
+
+>**Revelation:** **Proof of soundness must dominate implementation freedom.**
+
+---
+
+## **4. Distributed Systems & Parallel Computing**
+
+| Aspect            | Old Architecture            | New Architecture                                 | Key References         |
+| ----------------- | --------------------------- | ------------------------------------------------ | ---------------------- |
+| Parallelism       | JAX pjit / mesh_utils       | **Preserved, but with deterministic scheduling** | Bradbury et al. (2018) |
+| Streaming         | Kafka replayable logs       | **Kafka + cryptographic ordering guarantees**    | Kreps et al.           |
+| Consensus         | PBFT/Raft-style assumptions | **Consensus only over deterministic artifacts**  | Castro & Liskov (1999) |
+| Failure tolerance | Byzantine masking           | **Byzantine rejection, not masking**             | Lamport et al. (1982)  |
+
+---
+
+## **5. Security & Cryptography**
+
+| Aspect               | Old Architecture          | New Architecture                         | Key References                          |
+| -------------------- | ------------------------- | ---------------------------------------- | --------------------------------------- |
+| Cryptographic basis  | Classical + PQC libraries | **Kernel-level PQC primitives only**     | NIST PQC (2024–2025)                    |
+| Arithmetic           | Mixed FP/int              | **Integer-only NTT + Montgomery REDC**   | Montgomery (1985); Primas et al. (2017) |
+| Side-channel defense | Masking + noise           | **Domain elimination (no FP, no noise)** | Ravi et al. (2020)                      |
+| Q-Day posture        | Heuristic mitigation      | **Failure class structurally removed**   | NIST IR 8547; NIST SP 800-208           |
+
+
+
+>**The new architecture assumes **cryptographically relevant quantum adversaries** and removes implementation classes vulnerable to quantum-accelerated side-channel exploitation.
+
+---
+
+## **6. Numerical Methods & Scientific Computing**
+
+| Aspect            | Old Architecture           | New Architecture                                | Key References        |
+| ----------------- | -------------------------- | ----------------------------------------------- | --------------------- |
+| Floating point    | Used in optimization loops | **Excluded from enforcement paths**             | Goldberg (1991)       |
+| Stability control | Kalman smoothing inline    | **Kalman filters restricted to analysis layer** | Kalman (1960)         |
+| Entropy           | Control + injection        | **Entropy as a monitored scalar only**          | Cover & Thomas (2006) |
+| Oscillation       | Probabilistic damping      | **Lyapunov-bounded deterministic decay**        | Lyapunov (1892)       |
+
+---
+
+## **7. Compiler & Execution Semantics**
+
+| Aspect          | Old Architecture        | New Architecture                      | Key References       |
+| --------------- | ----------------------- | ------------------------------------- | -------------------- |
+| Execution model | DAG-based DSL           | **Same DSL, stricter semantics**      | Lamport (2002)       |
+| Ordering        | Best-effort determinism | **Total ordering enforced**           | ISO/IEC 15408        |
+| Timing          | Mostly constant-time    | **Provably branchless constant-time** | Intel CT Guidelines  |
+| Enforcement     | User/kernel mix         | **XDP / kernel-bound enforcement**    | Suricata; XDP papers |
+
+---
+
+## **8. Databases & Data Modeling**
+
+| Aspect       | Old Architecture      | New Architecture                        | Key References |
+| ------------ | --------------------- | --------------------------------------- | -------------- |
+| Storage      | Relational + metadata | **Trust-object–centric immutable logs** | GDPR Art.22    |
+| PII handling | Tagged                | **Cryptographically scoped access**     | ISO/IEC 27001  |
+| Replay       | Logical replay        | **Bitwise deterministic replay**        | NIST 800-53    |
+| Queries      | Correlation-aware     | **Correlation + admissibility aware**   | Pearl (1988)   |
+
+---
+
+## **9. Software Testing & QA**
+
+| Aspect            | Old Architecture      | New Architecture                              | Key References      |
+| ----------------- | --------------------- | --------------------------------------------- | ------------------- |
+| Testing           | PGD convergence tests | **Invariant violation tests first-class**     | Boyd & Vandenberghe |
+| CI/CD             | Reproducible builds   | **Reproducible + constant-time verification** | NIST SP 800-218     |
+| Adversarial tests | Synthetic attacks     | **Quantum-era fault injection tests**         | NIST IR 8547        |
+| Proof drift       | Not tested            | **Explicit proof/impl drift detection**       | Cadé & Blanchet     |
+
+---
+
+# **Cybersecurity & Governance Integration (Updated)**
+
+## Regulatory & Standards Alignment (New Additions)
+
+| Standard                  | Role                                    |
+| ------------------------- | --------------------------------------- |
+| **NIST IR 8547 (2024)**   | Transition to Post-Quantum Cryptography |
+| **NIST SP 800-208**       | Stateful Hash-Based Signatures          |
+| **NIST SP 800-56C Rev.2** | Key derivation (PQC-aware)              |
+| **NIST SP 800-207**       | Zero Trust enforcement                  |
+| **ISO/IEC 23837**         | AI risk management                      |
+| **EU GDPR Art.22**        | Automated decision auditability         |
+
+---
+
+## **Summary of the Architectural Shift**
+
+
+---
+
+## **IATO Validity Epochs, Standards Alignment, and Architectural Reconstitution**
+
+### **Table: IATO Architectural Epochs and Validity Boundaries**
+
+| Epoch                             | Timeframe                 | Standards Context                                                                           | Architectural Status                   | Key Characteristics                                                                                                                                         | Validity Assessment                                                |
+| --------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| **Exploratory Phase**             | May 2018 – July 2025      | No finalized NIST PQC deployment or implementation guidance                                 | **Old IATO (Exploratory)**             | Fragmented research; probabilistic correctness; assumed arithmetic ideality; Q-Day treated as cryptographic-only; layering-based mitigations                | **Formally invalidated** for post-quantum operational assurance    |
+| **Public Snapshot**               | July 2024 (GitHub upload) | NIST PQC algorithms selected but **implementation guidance incomplete**                     | Transitional artifact                  | Early lattice concepts; informal invariants; no enforcement-domain separation; FP and latency assumptions unmodeled                                         | **Non-authoritative reference only**                               |
+| **Standards-Constrained Rebuild** | Jan 2026 – present        | NIST PQC implementation advisories; FP risks acknowledged; side-channel reality established | **New IATO (Correct-by-Construction)** | Deterministic admissibility; integer-only enforcement paths; NTT + Montgomery REDC; XDP-first enforcement; Q-Day treated as implementation + physics threat | **Valid under real hardware, real attackers, post-quantum models** |
+
+
+
+>Any architectural claim made before **2024** is considered **non-binding** with respect to post-quantum operational correctness, due to the absence of enforceable NIST guidance on arithmetic domains, timing leakage, and implementation semantics.
+
+---
+
+## **Appendix A — Architectural Provenance and Reconstitution Statement**
+
+**A.1 Prior IATO Status (2018–2024)**
+The IATO architecture, as published to GitHub in **July 2024**, represents an **exploratory aggregation** of ideas, research notes, and partially validated mechanisms developed implicitly between **May 2018 and July 2024**.
+
+During this period:
+
+* Post-quantum cryptography lacked finalized **deployment-level guidance** from NIST.
+* Floating-point arithmetic risks, latency drift, and enforcement-domain semantics were **not formally constrained**.
+* Correctness was inferred probabilistically rather than enforced deterministically.
+* Q-Day was implicitly modeled as a **cryptographic transition**, not a system-physics event.
+
+As such, **this** version is retained **solely as a historical research artifact**, not as a **valid security architecture.**
+
+---
+
+**A.2 2026 Reconstitution from First Principles**
+
+Beginning **January 2026**, the architecture was **deliberately dismantled and rebuilt from first principles**, with explicit rejection of all assumptions not supported by:
+
+* Formal methods (Isabelle/HOL soundness preservation)
+* Deterministic arithmetic domains (integer-only enforcement)
+* Hardware-realistic latency models
+* NIST post-quantum implementation advisories
+* Empirically observed failure modes (FP drift, PRNG + latency divergence)
+
+This process revealed that multiple prior semantic conflations caused **silent computational failures**, particularly:
+
+* ΔV / ρ divergence under latency
+* Metric closure failure under FP rounding
+* Enforcement gaps caused by layered security models
+
+The **New IATO** architecture is therefore **not an iteration**, but a **phase transition**:
+from *robust-under-assumptions* → **correct-by-construction under real constraints**.
+
+---
+
+### **Canonical Summary**
+
+>**The IATO project must be interpreted as a post-2024 architecture. All prior forms are invalidated by the absence of standards-defined constraints. The current system is the first instantiation that aligns mathematical proofs, implementation semantics, and hardware realities into a single enforceable invariant framework.**
+
 
 ---
 
 ## **Key References & Citations**
 
-| Reference                       | Role / Why it matters                 | Application in candidate’s architecture                                                                       |
-| ------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Murphy, K. P. (2012)            | Probabilistic ML, HMM/GMM basis       | Sequential node inference; probabilistic aggregation across DAG layers.                                       |
-| Bishop, C. M. (2006)            | Mixture models + EM                   | Correlated multi-node inference; stochastic convergence as gating logic.                                      |
-| Lundberg & Lee (2017)           | SHAP explainability                   | Inline XAI, per-inference packet; tamper-evident attribution of feature importance.                           |
-| Ribeiro et al. (2016)           | LIME interpretability                 | Local per-cycle explainability embedded inline, compatible with DPI.                                          |
-| Rabiner (1989)                  | HMM foundations                       | Legal latent state sequences and anomaly detection.                                                           |
-| Zucchini et al. (2017)          | HMM for time series                   | Temporal DAG/DAG node evaluation with residual error validation.                                              |
-| Pearl (1988)                    | Probabilistic reasoning & do-calculus | Counterfactual simulations for correlated node outputs; causal inference to guide trust propagation.          |
-| Dijkstra (1959)                 | Shortest-path graph traversal         | Optimizes node-to-node trust propagation; ensures efficient routing of inference influence across DAG.        |
-| Kalman (1960)                   | State estimation under noise          | Smooths posterior updates in iterative oscillatory kernel; corrects for perturbations from entropy injection. |
-| Suricata IDS / Petazzoni (2022) | eBPF observability                    | DPI redefined as inference validator and trust enforcement.                                                   |
-| NIST SP 800-207                 | Zero Trust                            | Embedded per-inference packet logic; no implicit trust.                                                       |
-| EU GDPR Art.22                  | Automated decision rights             | Every inference packet is auditable, with causal and counterfactual trace.                                    |
 
 ---
 
-## **Field-Conventional Approach vs Architecture Novelty**
+## **IATO Implementation Evolution: Old vs New Architecture**
 
-| Field-Conventional                   | Candidate Architecture            | Novelty / Relevance                                                        |
-| ------------------------------------ | --------------------------------- | -------------------------------------------------------------------------- |
-| Stateless inference (softmax/logits) | Signed telemetry events           | Every inference packet **pre-auditable**, cryptographically traceable      |
-| Linear regression / GLM              | Sequential GMM/HMM                | Supports **non-i.i.d correlated nodes**, stochastic convergence gating     |
-| Post-hoc XAI                         | Inline SHAP/LIME                  | Tamper-evident, real-time, integrated with DPI                             |
-| Brute-force redundancy               | Probabilistic counter-inflation   | Federated trust weighting for distributed AI                               |
-| Traditional DPI                      | DPI as inference validator        | Validates compliance, timing, and XAI alignment in real-time               |
-| External / implicit trust            | Zero-trust per-inference          | Trust earned based on latency, consensus, conformity, XAI alignment        |
-| Forecasting-only time series         | HMM legal latent sequences        | Anomalies invalidate inference packets, **system-level trust enforcement** |
+### **Enforcement & Arithmetic Domain**
+
+| Aspect            | Old Architecture (Superseded)         | New Architecture (Current)                          | Key References                                          |
+| ----------------- | ------------------------------------- | --------------------------------------------------- | ------------------------------------------------------- |
+| Arithmetic domain | Mixed FP + integer arithmetic         | **Strict integer-only in enforcement paths**        | NIST CSRC (2024); Gorbenko et al. (2024); CVE-2018-3665 |
+| Noise handling    | Mathematical (modeled in ΔV, ρ)       | **Operational only (outside proofs)**               | Cadé & Blanchet (2013); Mainali & Ghimire (2024)        |
+| PRNG usage        | Inline stochastic perturbations       | **Excluded from invariant math**                    | Ravi et al. (2020); Primas et al. (2017)                |
+| Proof soundness   | Isabelle/HOL assumed ideal arithmetic | **Proofs preserved by constraining implementation** | Cadé & Blanchet (2013)                                  |
+
+**Revelation:** FP + PRNG noise **cannot coexist** with Hilbertian contractivity without silently violating metric closure.
 
 ---
 
-## **Extended Concepts / Tools**
-| Technology / Concept                                      | Purpose / Why it matters                              | Practical Implementation in IATO                                                                                                                                |
-| --------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Monolithic vs Microkernel, TEEs, Secure Containers**    | Protects sensitive computation and enforces isolation | Architecture-neutral inference loops; sensitive states secured using TEEs (Intel SGX / ARM TrustZone) to ensure privacy and integrity of intermediate artifacts |
-| **TLA+, Alloy, Isabelle/HOL, Runtime Assertion Checking** | Ensures correctness and formal verification of logic  | Applied to inference pipelines for verifying deterministic execution, constraint satisfaction, escalation triggers, and mathematically provable compliance      |
-| **Policy Optimization, DAG-driven Q-learning**            | Guides optimal decision-making under constraints      | Closed-loop reward shaping drives inference parameter updates along correlated DAG nodes                                                                        |
-| **PBFT, Raft, Tendermint, BFT**                           | Achieves consensus across distributed nodes           | Ensures validator agreement for local certificates and trust-object state propagation across DAG nodes; tolerant to Byzantine or adversarial failures           |
-| **Aadhaar / UPI / eKYC**                                  | Federated identity and access control                 | RBAC enforcement and capability-scoped identity management for inference packets and trust objects                                                              |
-| **Lattice Crypto, Hash-Chaining**                         | Provides tamper-evident, auditable artifacts          | Trust objects signed and chained via cryptographic hashes to preserve integrity and chronological order                                                         |
-| **JAX pjit / mesh_utils**                                 | Enables scalable, high-performance computation        | Multi-device parallel execution of PGD loops, linear algebra solvers, and entropy-controlled oscillatory inference                                              |
-| **Do-calculus (Pearl)**                                   | Ensures causal validity of decisions                  | Counterfactual propagation evaluates correlation-aware risk before action execution                                                                             |
-| **Kalman Filter**                                         | Stabilizes stochastic inference states                | Smooths latent variables in oscillatory loops, maintaining consistency across inference cycles                                                                  |
-| **Dijkstra**                                              | Efficient trust-score propagation                     | Computes shortest-paths across DAG nodes with risk-weighted traversal metrics                                                                                   |
-| **Federated Learning & Secure Aggregation**               | Privacy-preserving distributed inference              | Aggregates inference updates across devices without exposing raw data, maintaining IID/PII-aware security                                                       |
-| **LIME, SHAP**                                            | Provides explainability of model outputs              | Embedded per-cycle feature attribution ensures interpretability of trust-object evolution under complex inference states                                        |
+### **Stability & Invariants**
+
+| Aspect                   | Old Architecture                | New Architecture                         | Key References                          |
+| ------------------------ | ------------------------------- | ---------------------------------------- | --------------------------------------- |
+| Hilbertian contractivity | Assumed robust under FP noise   | **ρ defined in same integer norm as ΔV** | Hilbert (1904); Lyapunov (1892)         |
+| Lyapunov energy          | Modeled with stochastic damping | **Deterministic ΔV ≤ 0 only**            | Lyapunov (1892); Bishop (Control, 2017) |
+| Hessian damping          | Mixed analytical / stochastic   | **Absorbed into module-level ΔV**        | Control theory literature               |
+| Aggregation              | Probabilistic smoothing         | **Deterministic aggregation lemma**      | Langlois & Stehlé (Module-LWE)          |
+
+**Revelation:** ΔV and ρ **diverge under latency + FP rounding**, invalidating stability guarantees.
+
+---
+
+### **C. Kernel Enforcement Path**
+
+| Aspect            | Old Architecture               | New Architecture                        | Key References                     |
+| ----------------- | ------------------------------ | --------------------------------------- | ---------------------------------- |
+| Enforcement point | Kernel + userspace cooperation | **XDP_DROP at NIC / driver boundary**   | Intel CT Guidelines; Suricata/eBPF |
+| TOCTOU handling   | Reduced via layering           | **Eliminated by pre-mutation gating**   | Intel CT Guidelines                |
+| Context switches  | Required                       | **Zero context switch**                 | XDP design papers                  |
+| Timing behavior   | “Mostly constant-time”         | **Provably branchless & constant-time** | Ravi et al. (2020); Intel          |
+
+**Revelation:** Layering increases attack surface; **early rejection beats deep inspection**.
+
+---
+
+### **Cryptography & PQC Execution**
+
+| Aspect               | Old Architecture         | New Architecture                    | Key References                    |
+| -------------------- | ------------------------ | ----------------------------------- | --------------------------------- |
+| PQC execution        | Library-level (FP-heavy) | **NTT + Montgomery REDC in kernel** | Montgomery (1985); NTT literature |
+| Polynomial ops       | Coefficient-domain       | **NTT pointwise multiplication**    | Primas et al. (2017)              |
+| Side-channel posture | Masking + noise          | **Arithmetic domain elimination**   | Karabulut & Aysu (2024)           |
+| Q-Day risk           | Mitigated heuristically  | **Failure class removed entirely**  | NIST PQC; Mainali et al.          |
+
+**Revelation:** Most PQC failures are **implementation-induced**, not cryptographic.
+
+---
+
+### **Explainability, Causality, and Audit**
+
+| Aspect                  | Old Architecture         | New Architecture                      | Key References                               |
+| ----------------------- | ------------------------ | ------------------------------------- | -------------------------------------------- |
+| XAI (SHAP/LIME)         | Inline with enforcement  | **Post-hoc only**                     | Lundberg & Lee (2017); Ribeiro et al. (2016) |
+| Causality (do-calculus) | Runtime-influencing      | **Offline / policy-only**             | Pearl (1988)                                 |
+| Audit trail             | Probabilistic confidence | **Invariant-certified Trust Objects** | GDPR Art.22; ISO 27001                       |
+| Determinism             | Best-effort              | **Binary: admissible or dropped**     | NIST 800-207                                 |
+
+**Revelation:** Anything non-deterministic **cannot sit in the trust boundary**.
 
 
+---
+
+## Field-Conventional Approach vs IATO Architectural Position (Revised)
+
+| Field-Conventional Approach            | Prior Candidate Framing         | Corrected IATO Architecture Position            | Novelty / Relevance After Revision                                                                            |
+| -------------------------------------- | ------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Stateless inference (softmax / logits) | Signed telemetry events         | **Invariant-checked state transitions**         | Trust is not attached to predictions but to **mathematically admissible transitions**, enforced pre-execution |
+| Linear regression / GLM                | Sequential GMM / HMM            | **Lyapunov-bounded deterministic dynamics**     | Removes probabilistic convergence; stability is **proven, not estimated**                                     |
+| Post-hoc XAI                           | Inline SHAP / LIME              | **Explainability external to enforcement path** | XAI exists only as an **audit artifact**, never in kernel or trust gating                                     |
+| Brute-force redundancy                 | Probabilistic counter-inflation | **Early rejection via contractive geometry**    | Security achieved by **preventing state divergence**, not absorbing it                                        |
+| Traditional DPI                        | DPI as inference validator      | **DPI as invariant compliance check**           | DPI verifies **timing, bounds, and lattice consistency**, not semantics                                       |
+| External / implicit trust              | Zero-trust per inference        | **Zero-trust per state transition**             | Trust is binary and local: *admissible or dropped (XDP_DROP)*                                                 |
+| Forecasting-only time series           | HMM latent sequences            | **Bounded state deltas with hard rejection**    | Anomalies are not “flagged” — they are **physically rejected**                                                |
+
+
+---
+
+| Technology / Concept                                      | Original Purpose                           | Updated Position After Analysis               | Practical Role in IATO                                                                                                                                                                                        |
+| --------------------------------------------------------- | ------------------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Monolithic vs Microkernel, TEEs, Secure Containers**    | Isolation and sensitive compute protection | **Partially deprecated for enforcement path** | TEEs and containers are valid for *key custody, provisioning, and audit artifacts*, but **not relied upon for runtime trust enforcement**. Core invariants are enforced *before* these layers (XDP / kernel). |
+| **TLA+, Alloy, Isabelle/HOL, Runtime Assertion Checking** | Formal correctness and verification        | **Retained, clarified**                       | Used to **prove invariants, aggregation lemmas, and soundness under assumptions**. Runtime assertion checking is limited to *debug and audit builds*, not inline packet paths.                                |
+| **Policy Optimization, DAG-driven Q-learning**            | Optimal decision-making                    | **Removed from enforcement logic**            | Reinforced as **offline or supervisory tooling only**. Reinforcement learning and reward shaping are not used in Trust Object acceptance due to stochasticity and latency drag.                               |
+| **PBFT, Raft, Tendermint, BFT**                           | Distributed consensus                      | **Constrained by invariant preconditions**    | Consensus operates *only on already-validated Trust Objects*. Byzantine tolerance applies **after kernel-level rejection**, not as a substitute for enforcement.                                              |
+| **Aadhaar / UPI / eKYC**                                  | Federated identity & access                | **Reframed as integration example**           | Identity systems bind to Trust Objects via capability scopes. They **do not participate in inference or invariant evaluation**.                                                                               |
+| **Lattice Crypto, Hash-Chaining**                         | Tamper evidence & auditability             | **Core and retained**                         | Module-LWE, lattice hashes, and chaining remain **first-class primitives**, tightly integrated with NTT-domain verification and Lyapunov bounds.                                                              |
+| **JAX pjit / mesh_utils**                                 | Scalable high-performance compute          | **Explicitly out of scope for enforcement**   | Parallel ML frameworks are acknowledged for *training or simulation*, but **excluded from kernel, trust, or PQC enforcement paths** due to FP nondeterminism and latency variance.                            |
+
+
+---
+
+
+| Method / Framework                          | Original Role                            | Updated Position After Analysis                   | IATO-Aligned Interpretation                                                                                                                                                                                        |
+| ------------------------------------------- | ---------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Do-Calculus (Pearl)**                     | Ensures causal validity of decisions     | **Retained at design / audit layer only**         | Used for *offline* causal reasoning and counterfactual analysis. Not executed inline; causal assumptions are compiled into invariant thresholds enforced at kernel level.                                          |
+| **Kalman Filter**                           | Stabilizes stochastic inference states   | **Conceptually referenced, not implemented**      | Kalman-style smoothing is acknowledged as an intuition for damping, but FP stochastic filters are excluded. Stability is enforced via **Lyapunov-Hessian damping in integer space**, not probabilistic estimation. |
+| **Dijkstra**                                | Efficient trust-score propagation        | **Superseded by lattice / invariant aggregation** | Graph traversal metaphors remain valid, but runtime propagation is replaced by **NTT-accelerated module aggregation**. Shortest-path logic is compiled into deterministic invariant checks.                        |
+| **Federated Learning & Secure Aggregation** | Privacy-preserving distributed inference | **Constrained and formalized**                    | Aggregation occurs only if **local invariants already hold**. Secure aggregation is admissible only when updates are invariant-safe prior to federation. No raw stochastic gradients cross trust boundaries.       |
+| **LIME, SHAP**                              | Explainability of model outputs          | **Moved to post-hoc interpretability layer**      | Feature attribution is not used in enforcement or scoring. Explainability artifacts are generated *after* Trust Object acceptance for audit and compliance, not decision-making.                                   |
+                                       
 
 ---
 
