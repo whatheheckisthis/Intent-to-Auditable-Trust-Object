@@ -1,19 +1,4 @@
 
-# Abstract
-
-This repository hosts an **experimental compute kernel** designed for modular research into oscillatory inference loops, adversarially constrained optimization, and lawful trust-object auditing. It sits at the intersection of high-performance numerical computation, explainability, and secure validation — with an emphasis on reproducibility and infrastructure-grade rigor.
-
-At its core, the kernel implements **Projected Gradient Descent (PGD)**–style optimization, extended with cycle-fractured lattice partitioning for multi-device execution. The design leverages JAX (`pjit`, `mesh_utils`) for parallel sharding across available devices, enabling scale-out without dependence on cloud lock-in. Explainability is built directly into the inference loop via **SHAP and LIME integration**, bounded per cycle (`c/n`) to ensure interpretability remains tractable under heavy compute loads.
-
-A companion set of PoC modules demonstrates **trust-object auditing**, inspired by legal-grade inference validation models. Here, inference states are treated as packetized, tamper-evident entities that can be re-audited post-hoc or validated inline. This makes the kernel suitable not just for experimentation in optimization, but also as a foundation for regulated domains where provenance and auditability are non-negotiable.
-
-The repository is structured to maximize **developer usability and extension**. Continuous integration is managed via GitHub Actions with a **Conda-based workflow**, ensuring reproducible environments and straightforward dependency management. The included files represent modular research steps — from PGD foundations to PoC extensions — allowing contributors to selectively adopt, replace, or extend components without breaking the overall flow.
-
-In short, this project serves as a **sandbox for industrial-grade inference experimentation**, where advanced compute kernels meet explainability and lawful validation. Researchers, practitioners, and systems engineers are encouraged to extend this foundation — whether toward quantum-aligned optimization, distributed inference, or sovereign-grade trust architectures.
-
----
-
-
 **Bash Utilities for Secure Operations and Workflow Automation**
 
 This repository provides a growing collection of secure, modular, and reusable shell scripts designed to support:
