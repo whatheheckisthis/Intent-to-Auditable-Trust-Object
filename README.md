@@ -7,6 +7,11 @@
 
 Rather than estimating risk or detecting anomalies, IATO constrains system behavior through **formal invariants**, **provable state transitions**, and **kernel-level enforcement**. Every action is permitted only if it satisfies mathematically defined safety, causality, and stability conditions.
 
+<img width="1536" height="1024" alt="IATO_System_Substrate_" src="https://github.com/user-attachments/assets/2d14c9f2-254d-4948-89b6-7122d1126456" />
+
+
+
+
 
 ---
 
