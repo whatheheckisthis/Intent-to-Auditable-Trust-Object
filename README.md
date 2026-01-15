@@ -26,27 +26,9 @@ IATO rejects this by proposing that security can be enforced as a **Physical Pro
 
 By mapping all admissible behavior to a **Hilbert Space ()**, we define "Trust" not as a score, but as a **Contractive Invariant**. If a state transition deviates from the verified geodesic, it is not flagged for review; it is physically unable to execute.
 
-
 ---
 
-### Table 1 — IATO Enforcement Mechanics (Deterministic Control View)
-
-| **Component**                    | **Formal Construct**                               | **Operational Role**                                                      | **Enforcement Effect**                                                     | **Security Interpretation**                             |
-| -------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------- |
-| **Geodesic Drive**               | Second-order update term driven by curvature (∇²ℒ) | Forces state evolution along the minimum-energy trajectory in state space | Eliminates inefficient or oscillatory paths; ensures monotonic convergence | Prevents adversarial state “wiggling” or path inflation |
-| **Hessian-Driven Damping**       | `((H_t + \alpha I)^{-1})` friction operator          | Dynamically scales resistance proportional to local curvature             | Instantaneous damping in high-curvature regions                            | Neutralizes adversarial injections before amplification |
-| **Metric Stabilizer**            | Hessian-weighted norm                              | Defines the geometry of admissible motion                                 | Enforces geometry-aware contraction                                        | Converts instability into resistance, not drift         |
-| **Halibartian Distance**         | `( d_H(x_t, x_{t+1}) )` (geodesic metric)            | Measures true state displacement, not coordinate delta                    | Rejects transitions exceeding invariant geometry                           | Blocks stealthy multi-axis attacks                      |
-| **Contractive Trust Condition**  | `( d_H(x_{t+1}, x^*) \le d_H(x_t, x^*) )`            | Formal admissibility predicate                                            | Guarantees Lyapunov decrease                                               | Stability enforced as a hard gate                       |
-| **Lyapunov Energy**              | `( V(x) = |x|_{R_q}^2 + \lambda J(x) )`              | Global safety scalar                                                      | Must be non-increasing                                                     | System cannot gain unsafe “energy”                      |
-| **ESCALATE Operator**            | Progress measure `( W(x) )`                          | Ensures forward motion under stability                                    | Prevents deadlock / stalling                                               | Guarantees liveness without violating safety            |
-| **XDP Decision Gate**            | `XDP_PASS` / `XDP_DROP`                            | Kernel-level binary enforcement                                           | Accept or reject transition                                                | Trust enforced at line rate                             |
-| **Red / Amber / Green EM State** | Deterministic anomaly classification               | Maps physical leakage to logical state                                    | Escalate, damp, or pass                                                    | Detects zombie-agent behavior                           |
-| **NTT Closure Constraint**       | `( R_q )` algebraic closure                          | Arithmetic admissibility                                                  | Invalid math cannot execute                                                | Quantum-hard correctness                                |
-
----
-
-### Table 2 — Transition Validity Logic (Graph-Equivalent View)
+### Table  — Transition Validity Logic 
 
 | **Step** | **Input**             | **Check**            | **Condition**              | **Outcome**      |
 | -------- | --------------------- | -------------------- | -------------------------- | ---------------- |
@@ -67,7 +49,6 @@ By mapping all admissible behavior to a **Hilbert Space ()**, we define "Trust" 
 * There is **no probabilistic branch** anywhere in enforcement.
 * Stability (Lyapunov), liveness (ESCALATE), and security (NTT + PQC) are **co-verified in one pass**.
 * Any violation collapses deterministically to `XDP_DROP`.
-
 
 ---
 
@@ -102,7 +83,7 @@ This repository serves as a self-directed research workflow for exploring the in
 
 ---
 
-## Appendix A — Technical Specification & Implementation Rationale (IATO)
+## Appendix A — Technical Specification & Implementation Rationale 
 
 ### A.1 Design Premise: Computational Inevitability
 
@@ -110,12 +91,7 @@ The Integrated AI Trust Object (IATO) architecture formalizes AI safety as a **d
 
 IATO inverts this paradigm by enforcing **computational inevitability**: unsafe or unstable behavior is rendered arithmetically impossible by construction. Trust emerges as a consequence of invariant preservation rather than behavioral prediction.
 
----
-
-
-# Appendix: IATO Engineering Specification & Design Rationale
-
-## 1. Architectural Philosophy: Invariance over Heuristics
+### A.2 Architectural Philosophy: Invariance over Heuristics
 
 The IATO (Intent-to-Auditable-Trust-Object) framework rejects the industry-standard "Patch-and-Pray" security model. Instead, it enforces **Computational Invariance**. By mapping state transitions to a closed algebraic ring (), we ensure that no execution path can deviate from the verified safety manifold.
 
@@ -486,7 +462,7 @@ This is the **single source of truth**. All other sections *reference* it.
 
 ---
 
-## 4. New Clean Architecture Flow (No Duplication)
+## 4. Architecture Flow 
 
 ### **Single Logical Chain**
 
@@ -922,91 +898,6 @@ print(f"Distance: {distance:.6f}, ΔV: {delta_V:.6f}, RAG Score: {rag}")
 ---
 
 
-## Integration Across Quantum & Industrial-Scale Compute
-
-IATO is designed to scale from individual nodes to **enterprise-scale, distributed networks**, while maintaining **provable security, deterministic enforcement, and operational auditability**.
-
-### 1. High-Dimensional Trust Objects
-
-* Trust objects are represented as high-dimensional vectors in **Hilbert space**.
-* **IGD-HDD updates** ensure deterministic, self-stabilizing state transitions.
-* Hilbertian contractivity and Lyapunov energy decay guarantee that all state updates remain **provably safe**, even under adversarial load.
-
----
-
-### 2. Deterministic RAG Evaluation
-
-* Every trust object is scored **Red/Amber/Green** based on formal invariant violations:
-
-  * **Red:** Full invariant violation → rejected inline at kernel level
-  * **Amber:** Partial deviation → flagged for operational escalation
-  * **Green:** Compliant → accepted and logged
-  * **RAG evaluation** **integrates directly with IGD-HDD dynamics**, ensuring that high-dimensional updates are continuously verified.
-
-
----
-
-## Lyapunov-Lattice Integration: Sovereign Security in IATO
-
-In the context of the **IATO architecture**, the **Lyapunov-Lattice Integration** is more than a side-channel mitigation mechanism—it is the **Sovereign Unification** of dynamical safety and cryptographic hardness.
-
->**It bridges** **Adversarial Noise (Stochasticity)** with **System State (Determinism)**: in traditional systems, side-channel leaks (timing, power, EM) act as “waste” information for attackers. In IATO, these leaks are treated as **Entropy Injections** that must be actively damped by the Lyapunov gate.
-
----
-
-### 1. The Side-Channel Equation: Energy Bound
-
->**Let ( \mathbf{n}_t )** **denote the side-channel noise vector, which includes both cryptographic noise and unintentional EM/power leakage. The Lyapunov-Lattice constraint ensures:**
-
-[
-\Delta V_t = V(x_{t+1}) - V(x_t) \le 0 \quad \forall t
-]
-
-Where:
-
-* `( x_t )` — system state at time `( t )`
-* `( V(x) )` — Lyapunov energy function
-* `( \mathbf{n}_t )` — noise/perturbation vector
-* **Constraint:** Any perturbation must **decrease the system energy**, preventing adversarial amplification
-
-**Interpretation:** Any side-channel attack is mathematically treated as a perturbation. The Hessian-damped IGD-HDD dynamics “smooth out” the injected entropy before it can affect the system state.
-
----
-
-### 2. Pointwise Congruence: Lattice Stability
-
-In the **NTT Domain**, IATO ensures **Trust Object identity cannot be forged** via side-channels.
-
-#### Lemma: Pointwise Stability
-
-```isabelle
-lemma pointwise_stability_invariant:
-  fixes a b c :: "nat list" and q :: nat
-  assumes "q = 8380417"
-  assumes "∀i < 256. c!i ≡ (a!i * b!i) [mod q]"
-  shows "ΔV (lattice_map c) ≤ 0"
-```
-
-* **Logic:** Each lattice coordinate is verified pointwise; incorrect guesses trip the Lyapunov gate.
-* **Security:** Quantum factorization attacks must satisfy **all 256 dimensions simultaneously**, making reconstruction infeasible.
-
----
-
-### 3. Efficiency Through NTT & REDC
-
->**IATO converts** classical ( O(n^2) ) matrix multiplication into **NTT-based `O(n \log n)` operations:
-
-| Traditional Matrix | IATO NTT         | Efficiency Gain   |
-| ------------------ | ---------------- | ----------------- |
-| ~14.7M ops/check   | ~2,048 ops/check | ~7,000× reduction |
-
->**Result:** CPU overhead drops from ~30% to <2%, freeing compute for AI inference.
->**Mechanism:** Montgomery REDC ensures modular arithmetic without timing leaks.
->**Execution:** eBPF/XDP offload keeps verification inside the kernel, bypassing OS-induced context switches.
-
-
----
-
 ## Bridging Security, Stability, and Efficiency (NTT & REDC)
 
 | Subsystem / Concept                   | What It Speaks To                    | Mathematical / Cryptographic Basis         | Role of NTT & REDC                                            | Subsection Link           |
@@ -1092,21 +983,6 @@ end
 ```
 
 >**Interpretation:** Local module-level invariants imply **provable global stability**, but in real deployments, **compute noise and packet jitter** can introduce minor deviations. Enforcement via XDP_DROP and Montgomery REDC ensures these deviations do not violate the global Lyapunov mesh.
-
----
-
-### Master Invariant: Lyapunov-Lattice Integration
-
-IATO’s **core verification gate** fuses:
-
-| Aspect                  | Enforcement                                    |
-| ----------------------- | ---------------------------------------------- |
-| Thermodynamics          | Hessian-damped Lyapunov decay                  |
-| Cryptography            | Module-LWE + NTT pointwise checks              |
-| Side-Channel Resistance | Entropy injection treats leaks as damped noise |
-| Compute Efficiency      | O(n log n) per verification via NTT/REDC       |
-
-**Outcome:** Provably safe Trust Objects are accepted only if both **Hilbertian contractivity** and **Lyapunov energy** are satisfied. Enforcement occurs **pre-application**, line-rate, and near-zero CPU overhead—eliminating TOCTOU while freeing resources for AI inference.
 
 ---
 
