@@ -1,49 +1,368 @@
+# IATO: Deterministic Security Systems Architecture
 
-# IATO — Intent-to-Auditable-Trust-Object
-
-
----
+### *Trust as a Contractive Property of Computation*
 
 
 **IATO is an experimental security systems architecture that enforces trust as a deterministic property of computation.**
 
 Rather than estimating risk or detecting anomalies, IATO constrains system behavior through **formal invariants**, **provable state transitions**, and **kernel-level enforcement**. Every action is permitted only if it satisfies mathematically defined safety, causality, and stability conditions.
 
-This repository is a **self-directed research workflow** for exploring whether Zero-Trust (XAI) can be implemented as a **law-governed system**, not a probabilistic one.
 
-----
+---
 
-# **Formal Assumptions & Threat Model**
+## 1. The Architectural Hypothesis
 
+Modern security architectures rely on **Markovian Heuristics**—asking what the probability of a threat is based on past states. 
 
->This section defines the **explicit assumptions** under which IATO operates and the **classes of threats it is designed to neutralize**.
+IATO rejects this by proposing that security can be enforced as a **Physical Property** of the system’s state space.
 
-
-
-----
-
-## Execution Can Be Constrained
-
-   
-  >Kernel- or runtime-level enforcement is possible (eBPF/XDP, verified execution paths).
-  >Unsafe transitions can be dropped before side effects occur.
-
-## State Is Representable
-
-   
-  >**System behavior** can be **expressed** as state transitions.
-  > State can be **embedded** into structured mathematical spaces (e.g., Hilbert or lattice spaces).
-
-## Proofs Are Enforceable
-
-  > Formal specifications (TLA+, Alloy) can be linked to executable semantics.
-  > Verified properties can be enforced mechanically, not symbolically.
+By mapping all admissible behavior to a **Hilbert Space ()**, we define "Trust" not as a score, but as a **Contractive Invariant**. If a state transition deviates from the verified geodesic, it is not flagged for review; it is physically unable to execute.
 
 
-  ## Adversaries Are Adaptive
+## 2. The Deterministic Engine: IGD-HDD
 
-  > Attackers may exploit timing, parallelism, EM leakage, or throughput.
-  > Adversaries may possess post-quantum capabilities.
+At the core of the IATO "Bunker" is the **Inertial Gradient Descent with Hessian-Driven Damping (IGD-HDD)** update law. This discrete second-order system governs all state transitions:
+
+---
+
+### Table 1 — IATO Enforcement Mechanics (Deterministic Control View)
+
+| **Component**                    | **Formal Construct**                               | **Operational Role**                                                      | **Enforcement Effect**                                                     | **Security Interpretation**                             |
+| -------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **Geodesic Drive**               | Second-order update term driven by curvature (∇²ℒ) | Forces state evolution along the minimum-energy trajectory in state space | Eliminates inefficient or oscillatory paths; ensures monotonic convergence | Prevents adversarial state “wiggling” or path inflation |
+| **Hessian-Driven Damping**       | ((H_t + \alpha I)^{-1}) friction operator          | Dynamically scales resistance proportional to local curvature             | Instantaneous damping in high-curvature regions                            | Neutralizes adversarial injections before amplification |
+| **Metric Stabilizer**            | Hessian-weighted norm                              | Defines the geometry of admissible motion                                 | Enforces geometry-aware contraction                                        | Converts instability into resistance, not drift         |
+| **Halibartian Distance**         | ( d_H(x_t, x_{t+1}) ) (geodesic metric)            | Measures true state displacement, not coordinate delta                    | Rejects transitions exceeding invariant geometry                           | Blocks stealthy multi-axis attacks                      |
+| **Contractive Trust Condition**  | ( d_H(x_{t+1}, x^*) \le d_H(x_t, x^*) )            | Formal admissibility predicate                                            | Guarantees Lyapunov decrease                                               | Stability enforced as a hard gate                       |
+| **Lyapunov Energy**              | ( V(x) = |x|_{R_q}^2 + \lambda J(x) )              | Global safety scalar                                                      | Must be non-increasing                                                     | System cannot gain unsafe “energy”                      |
+| **ESCALATE Operator**            | Progress measure ( W(x) )                          | Ensures forward motion under stability                                    | Prevents deadlock / stalling                                               | Guarantees liveness without violating safety            |
+| **XDP Decision Gate**            | `XDP_PASS` / `XDP_DROP`                            | Kernel-level binary enforcement                                           | Accept or reject transition                                                | Trust enforced at line rate                             |
+| **Red / Amber / Green EM State** | Deterministic anomaly classification               | Maps physical leakage to logical state                                    | Escalate, damp, or pass                                                    | Detects zombie-agent behavior                           |
+| **NTT Closure Constraint**       | ( R_q ) algebraic closure                          | Arithmetic admissibility                                                  | Invalid math cannot execute                                                | Quantum-hard correctness                                |
+
+---
+
+### Table 2 — Transition Validity Logic (Graph-Equivalent View)
+
+| **Step** | **Input**             | **Check**            | **Condition**              | **Outcome**      |
+| -------- | --------------------- | -------------------- | -------------------------- | ---------------- |
+| 1        | Current state (x_t)   | `Geodesic projection`  | Path is minimal            | `Continue`         |
+| 2        | Candidate update      | `Hessian curvature`    | High curvature → ↑ damping | `Neutralize spike` |
+| 3        | State delta           | `Halibartian distance` | ( d_H ) within bound       | `Else DROP`        |
+| 4        | Energy delta          | `Lyapunov test`        | ( \Delta V \le 0 )         | `Else DROP`        |
+| 5        | Progress check        | `ESCALATE`             | ( W(x) \uparrow )          | `Else damp`        |
+| 6        | Physical side-channel | `EM profile`           | R/A/G classification       | `Escalate` or `pass` |
+| 7        | Kernel gate           | `XDP`                  | PASS / DROP                | `Final decision`   |
+| 8        | Commit                | `NTT closure`          | Algebraic validity         | `State accepted`   |
+
+---
+
+### Key Interpretation (Why This Matters)
+
+* This table **is the graph**: each row is a node, each condition an edge.
+* There is **no probabilistic branch** anywhere in enforcement.
+* Stability (Lyapunov), liveness (ESCALATE), and security (NTT + PQC) are **co-verified in one pass**.
+* Any violation collapses deterministically to `XDP_DROP`.
+
+
+---
+
+## 3. The Enforcement Stack (The 8-Layer Bunker)
+
+IATO establishes a "Trust Ceiling" via machine-checked certainty, eliminating the "Minima" of standard C-based implementations.
+
+| Layer | Component | Functional Guarantee |
+| --- | --- | --- |
+| **01: Formal** | **Isabelle/HOL** | Machine-checked proofs of Lyapunov stability and energy decay. |
+| **02: Compute** | **Lattice Arithmetic** | Post-quantum secure, constant-time arithmetic for side-channel immunity. |
+| **03: Semantic** | **JAX / Reference** | Bit-level deterministic state updates with curvature-aware friction. |
+| **04: Kernel** | **eBPF / XDP** | Line-rate, inline rejection of any non-contractive Trust Objects. |
+| **05: Metric** | **Halibartian Distance** | Geometric verification of geodesics in high-dimensional Hilbert space. |
+| **06: Operational** | **Deterministic RAG** | Red/Amber/Green signals derived from invariant violations, not heuristics. |
+
+---
+
+## 4. Threat Model & Scope
+
+IATO is designed for **Regulated Environments** where the cost of failure is absolute.
+
+* **In-Scope:** Zero-day exploits (reframed as invalid transitions), Byzantine node behavior, and quantum-enabled side-channel attacks.
+* **Out-of-Scope:** Physical hardware destruction and human social engineering. IATO ensures the **Internal Soundness** of computation; it does not solve for external environmental dependencies.
+
+---
+
+## 5. Research Intent & Validation
+
+This repository serves as a self-directed research workflow for exploring the intersection of **Dynamical Systems** and **Kernel Security**. Validation is not sought through consensus-based peer review, but through:
+
+1. **Formal Verification:** Proving the Lyapunov Decrease Lemma.
+2. **Kernel Enforcement:** Demonstrating XDP_DROP on invariant-violating packets.
+3. **Atomic Determinism:** Ensuring zero floating-point drift across heterogeneous compute nodes.
+
+---
+
+> **Note:** IATO is a research artifact, not a commercial product. It exists to prove that deterministic, proof-carrying security architectures can replace probabilistic models in high-stakes sovereign infrastructure.
+
+
+---
+
+## Appendix A — Technical Specification & Implementation Rationale (IATO)
+
+### A.1 Design Premise: Computational Inevitability
+
+The Integrated AI Trust Object (IATO) architecture formalizes AI safety as a **deterministic property of computation**, not a probabilistic or policy-driven outcome. Conventional AI safety systems rely on floating-point arithmetic, stochastic optimization, and post-hoc logging, which collectively introduce numerical drift, irreproducibility, and unverifiable trust claims.
+
+IATO inverts this paradigm by enforcing **computational inevitability**: unsafe or unstable behavior is rendered arithmetically impossible by construction. Trust emerges as a consequence of invariant preservation rather than behavioral prediction.
+
+---
+
+### A.2 Algebraic Closure and State Admissibility
+
+All IATO state transitions are confined to a finite ring:
+
+[
+R_q = \mathbb{Z}_{3329}[x] / (x^{256} + 1)
+]
+
+State evolution is permitted exclusively through **Number Theoretic Transform (NTT)**–based multiplication. This guarantees exact arithmetic, eliminates floating-point drift, and enforces algebraic closure.
+
+**Invariant (Closure):**
+If a state ( s_t \in R_q ) is admissible at time ( t ), then all future states ( s_{t+k} ) remain in ( R_q ).
+
+This transforms the cryptographic NTT primitive into a **closed algebraic dynamical system**, where invalid transitions are undefined rather than merely disallowed.
+
+---
+
+### A.3 Second-Order Control and Stability Enforcement
+
+IATO replaces stochastic gradient descent with a curvature-aware, second-order update law:
+
+[
+x_{t+1} = x_t - \eta (H_t + \alpha I)^{-1} \nabla \mathcal{L}(x_t)
+]
+
+Key properties:
+
+* **Hessian-Damped Updates:** Local curvature induces friction. High-curvature (adversarial) regions reduce step size automatically, converting perturbations into dissipation.
+* **Lyapunov Stability:** The system admits a decidable Lyapunov function ( V(x) ). Any transition violating ( \Delta V \le 0 ) is rejected synchronously at the kernel boundary.
+* **Kernel Enforcement:** Violations result in immediate `XDP_DROP`, ensuring enforcement occurs prior to user-space observation.
+
+Stability is therefore enforced as a hard physical constraint, not a learned behavior.
+
+---
+
+### A.4 Linux-Native Enforcement Stack
+
+IATO is implemented as a **Linux-kernel-native trust engine**, optimized for `Azure Cobalt 200` `ARM64` infrastructure.
+
+* **eBPF/XDP Enforcement:** Enables line-rate verification (~0.2 ms per lifecycle) within NIC and kernel execution paths.
+* **Post-Quantum Cryptographic Shell:** Built atop **CRYSTALS-Dilithium (NIST Level 5)**, relying on Module-LWE hardness over a 3,840-dimensional lattice.
+* **Constant-Time Guarantees:** Enforced via Barrett reduction, fixed iteration bounds, and deterministic memory access patterns to defeat timing and EM side channels.
+* **Hardware Alignment:** Designed to exploit `ARM64` memory ordering, atomic primitives, and vector execution without violating constant-time constraints.
+
+---
+
+### A.5 Deterministic Auditability
+
+IATO replaces traditional logging and telemetry with **invariant-based proof obligations**. Every state transition is:
+
+1. Deterministically computed
+2. Algebraically validated
+3. Canonically serialized
+4. Cryptographically bound to its execution context
+
+Audit is therefore not a historical reconstruction but a **machine-checkable verification of the current system state**. The inverse NTT provides a deterministic mapping from kernel-enforced energy states to human-auditable intent.
+
+---
+
+### A.6 Summary
+
+IATO establishes a new class of trust infrastructure in which:
+
+* Correctness is algebraic
+* Stability is thermodynamic
+* Auditability is invertible
+* Enforcement is kernel-native
+* Security is post-quantum by construction
+
+Trust is not granted, inferred, or logged.
+**Trust is the observed invariance of the computational substrate.**
+
+---
+
+# Specification §3 — Formal Assumptions & Threat Model (IATO)
+
+## 3.1 Scope and Purpose
+
+This section defines the **operational assumptions**, **state constraints**, and **adversarial capabilities** under which the Integrated AI Trust Object (IATO) is specified to operate.
+All guarantees claimed by IATO are **conditional upon these assumptions** and are enforced mechanically at kernel execution boundaries.
+
+
+## 3.2 Operational Assumptions (Normative)
+
+### Table 3.2-A — Execution Assumptions
+
+| ID | Assumption                  | Formal Statement                                                               | Enforcement Surface |
+| -- | --------------------------- | ------------------------------------------------------------------------------ | ------------------- |
+| A1 | Constrained Execution       | All trust-bearing transitions SHALL occur within a verifiable execution domain | `Linux` kernel        |
+| A2 | Pre-Side-Effect Enforcement | Unsafe transitions SHALL be rejected prior to observable side effects          | `eBPF` / `XDP`          |
+| A3 | Deterministic Dispatch      | Transition outcomes SHALL NOT depend on scheduler, timing, or concurrency      | Constant-time paths |
+
+**Rationale:**
+IATO assumes that execution can be intercepted and controlled *before* user-space effects occur. This explicitly excludes post-hoc logging or alerting models.
+
+---
+
+### Assembly-Level Enforcement Graph (Execution Constraint)
+
+```
+[ Packet / Event ]
+        |
+        v
++------------------+
+| XDP Hook (NIC)   |
++------------------+
+        |
+        v
++------------------+
+| State Decode     |
+| (Ring R_q)       |
++------------------+
+        |
+        v
++------------------+
+| Invariant Check  |---- ΔV > 0 ----> XDP_DROP
+| (Lyapunov)       |
++------------------+
+        |
+        v
++------------------+
+| Commit Transition|
++------------------+
+        |
+        v
+      XDP_PASS
+```
+
+*Invariant violations are terminal and non-recoverable within the execution path.*
+
+---
+
+## 3.3 State Representability Assumptions
+
+### Table 3.3-A — State Model Assumptions
+
+| ID | Assumption          | Formalization                                                    | Constraint       |
+| -- | ------------------- | ---------------------------------------------------------------- | ---------------- |
+| S1 | State Existence     | System behavior SHALL be representable as a state vector ( x_t ) | Finite           |
+| S2 | Algebraic Embedding | States SHALL embed into a structured space                       | ( R_q ), lattice |
+| S3 | Closure             | Valid states SHALL remain valid under admissible transitions     | Ring closure     |
+
+**Formal Domain:**
+[
+x_t \in R_q = \mathbb{Z}_{3329}[x]/(x^{256}+1)
+]
+
+**Implication:**
+Any behavior not representable in this space is **undefined** and therefore **non-executable** under IATO.
+
+---
+
+### State Transition Assembly Mapping
+
+```
+LOAD    r0, state[x]
+NTT     r0, r1          ; canonical basis
+MUL     r0, twiddle[k] ; fixed access
+REDUCE  r0             ; Barrett / constant-time
+STORE   state[x+1]
+```
+
+*There exists no instruction path for floating-point or non-canonical state.*
+
+---
+
+## 3.4 Proof Enforceability Assumptions
+
+### Table 3.4-A — Proof-to-Execution Assumptions
+
+| ID | Assumption             | Formal Statement                                 | Mechanism       |
+| -- | ---------------------- | ------------------------------------------------ | --------------- |
+| P1 | Specifiability         | System invariants SHALL be formally specifiable  | TLA+, Alloy     |
+| P2 | Semantic Binding       | Specifications SHALL map to executable semantics | Code generation |
+| P3 | Mechanical Enforcement | Proof obligations SHALL be enforced at runtime   | Kernel guards   |
+
+**Key Constraint:**
+Proofs are not advisory. A proof obligation that cannot be mechanically enforced is considered **non-existent**.
+
+---
+
+### Proof-to-Kernel Binding Graph
+
+```
+[TLA+ / Alloy Spec]
+          |
+          v
+[Invariant Compilation]
+          |
+          v
+[eBPF Verifier-Safe Code]
+          |
+          v
+[Kernel Gate (XDP)]
+```
+
+---
+
+## 3.5 Adversary Model
+
+### Table 3.5-A — Adversarial Capabilities
+
+| Threat Class      | Capability                | IATO Response                |
+| ----------------- | ------------------------- | ---------------------------- |
+| Timing Attacks    | Observe execution latency | Constant-time paths          |
+| Parallelism Abuse | Exploit race conditions   | Deterministic ordering       |
+| EM Leakage        | Infer state via emissions | Fixed access + RAG semantics |
+| Throughput Flood  | Induce livelock / stutter | Lyapunov + ESCALATE          |
+| Quantum Adversary | Break classical crypto    | Module-LWE (Dilithium)       |
+
+**Explicit Inclusion:**
+Adversaries are assumed to be **adaptive**, **persistent**, and **post-quantum capable**.
+
+---
+
+## 3.6 Threats Explicitly Out of Scope
+
+### Table 3.6-A — Exclusions
+
+| Threat                          | Reason                 |
+| ------------------------------- | ---------------------- |
+| Physical silicon modification   | Outside kernel control |
+| Power removal                   | Non-computational      |
+| Spec violation by root of trust | Assumption breach      |
+
+---
+
+## 3.7 Security Posture Summary (Normative)
+
+> Under the assumptions defined in §§3.2–3.5, IATO SHALL guarantee that:
+>
+> 1. No unsafe state transition can be completed.
+> 2. No unverifiable behavior can be executed.
+> 3. No post-quantum adversary can induce a valid but unstable state.
+> 4. No side-channel observable behavior deviates from invariant-preserving execution.
+
+---
+
+## 3.8 Design Consequence
+
+**Logging is insufficient.
+Monitoring is insufficient.
+Prediction is insufficient.**
+
+Only **pre-execution invariant enforcement at kernel speed** satisfies the threat model defined in this document.
+
+
 
 ---
 
@@ -95,7 +414,7 @@ IATO intentionally moves beyond:
 * Post-hoc explainability
 * Probabilistic risk registers
 
-**and instead explores**:
+*and instead explores*:
 
 * **Invariant-based security**
 * **Deterministic state transitions**
@@ -106,20 +425,6 @@ IATO intentionally moves beyond:
 
 >**That security, trust, and auditability can be enforced as physical properties of computation rather than inferred statistically.**
 
----
-
-## Position on Peer Review
-
-Peer review is **not the primary validation mechanism** for this work.
-
-**Validation** occurs through:
-
-  * Formal verification (Isabelle/HOL, TLA+, Alloy)
-  * Executable reference semantics (JAX)
-  * Kernel-level enforcement (eBPF/XDP)
-  * Reproducible failure modes and invariant violations
-
-Academic review may be valuable in the future, but **correctness here is measured by invariants holding under execution**, not by consensus or acceptance.
 
 ---
 
@@ -128,222 +433,95 @@ Academic review may be valuable in the future, but **correctness here is measure
 > IATO should be read as an **experimental security systems research workflow**, not a finished standard, product, or academic thesis.
 > It exists to explore whether deterministic, proof-carrying security architectures can replace probabilistic Zero Trust models in practice.
 
-**The repository documents the work *as it is done*, not as it would be presented for publication.**
+
+## Refactor Map — Eliminating Redundancy While Preserving Rigor
+
+
+
+## 1. Redundancy Diagnosis
+
+| Section Cluster                            | Overlap Type | Root Cause                         |
+| ------------------------------------------ | ------------ | ---------------------------------- |
+| Threat Model ↔ Layered Architecture        | Conceptual   | Both define adversaries + surfaces |
+| Mitigation Matrix ↔ Enforcement Layer      | Mechanistic  | Same invariants described twice    |
+| Trust Object Lifecycle ↔ RAG Evaluation    | Semantic     | RAG is a projection of lifecycle   |
+| Distributed Guarantees ↔ Enforcement Logic | Logical      | Both assert invariant supremacy    |
 
 ---
 
-## Layered Architecture: From Attack Surfaces to IATO Enforcement
+## 2. Canonical Refactor Structure (Authoritative)
 
+This is the **single source of truth**. All other sections *reference* it.
 
----
+### **Section A — Formal Assumptions & Threat Model (Canonical)**
 
-### 1. Pre-Mapped System Surfaces
+> Defines what *must* be true for IATO to operate.
 
-IATO begins by explicitly enumerating and formalizing all relevant system surfaces. Unlike conventional security models that discover attack vectors reactively, IATO **defines the admissible state space in advance** and constrains all behavior within mathematically verified boundaries.
+| Dimension | Assumption                        | Implication                          |
+| --------- | --------------------------------- | ------------------------------------ |
+| Execution | Kernel-level enforcement possible | Inline rejection before side effects |
+| State     | Fully representable               | No hidden degrees of freedom         |
+| Proof     | Mechanically enforceable          | No symbolic-only guarantees          |
+| Adversary | Adaptive + PQ-capable             | Timing, EM, throughput irrelevant    |
 
-### System Surface Classification
-
-| Surface Category         | Examples                                                            | Security Relevance                                                        |
-| ------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Network Interfaces       | Network endpoints, APIs, inter-process communication (IPC) channels | Primary ingress vectors for adversarial input, replay, and protocol abuse |
-| Compute Substrate        | CPUs, GPUs, FPGAs, accelerators, EM-emitting devices                | Susceptible to timing, parallelism, and side-channel exploitation         |
-| Data & State Persistence | Storage systems, cloud nodes, distributed ledgers                   | Targets for integrity attacks, rollback, poisoning, and tampering         |
-
-### IATO Integration Model
-
-| Concept               | IATO Realization                                       | Deterministic Effect                                         |
-| --------------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
-| System State          | Encoded as **Trust Objects** embedded in Hilbert space | All behavior becomes measurable, comparable, and contractive |
-| Attack Surface        | Mapped to **admissible state transitions**             | Attacks are reframed as invalid transitions, not signatures  |
-| Perturbation Handling | Invariant-bound evaluation (Lyapunov + contractivity)  | Out-of-geometry behavior is rejected by construction         |
-
-## Architectural Implication
-
->By pre-mapping system surfaces into a formal state space, IATO eliminates the distinction between “known” and “unknown” attacks. Any interaction—regardless of novelty, throughput, or execution medium—must satisfy the same invariant constraints. If it does not, it cannot progress through the system.
-
-**This ensures that**:
-
-**Zero-day** exploits do not gain advantage through novelty
-
->Throughput-based bypass attempts fail at line rate
->Hardware-specific behaviors are normalized into invariant checks
+ **All later sections reference Section A instead of redefining threats.**
 
 ---
 
-## 2. Mitigation Strategies Integrated per Layer
+## 3. Refactored Mapping Table
 
-Rather than deploying mitigations as reactive controls, IATO integrates them **directly into the state update and enforcement mechanics**. Each mitigation exists to preserve invariant geometry under adversarial conditions.
+### **Old Section → New Placement**
 
-### Mitigation Matrix
-
-| Layer                | Mechanism                        | Implementation                         | Security Guarantee                        |
-| -------------------- | -------------------------------- | -------------------------------------- | ----------------------------------------- |
-| Arithmetic / Compute | Constant-time lattice arithmetic | Montgomery REDC, fixed execution paths | Eliminates timing-based leakage           |
-| Physical Execution   | Side-channel resilience          | EM- and power-obfuscated execution     | Prevents external state inference         |
-| Dynamical Control    | Hessian-scaled damping (IGD-HDD) | Curvature-aware friction terms         | Prevents perturbation energy accumulation |
-
-### Deterministic Control Interpretation
-
->**Constant-Time Arithmetic:**
-Ensures that execution duration is independent of secret state, eliminating timing as an information channel.
-
->**Side-Channel Resilience:**
-Execution-level noise is entropy-bounded and invariant-safe, masking EM and power signatures without destabilizing system dynamics.
-
->**Hessian-Scaled Damping:**
-High-curvature regions of the state space automatically induce greater damping, neutralizing high-frequency or parallelized attack attempts before amplification can occur.
-
-### Architectural Implication
-
-These mitigations do not operate as filters or detectors. Instead, they are **embedded into the mathematical update law itself**. As a result:
-
-Attacks cannot accumulate energy over time
-  >Parallel execution offers no advantage
-  >Physical leakage does not correlate with logical state
-
->**The system remains stable, contractive, and auditable regardless of execution environment or adversarial strategy.**
+| Original Section           | Status After Refactor | New Role                      |
+| -------------------------- | --------------------- | ----------------------------- |
+| Pre-Mapped System Surfaces | **Merged**            | Folded into Threat Model      |
+| Mitigation Strategies      | **Merged**            | Embedded into Update Law      |
+| Enforcement Layer          | **Primary**           | First enforcement description |
+| Trust Object Lifecycle     | **Primary**           | Defines runtime artifact      |
+| RAG Evaluation             | **Derived**           | Projection, not subsystem     |
+| Distributed Guarantees     | **Extension**         | Applies lifecycle globally    |
 
 ---
 
-### Summary
+## 4. New Clean Architecture Flow (No Duplication)
 
-In IATO, attack surfaces are not monitored—they are **formalized**.
+### **Single Logical Chain**
 
->Mitigations are not applied after the fact—they are **mathematically inseparable from execution**.
->Security emerges as a *property* of invariant-preserving dynamics, *not probabilistic* defense.
+```
+Formal Assumptions
+        ↓
+Admissible State Space
+        ↓
+Invariant Update Law (NTT + Lyapunov + Hessian)
+        ↓
+Kernel Enforcement (XDP_PASS / XDP_DROP)
+        ↓
+Trust Object Emission
+        ↓
+RAG Projection
+        ↓
+Distributed Propagation (Optional)
+```
 
-
----
-
-## 3. Enforcement Layer (Kernel-Level Determinism)
-
->**IATO enforcement is not advisory or policy-driven. It is **mechanical, deterministic, and inline**, operating at the kernel boundary where state transitions either satisfy invariants or are rejected.**
-
-### Enforcement Components
-
-| Component           | Technology   | Role                                                       |
-| ------------------- | ------------ | ---------------------------------------------------------- |
-| Kernel Enforcement  | eBPF / XDP   | Line-rate validation and rejection of invalid transitions  |
-| Reference Semantics | JAX          | Canonical execution semantics for state updates            |
-| Formal Alignment    | Isabelle/HOL | Machine-checked correspondence between proof and execution |
-
-### Enforcement Logic
-
-| Evaluation               | Condition                                  | Outcome                     |
-| ------------------------ | ------------------------------------------ | --------------------------- |
-| Hilbertian Contractivity | (|x_{t+1} - x_t| \le \rho |x_t - x_{t-1}|) | Transition admissible       |
-| Lyapunov Energy          | (V(x_{t+1}) - V(x_t) \le 0)                | System remains stable       |
-| Invariant Violation      | Any bound exceeded                         | Inline rejection (XDP_DROP) |
-
-### Architectural Implication
-
-* Enforcement occurs **before user space**, eliminating TOCTOU race conditions.
-* No heuristic classification exists; enforcement is binary and proof-aligned.
-* Kernel execution mirrors exactly what was formally verified.
-
->The kernel does not **“decide”** trust. It **executes a proof**.
+Each block is **defined once**.
 
 ---
 
-## 4. Trust Object Lifecycle
+## 5. Refactored Layer Table (Minimal + Non-Redundant)
 
-A Trust Object is the atomic unit of security, inference, and auditability in IATO. It is not metadata—it is a **state transition carrying its own validity proof**.
+### **Invariant-Centric View**
 
-### Trust Object Structure
-
-| Field               | Description                        | Purpose                     |
-| ------------------- | ---------------------------------- | --------------------------- |
-| State Vector        | High-dimensional Hilbert embedding | Represents system state     |
-| Transition Metrics  | Distance, curvature, energy delta  | Invariant evaluation        |
-| Cryptographic Chain | Lattice-based hash                 | Tamper-proof linkage        |
-| RAG Score           | Red / Amber / Green                | Operational signaling       |
-| Audit Metadata      | Timestamp, node ID, signature      | Compliance and traceability |
-
-### Lifecycle Phases
-
-| Phase       | Description              | Enforcement         |
-| ----------- | ------------------------ | ------------------- |
-| Generation  | State update via IGD-HDD | Deterministic       |
-| Evaluation  | Invariant checks applied | Proof-aligned       |
-| Scoring     | RAG assigned             | Deterministic       |
-| Enforcement | Kernel accept / drop     | Inline              |
-| Persistence | Cryptographic chaining   | Post-quantum secure |
-
-### Architectural Implication
-
->Every accepted action is **self-describing and self-verifying**.
->Audit logs are not reconstructed—they are **native artifacts**.
->Trust Objects eliminate ambiguity between runtime behavior and compliance evidence.
-
+| Layer     | Responsibility      | Defined Where              |
+| --------- | ------------------- | -------------------------- |
+| Algebraic | Closure, exactness  | Section 2 (NTT Invariant)  |
+| Dynamical | Stability, damping  | Section 3 (Lyapunov)       |
+| Physical  | Side-channel bounds | Section A (Threat Model)   |
+| Kernel    | Enforcement         | Section 3 (XDP Logic)      |
+| Semantic  | Operational meaning | Section 5 (RAG Projection) |
 
 ---
 
-## 5. Deterministic RAG Evaluation (Operational Layer)
-
-**RAG** in IATO is **not graph theory, prediction, or probabilistic scoring**. It is a **direct projection of invariant satisfaction into operational semantics**.
-
-### RAG Semantics
-
-| RAG State | Formal Meaning              | System Action      |
-| --------- | --------------------------- | ------------------ |
-| Red       | Invariant violation        | Drop + alert       |  
-| Amber     | Boundary deviation detected | Escalate + monitor |
-| Green     | All invariants satisfied    | Accept + log       |
-
-### Metric Sources
-
-| Metric              | Origin             | Role                      |
-| ------------------- | ------------------ | ------------------------- |
-| Hilbertian Distance | State geometry     | Detect divergence         |
-| Lyapunov Energy     | Stability function | Prevent accumulation      |
-| Curvature (Hessian) | Local geometry     | Detect adversarial spikes |
-
-### Architectural Implication
-
-* RAG is **derived**, not assigned.
-* Operations teams receive **unambiguous signals**.
-* No false positives from heuristic detection loops.
-
-> Red means “mathematically impossible to allow.”
-> Green means “provably safe to proceed.”
-
----
-
-## 6. Trust Object Lifecycle Across Distributed Systems
-
-When deployed across multiple nodes, IATO preserves determinism and safety through **Byzantine-resilient invariant enforcement**, not trust in peers.
-
-### Distributed Guarantees
-
-| Property        | Mechanism                    | Result                    |
-| --------------- | ---------------------------- | ------------------------- |
-| Consistency     | Hybrid PBFT / Tendermint     | Agreement on valid states |
-| Fault Tolerance | f-Byzantine tolerance        | Malicious nodes contained |
-| Integrity       | Lattice-based hashing        | Immutable audit chain     |
-| Stability       | Module-level Lyapunov bounds | Global convergence        |
-
-### Architectural Implication
-
-* Invalid Trust Objects **cannot propagate**.
-* Consensus does not override invariants.
-* Global state is the **sum of locally verified truths**, not votes.
-
----
-
-## 7. Structured Summary
-
-| Dimension      | Conventional Zero Trust | IATO            |
-| -------------- | ----------------------- | --------------- |
-| Trust          | Probabilistic           | Deterministic   |
-| Detection      | Heuristic               | Invariant-based |
-| Enforcement    | Policy-driven           | Kernel-enforced |
-| Audit          | Reconstructed           | Native          |
-| Quantum Safety | Assumed                 | Provable        |
-| Operations     | Interpretive            | Mechanical      |
-
-> **IATO is not a control system layered on AI.
-> It is a physical law imposed on computation.**
-
+**This section instantiates the assumptions of Section A as enforceable kernel mechanics. No new threat classes or behaviors are introduced; all logic derives from the invariant-governed update law.**
 
 ----
 
@@ -431,8 +609,6 @@ int32_t redc(int64_t T) {
 
 
 ---
-
-
 
 ## Hilbertian Distance Contractivity
 
