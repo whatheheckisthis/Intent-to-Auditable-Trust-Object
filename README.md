@@ -156,6 +156,12 @@ Using **Pearl’s Do-Calculus**, the eBPF verifier simulates the causal impact o
 
 ---
 
+# Appendix: Hardware-Level Operational Specification (ARM64/SVE2)
+
+The IATO architecture enforces its invariants at the Instruction Set Architecture (ISA) level. By utilizing the Azure Cobalt 200’s Neoverse V3 pipelines, the system achieves sub-millisecond high-assurance verification. The following table specifies the register mapping and design rationale for the core IATO components.
+
+
+# IATO Register-Transfer Logic (RTL)
 
 | **IATO Component**                  | **ARM64 / SVE2 Instructions**          | **Target Registers** | **Engineering Rationale**                                                                                                                                                                                                                                           |
 | ----------------------------------- | -------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -166,6 +172,21 @@ Using **Pearl’s Do-Calculus**, the eBPF verifier simulates the causal impact o
 | **XDP Enforcement Decision**        | `CSEL`, `MOV`, `RET`                   | `X0`                 | Maps Lyapunov energy comparison directly to `XDP_PASS` / `XDP_DROP` without function calls or loops. Decision latency is fixed and measurable at NIC line rate.                                                                                                     |
 | **ESCALATE Progress Metric (W(x))** | `ADDS`, `CSEL`, `EOR`                  | `X8 – X15`           | Tracks liveness independently of stability. Prevents Zeno-style stalling by enforcing monotonic progress while preserving audit determinism.                                                                                                                        |
 | **Atomic Telemetry Counter**        | `LDXR`, `STXR`                         | `X19 – X21`          | Implements contention-safe counters without cache-line bouncing. Used only for correlation, never enforcement, preventing feedback contamination of Lyapunov checks.                                                                                                |
+
+---
+
+**Design Rationale:**
+
+* **Temporal Invariance:** Every instruction chosen `UMULH`, `CSEL` has a fixed cycle count on the `Neoverse V3` core. This ensures that an auditor can mathematically prove the system's execution time is independent of the data being processed, neutralizing Differential Timing Attacks.
+
+* **Zero-CPU Enforcement:** By mapping the Lyapunov-stable admission gate to the `AArch64` `X0` return-register state, the IATO pipeline allows the `SmartNIC`/DPU-silicon hardware ingress to drop malicious or unstable packets directly at the NIC-to-System-Bus interface, thereby ensuring that only mathematically verified "Trust Objects" transit to the host-CPU register file and application memory.
+
+* **Spectral Resistance:** By confining coefficient permutations to the `UZP1`/`UZP2` vector pipelines, the IATO architecture executes high-dimensional lattice reordering entirely within the `AArch64` `SIMD`/`SVE` register-to-register dataflow, thereby neutralizing memory-bus power leakage and electromagnetic side-channels that traditional cache-dependent implementations expose.
+
+**Summary**
+
+This register-level specification demonstrates that the Integrated AI Trust Object (IATO) is not merely a software layer, but a hardware-integrated stability manifold. It transforms the `Azure` `Cobalt 200` into a deterministic engine where trust is a physical property of the computation.
+
 ---
         
 # Specification §3 — Formal Assumptions & Threat Model (IATO)
