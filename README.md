@@ -234,7 +234,6 @@ This register-level specification demonstrates that the Integrated AI Trust Obje
 To replace the high-level policy definitions with **RTL (Register-Transfer Logic)**, we move from "legalistic" assumptions to "instruction-level" enforcement. In this paradigm, the **Threat Profile** is no longer a list of rules, but a **ARM64/SVE2 pipeline** 
 
 
-
 ---
 
 ## 3.1 Scope and Purpose: Register-Transfer Logic (RTL) Enforcement
@@ -398,7 +397,7 @@ STORE   state[x+1]
 
 ---
 
-**Proof Enforceability Assumptions**, bridges the gap between high-level logic and low-level hardware. The following diagram and breakdown illustrate how a mathematical "Proof" (the Ideal) becomes a "Kernel Guard" (the Reality).
+**Proof Enforceability Assumptions** bridges the gap between high-level logic and low-level hardware. The following diagram and breakdown illustrate how a mathematical "Proof" (the Ideal) becomes a "Kernel Guard" (the Reality).
 
 ### 3.4 Visualizing the Proof-to-Execution Flow
 
@@ -502,18 +501,6 @@ print("Distance:", hilbertian_distance(x_curr, x_next))
 
 ---
 
-### 3. Operational and Policy Layer
-
-* Red/Amber/Green (RAG) scoring is **deterministic**, based on invariant violations.
-* MITRE ATT&CK and CAPEC provide threat context for escalation.
-* Policies apply as **mappings from invariant outcomes**, not heuristics.
-
----
-
-### 4. Enforcement Layer (Kernel / eBPF)
-
-* eBPF/XDP ensures **line-rate, deterministic enforcement**
-* Violating state transitions (Lyapunov or Hilbertian) are dropped inline
 
 **Montgomery REDC (C / eBPF):**
 
@@ -534,14 +521,6 @@ int32_t redc(int64_t T) {
 
 ---
 
-### 5. Integration Across Quantum & Industrial-Scale Compute
-
-* Module-LWE lattices scale trust objects
-* Module-level energy decrease ensures **global stability**
-* Curvature-scaled damping prevents node or quantum-enabled attacks from destabilizing the system
-
-
----
 
 ### 5. Compliance Alignment
 
@@ -588,7 +567,7 @@ All **formal derivations, empirical tests, and qualitative literature analyses**
 
 * No claims of correctness, performance, or security are made **outside** what is explicitly derived or demonstrated within this folder.
 * Architectural conclusions referenced elsewhere in the repository **must trace back** to a notebook or markdown artifact in this directory.
-* Where formal proofs (e.g. Isabelle/HOL) assume idealized models, corresponding notebooks document **real-world deviations** (latency, arithmetic domain, noise, scheduling effects).
+* Where formal proofs (e.g., Isabelle/HOL) assume idealized models, corresponding notebooks document **real-world deviations** (latency, arithmetic domain, noise, scheduling effects).
 
 
 
