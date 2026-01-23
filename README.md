@@ -458,50 +458,6 @@ The research confirms that **Trust is not a spectrum.** By moving the system to 
 ---
 
 
-**IGD-HDD Update Law (Python / JAX):**
-
-
-
-```python
-import jax
-import jax.numpy as jnp
-from jax import grad, hessian, jit
-
-# Parameters
-N = 256
-ALPHA = 1e-4
-BETA = 0.5
-ETA = 0.01
-
-def loss_fn(x):
-    return 0.5 * jnp.sum(jnp.square(x))
-
-@jit
-def iato_update(x_curr, x_prev, g, h):
-    h_inv = jnp.linalg.inv(h + ALPHA*jnp.eye(h.shape[0]))
-    drive = ETA * jnp.dot(h_inv, g)
-    velocity = x_curr - x_prev
-    friction = BETA * jnp.dot(h, velocity)
-    return x_curr - drive - friction
-
-def hilbertian_distance(s1, s2):
-    return jnp.linalg.norm(s1 - s2)
-
-# Example transition
-x_prev = jnp.zeros(N)
-x_curr = jnp.zeros(N) + 0.1
-g = grad(loss_fn)(x_curr)
-h = hessian(loss_fn)(x_curr)
-
-x_next = iato_update(x_curr, x_prev, g, h)
-print("Distance:", hilbertian_distance(x_curr, x_next))
-````
-
-</details>
-
----
-
-
 **Montgomery REDC (C / eBPF):**
 
 
@@ -521,25 +477,6 @@ int32_t redc(int64_t T) {
 
 ---
 
-
-### 5. Compliance Alignment
-
-| Standard        | IATO Integration                        | Mechanism                        |
-| --------------- | --------------------------------------- | -------------------------------- |
-| NIST SP 800-207 | Trust as invariant transitions          | Policy-less enforcement          |
-| ISO/IEC 27001   | Audit trail of each trust object        | Machine-checkable logs           |
-| ISO/IEC 31000   | Risk quantified as invariant deviations | RAG escalation follows standards |
-
----
-
-### 6. Packet Lifecycle 
-
-```
-[Attack Surface] --> [Invariant Mapping] --> [Kernel Enforcement / IGD-HDD] --> [RAG Evaluation / Operational Escalation]
-```
-
-
----
 
 
 ## 3. Jupyter Proof & Analysis Workspace
@@ -568,7 +505,6 @@ All **formal derivations, empirical tests, and qualitative literature analyses**
 * No claims of correctness, performance, or security are made **outside** what is explicitly derived or demonstrated within this folder.
 * Architectural conclusions referenced elsewhere in the repository **must trace back** to a notebook or markdown artifact in this directory.
 * Where formal proofs (e.g., Isabelle/HOL) assume idealized models, corresponding notebooks document **real-world deviations** (latency, arithmetic domain, noise, scheduling effects).
-
 
 
 ---
@@ -643,7 +579,7 @@ For details on the prior modular oscillatory inference and its deprecation in fa
 
 
 
->**The new architecture assumes **cryptographically relevant quantum adversaries** and removes implementation classes vulnerable to quantum-accelerated side-channel exploitation.
+The new architecture assumes **cryptographically relevant quantum adversaries** and removes implementation classes vulnerable to quantum-accelerated side-channel exploitation.
 
 ---
 
