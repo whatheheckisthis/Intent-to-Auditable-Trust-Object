@@ -1,12 +1,15 @@
-# IATO: Deterministic Security Systems Architecture
+# IATO: (Intent-to-Auditable-Trust-Object)
 
-### *Trust as a Contractive Property of Computation*
+### *High-assurance integrity kernel designed to bridge the semantic gap between regulatory mandate and machine execution.*
 
-*IATO is an experimental security systems architecture that enforces trust as a deterministic property of computation.*
+By anchoring the compliance boundary at the Instruction Set Architecture (ISA) level, IATO renders security an emergent physical property of the system’s dataflow.
 
->Rather than estimating risk or detecting anomalies. IATO constrains system behavior through **formal invariants**, **provable state transitions**, and **kernel-level enforcement**. Every action is permitted only if it satisfies mathematically defined safety, causality, and stability conditions.
-
-
+Core Architectural Pillars:
+• Topological Trust: Utilizes a Directed Acyclic Graph (DAG) to enforce unidirectional causality, ensuring that every system mutation is cryptographically linked to an immutable Initial Intent.
+• Algebraic Finality: Replaces probabilistic risk modeling with Provable Security. State transitions are governed by Lyapunov Stability Theory, rendering unauthorized or chaotic states mathematically unreachable.
+• PQC-Native Execution: Full implementation of NIST-standard Post-Quantum Cryptography (ML-KEM/ML-DSA) optimized for Q-Day resilience.
+• Hardware-Level Enforcement: Utilizes integer-only, branchless ARM64/SVE2 assembly to eliminate side-channel timing leaks and cache-line entropy vulnerabilities.
+• Sub-Millisecond Auditing: Custom Number Theoretic Transform (NTT) RTL logic reduces signing and verification latency to line-rate thresholds, enabling real-time forensic verifiability.
 
 <img width="1536" height="1024" alt="IATO_System_Substrate_" src="https://github.com/user-attachments/assets/2d14c9f2-254d-4948-89b6-7122d1126456" />
 
