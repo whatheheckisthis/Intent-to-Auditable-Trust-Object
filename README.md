@@ -4,12 +4,17 @@
 
 By anchoring the compliance boundary at the Instruction Set Architecture (ISA) level, IATO renders security an emergent physical property of the system’s dataflow.
 
-Core Architectural Pillars:
-• Topological Trust: Utilizes a Directed Acyclic Graph (DAG) to enforce unidirectional causality, ensuring that every system mutation is cryptographically linked to an immutable Initial Intent.
-• Algebraic Finality: Replaces probabilistic risk modeling with Provable Security. State transitions are governed by Lyapunov Stability Theory, rendering unauthorized or chaotic states mathematically unreachable.
-• PQC-Native Execution: Full implementation of NIST-standard Post-Quantum Cryptography (ML-KEM/ML-DSA) optimized for Q-Day resilience.
-• Hardware-Level Enforcement: Utilizes integer-only, branchless ARM64/SVE2 assembly to eliminate side-channel timing leaks and cache-line entropy vulnerabilities.
-• Sub-Millisecond Auditing: Custom Number Theoretic Transform (NTT) RTL logic reduces signing and verification latency to line-rate thresholds, enabling real-time forensic verifiability.
+## Core Architectural Pillars:
+
+* **Topological Trust:** Utilizes a Directed Acyclic Graph (DAG) to enforce unidirectional causality, ensuring that every system mutation is cryptographically linked to an immutable Initial Intent 
+
+* **Algebraic Finality:** Replaces probabilistic risk modeling with Provable Security. State transitions are governed by Lyapunov Stability Theory, rendering unauthorized or chaotic states mathematically unreachable
+  
+* **PQC-Native Execution:** Full implementation of **NIST**-standard **Post-Quantum Cryptography** (*ML-KEM*/*ML-DSA*) optimized for Q-Day resilience.
+  
+* **Hardware-Level Enforcement:** Utilizes integer-only, branchless `ARM64` /`SVE2`  assembly to eliminate side-channel timing leaks and cache-line entropy vulnerabilities
+  
+* **Sub-Millisecond Auditing:** Custom Number Theoretic Transform (NTT) RTL logic reduces signing and verification latency to line-rate thresholds, enabling real-time forensic verifiability
 
 <img width="1536" height="1024" alt="IATO_System_Substrate_" src="https://github.com/user-attachments/assets/2d14c9f2-254d-4948-89b6-7122d1126456" />
 
@@ -17,7 +22,8 @@ Core Architectural Pillars:
 [![Architecture](https://img.shields.io/badge/Arch-ARM64-0091BD?style=for-the-badge&logo=azure-pipelines)](#appendix-hardware-level-operational-specification)
 [![Security](https://img.shields.io/badge/PQC-Dilithium--5-663399?style=for-the-badge&logo=shieldstore)](#2.1-algebraic-root-ntt-implementation)
 
->This diagram constitutes the Formal Operational Specification for the Integrated AI Trust Object (IATO) Substrate. It visually codifies the Hardware-Software Synthesis of the system, mapping abstract mathematical invariants directly to physical silicon enforcement on the Azure Cobalt 200 (ARMv9) architecture.
+
+>The diagram illustrates. By mapping the Lyapunov Stability Gate to the **AArch64  return register**, the substrate ensures that security is not a post-hoc software check, but an **invariant physical property** of the instruction pipeline. Any state transition violating the formal proof is rejected at the NIC-to-Bus interface at line-rate speed, rendering unstable states physically impossible to execute.
 
 
 ---
@@ -27,16 +33,9 @@ Core Architectural Pillars:
 | Component Layer | Technical Instantiation | Functional Rationale |
 | --- | --- | --- |
 | **Algebraic Root** | **CRYSTALS-Dilithium (NIST L5)** | Establishes the post-quantum, lattice-based cryptographic foundation within the  ring. |
-| **Dynamical Manifold** | **Hessian-Damped Lyapunov Stability** | Defines the admissible state space where , ensuring deterministic system equilibrium. |
+| **Dynamical Manifold** | **Hessian-Damped Lyapunov Stability** | Defines the admissible state space where, ensuring deterministic system equilibrium. |
 | **Logic Substrate** | **ARM64 / SVE2 Register File** | Confines high-dimensional polynomial permutations to 256-bit vector lanes () to neutralize memory-bus leakage. |
 | **Enforcement Gate** | **Instruction-Level RTL ( Mapping)** | Transforms the "Trust Decision" into an atomic, branchless operation via `SUBS` and `CSINC` instructions. |
-
----
-
-### **Rationale**
-
-The diagram illustrates the transition from **probabilistic Bayesian inference** to **deterministic algebraic law**. By mapping the Lyapunov Stability Gate to the **AArch64  return register**, the substrate ensures that security is not a post-hoc software check, but an **invariant physical property** of the instruction pipeline. Any state transition violating the formal proof is rejected at the NIC-to-Bus interface at line-rate speed, rendering unstable states physically impossible to execute.
-
 
 ---
 
@@ -61,11 +60,10 @@ IATO replaces this heuristic model with **Invariant-Based Hard-Enforcement**. Se
 
 ---
 
-### **Rationale**
 
-In this hypothesis, "Trust" is redefined as **Mathematical Finality**. By mapping the system’s state space to a Hilbert Space, we ensure that every transition follows a "Stable Geodesic."
+**In this hypothesis**, "Trust" is redefined as **Mathematical Finality**. By mapping the system’s state space to a Hilbert Space, we ensure that every transition follows a "Stable Geodesic."
 
-If an adversarial event (such as a buffer overflow or an unauthorized instruction) attempts to move the system state outside this manifold, the **Hessian-Damped Feedback Loop** induces an immediate contraction. The system does not "detect" an error; the hardware logic gates simply fail to close for the unauthorized state, resulting in an **Atomic Drop** at line-rate.
+If an adversarial event (such as a buffer overflow or an unauthorized instruction) attempts to move the system state outside this manifold, the **Hessian-Damped Feedback Loop** induces an immediate contraction. The system does not "detect" an error; the hardware logic gates simply fail to close in the unauthorized state, resulting in an **Atomic Drop** at line rate.
 
 
 ---
@@ -218,15 +216,11 @@ The IATO architecture enforces its invariants at the **Instruction Set Architect
 
 ---
 
-**Rationale:**
-
 * **Temporal Invariance:** Every instruction chosen `UMULH`, `CSEL` has a fixed cycle count on the `Neoverse V3` core. This ensures that an auditor can mathematically prove the system's execution time is independent of the data being processed, neutralizing Differential Timing Attacks.
 
 * **Zero-CPU Enforcement:** By mapping the Lyapunov-stable admission gate to the `AArch64` `X0` return-register state, the IATO pipeline allows the `SmartNIC`/DPU-silicon hardware ingress to drop malicious or unstable packets directly at the NIC-to-System-Bus interface, thereby ensuring that only mathematically verified "Trust Objects" transit to the host-CPU register file and application memory.
 
 * **Spectral Resistance:** By confining coefficient permutations to the `UZP1`/`UZP2` vector pipelines, the IATO architecture executes high-dimensional lattice reordering entirely within the `AArch64` `SIMD`/`SVE` register-to-register dataflow, thereby neutralizing memory-bus power leakage and electromagnetic side-channels that traditional cache-dependent implementations expose.
-
-**Summary**
 
 This register-level specification demonstrates that the Integrated AI Trust Object (IATO) is not merely a software layer, but a hardware-integrated stability manifold. It transforms the `Azure` `Cobalt 200` into a deterministic engine where trust is a physical property of the computation.
 
@@ -234,14 +228,12 @@ This register-level specification demonstrates that the Integrated AI Trust Obje
         
 # Specification §3 — Formal Assumptions & Threat Model (IATO)
 
-To replace the high-level policy definitions with **RTL (Register-Transfer Logic)**, we move from "legalistic" assumptions to "instruction-level" enforcement. In this paradigm, the **Threat Profile** is no longer a list of rules, but a **ARM64/SVE2 pipeline** 
-
-
----
 
 ## 3.1 Scope and Purpose: Register-Transfer Logic (RTL) Enforcement
 
-This section defines the **hardware-level invariants** of the Integrated AI Trust Object (IATO). Unlike traditional software threat profiling, IATO utilizes the **Azure Cobalt 200 (ARMv9)** pipeline to ensure that adversarial inputs are neutralized via instruction-level determinism before they ever reach the system bus.
+To replace the high-level policy definitions with **RTL (Register-Transfer Logic)**, we move from "legalistic" assumptions to "instruction-level" enforcement. In this paradigm, the **Threat Profile** is no longer a list of rules, but a **ARM64/SVE2 pipeline** 
+
+>This section defines the **hardware-level invariants** of the Integrated AI Trust Object (IATO). Unlike traditional software threat profiling, IATO utilizes the **Azure Cobalt 200 (ARMv9)** pipeline to ensure that adversarial inputs are neutralized via instruction-level determinism before they ever reach the system bus.
 
 ## 3.2 Hardware-Level Operational Constraints
 
@@ -311,9 +303,7 @@ RET                         // 3. Execution returns to NIC with fixed latency
 
 ```
 
-### Rationale for this Mapping:
-
-1. **Elimination of Jumps:** Traditional `if (stable) { return PASS; }` uses a branch predictor. If an attacker sends a sequence of stable/unstable packets, they can "train" the predictor and measure the time it takes to fail, leaking info. This `CSINC` path is **identical in length** regardless of the result.
+1. **Elimination of Jumps:** Traditional `if (stable) { return PASS; }` uses a branch predictor. If an attacker sends a sequence of stable/unstable packets, they can "train" the predictor and measure how long it takes to fail, thereby leaking information. This `CSINC` path is **identical in length** regardless of the result.
 2. **Hardware-Level Dropping:** By mapping this directly to the `X0` register, which the Azure Cobalt 200's Integrated HSM (Hardware Security Module) monitors, the "Drop" action occurs at the **NIC-to-System-Bus interface**. The "Unstable" data is physically prevented from moving further into the CPU's deeper cache hierarchies.
 
 
@@ -352,7 +342,6 @@ Drop path: the data flows through the registers, resulting in a deterministic se
 
 ---
 
-### Rationale
 Table maps the "Abstract Step" to the "Physical Instruction" to demonstrate how the **Lyapunov Stability Gate** is enforced.
 
 | Pipeline Stage | Assembly Instruction | Mapping Rationale |
@@ -479,8 +468,6 @@ int32_t redc(int64_t T) {
 </details>
 
 ---
-
-
 
 ## 3. Jupyter Proof & Analysis Workspace
 
@@ -642,10 +629,6 @@ The new architecture assumes **cryptographically relevant quantum adversaries** 
 | **NIST SP 800-207**       | Zero Trust enforcement                  |
 | **ISO/IEC 23837**         | AI risk management                      |
 | **EU GDPR Art.22**        | Automated decision auditability         |
-
----
-
-## **Summary of the Architectural Shift**
 
 
 ---
