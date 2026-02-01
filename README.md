@@ -1,19 +1,19 @@
 
 ---
 
-## IĀTŌ-V7 — Semantics First Execution Engine for Cryptographic and Policy Critical Computation
+# IĀTŌ-V7 — Semantics First Execution Engine for Cryptographic and Policy Critical Computation
 
-IĀTŌ-V7 is a **semantics-first execution engine** designed for cryptographic and policy-critical computation, where correctness, determinism, and enforceability must hold at the hardware boundary—not merely at the software or algorithmic level.
+### **IĀTŌ-V7** is a **semantics-first execution engine** designed for cryptographic and policy-critical computation, where correctness, determinism, and enforceability must hold at the hardware boundary—not merely at the software or algorithmic level.
 
-The architecture defines computation as a **deterministic evolution of a closed semantic state space**, represented by a seven-plane state model that captures all execution-relevant state explicitly. All admissible state transitions are mechanically enforced using fixed-latency, branchless hardware mechanisms, ensuring that mathematical invariants, temporal bounds, and admissibility constraints are preserved across execution.
+>The architecture defines computation as a **deterministic evolution of a closed semantic state space**, represented by a seven-plane state model that captures all execution-relevant state explicitly. All admissible state transitions are enforced mechanically using fixed-latency, branchless hardware mechanisms, ensuring that mathematical invariants, temporal bounds, and admissibility constraints are preserved throughout execution.
+conventional secure computing approaches that rely on software abstractions, runtime checks, or probabilistic side-channel countermeasures, IĀTŌ-V7 achieves security through **structural invariance**. 
+> Execution is register resident, control-flow invariant, and data independent in timing and instruction trace. Invariant violations are resolved via irreversible hardware gate decisions rather than exceptions or recovery paths, eliminating semantic ambiguity between specification and silicon behavior.
 
-Unlike conventional secure computing approaches that rely on software abstractions, runtime checks, or probabilistic side-channel countermeasures, IĀTŌ-V7 achieves security through **structural invariance**. Execution is register-resident, control-flow invariant, and data-independent in timing and instruction trace. Invariant violations are resolved via irreversible hardware gate decisions rather than exceptions or recovery paths, eliminating semantic ambiguity between specification and silicon behavior.
+---
+### A POSIX based proof of concept demonstrates that the architecture is realizable on contemporary ARMv9-A platforms without managed runtimes, speculative execution, or adaptive system behavior. 
 
-A POSIX-based proof of concept demonstrates that the architecture is realizable on contemporary ARMv9-A platforms without managed runtimes, speculative execution, or adaptive system behavior. POSIX serves solely as a minimal mediation layer for instantiation, measurement, and auditability, and is not part of the architectural model.
-
-IĀTŌ-V7 is not a general-purpose computing platform. It is intentionally restrictive and is intended for execution kernels where semantic fidelity is non-negotiable, such as lattice-based cryptography, key handling paths, authorization and policy enforcement gates, and deterministic network or accelerator decision logic.
-
-By collapsing the semantic gap between formal specification, execution semantics, and physical behavior, IĀTŌ-V7 provides a foundation for cryptographic and policy-critical systems whose security properties are enforced mechanically rather than inferred.
+> POSIX serves solely as a minimal mediation layer for instantiation, measurement, and auditability, and is not part of the architectural model.
+By collapsing the semantic gap between formal specification, execution semantics, and physical behavior, IĀTŌ-V7 provides a foundation for cryptographic and policy critical systems whose security properties are enforced mechanically rather than inferred.
 
 ---
 
