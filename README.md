@@ -1,20 +1,23 @@
-# IATO: (Intent-to-Auditable-Trust-Object)
 
-### *High-assurance integrity kernel designed to bridge the semantic gap between regulatory mandate and machine execution.*
+---
 
-By anchoring the compliance boundary at the Instruction Set Architecture (ISA) level, IATO renders security an emergent physical property of the system’s dataflow.
+## IĀTŌ-V7 — Semantics First Execution Engine for Cryptographic and Policy Critical Computation
 
-## Core Architectural Pillars:
+IĀTŌ-V7 is a **semantics-first execution engine** designed for cryptographic and policy-critical computation, where correctness, determinism, and enforceability must hold at the hardware boundary—not merely at the software or algorithmic level.
 
-* **Topological Trust:** Utilizes a Directed Acyclic Graph (DAG) to enforce unidirectional causality, ensuring that every system mutation is cryptographically linked to an immutable Initial Intent 
+The architecture defines computation as a **deterministic evolution of a closed semantic state space**, represented by a seven-plane state model that captures all execution-relevant state explicitly. All admissible state transitions are mechanically enforced using fixed-latency, branchless hardware mechanisms, ensuring that mathematical invariants, temporal bounds, and admissibility constraints are preserved across execution.
 
-* **Algebraic Finality:** Replaces probabilistic risk modeling with Provable Security. State transitions are governed by Lyapunov Stability Theory, rendering unauthorized or chaotic states mathematically unreachable
-  
-* **PQC-Native Execution:** Full implementation of **NIST**-standard **Post-Quantum Cryptography** (*ML-KEM*/*ML-DSA*) optimized for Q-Day resilience.
-  
-* **Hardware-Level Enforcement:** Utilizes integer-only, branchless `ARM64` /`SVE2`  assembly to eliminate side-channel timing leaks and cache-line entropy vulnerabilities
-  
-* **Sub-Millisecond Auditing:** Custom Number Theoretic Transform (NTT) RTL logic reduces signing and verification latency to line-rate thresholds, enabling real-time forensic verifiability
+Unlike conventional secure computing approaches that rely on software abstractions, runtime checks, or probabilistic side-channel countermeasures, IĀTŌ-V7 achieves security through **structural invariance**. Execution is register-resident, control-flow invariant, and data-independent in timing and instruction trace. Invariant violations are resolved via irreversible hardware gate decisions rather than exceptions or recovery paths, eliminating semantic ambiguity between specification and silicon behavior.
+
+A POSIX-based proof of concept demonstrates that the architecture is realizable on contemporary ARMv9-A platforms without managed runtimes, speculative execution, or adaptive system behavior. POSIX serves solely as a minimal mediation layer for instantiation, measurement, and auditability, and is not part of the architectural model.
+
+IĀTŌ-V7 is not a general-purpose computing platform. It is intentionally restrictive and is intended for execution kernels where semantic fidelity is non-negotiable, such as lattice-based cryptography, key handling paths, authorization and policy enforcement gates, and deterministic network or accelerator decision logic.
+
+By collapsing the semantic gap between formal specification, execution semantics, and physical behavior, IĀTŌ-V7 provides a foundation for cryptographic and policy-critical systems whose security properties are enforced mechanically rather than inferred.
+
+---
+
+
 
 <img width="1536" height="1024" alt="IATO_System_Substrate_" src="https://github.com/user-attachments/assets/2d14c9f2-254d-4948-89b6-7122d1126456" />
 
