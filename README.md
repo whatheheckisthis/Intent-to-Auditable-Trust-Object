@@ -213,7 +213,7 @@ The IATO architecture enforces its invariants at the **Instruction Set Architect
 | **Twiddle Factor Application**      | `FMUL`, `SMULH`, `MLS`                 | `Z0.S – Z31.S`       | Applies powers of ω using fixed-width vector multiplication. Avoids table-indexed branches; twiddle sequencing is stage-deterministic, preventing timing leakage during bit-reversal phases.                                                                        |
 | **Barrett Reduction (Mod q)**       | `UMULH`, `MSUB`, `ADD`                 | `X0 – X15`           | Implements modular reduction without `DIV` or variable-latency instructions. Reduction path length is invariant across inputs, ensuring O(1) execution and verifier-acceptable constant time under eBPF constraints.                                                |
 | **Lyapunov Stability Gate**         | `SUBS`, `CSEL`, `CSINC`                | `X16 – X30`          | Encodes ΔV ≤ 0 as pure dataflow. Conditional selects replace control-flow branches, neutralizing branch predictor side channels while allowing binary Go/No-Go decisions inline.                                                                                    |
-| **XDP Enforcement Decision**        | `CSEL`, `MOV`, `RET`                   | `X0`                 | Maps Lyapunov energy comparison directly to `XDP_PASS` / `XDP_DROP` without function calls or loops. Decision latency is fixed and measurable at NIC line rate.                                                                                                     |
+| **XDP Enforcement Decision**        | `CSEL`, `MOV`, `RET`                   | `X0`                 | Maps Lyapunov energy comparison directly to `XDP_PASS` / `XDP_DROP` without function calls or loops. Decision latency is fixed and measurable at the NIC line rate.                                                                                                     |
 | **ESCALATE Progress Metric (W(x))** | `ADDS`, `CSEL`, `EOR`                  | `X8 – X15`           | Tracks liveness independently of stability. Prevents Zeno-style stalling by enforcing monotonic progress while preserving audit determinism.                                                                                                                        |
 | **Atomic Telemetry Counter**        | `LDXR`, `STXR`                         | `X19 – X21`          | Implements contention-safe counters without cache-line bouncing. Used only for correlation, never enforcement, preventing feedback contamination of Lyapunov checks.                                                                                                |
 
@@ -229,7 +229,7 @@ This register-level specification demonstrates that the Integrated AI Trust Obje
 
 ---
         
-# Specification §3 — Formal Assumptions & Threat Model (IATO)
+# Formal Assumptions & Threat Model 
 
 
 ## 3.1 Scope and Purpose: Register-Transfer Logic (RTL) Enforcement
@@ -312,7 +312,7 @@ RET                         // 3. Execution returns to NIC with fixed latency
 
 Drop path: the data flows through the registers, resulting in a deterministic selection.
 
-### Corrected IATO Assembly Enforcement Graph (Dataflow Paradigm)
+### Assembly Enforcement (Dataflow Paradigm)
 
 ```text
        [ Network Ingress ]
@@ -425,32 +425,7 @@ The flow below represents the **Mechanical Enforcement** pipeline. It shows how 
 
 >This pivot represents the fundamental shift from **Predictive Security** (guessing) to **Enforced Stability** (knowing). By rejecting Bayesian logic, the IATO architecture eliminates the "Grey Area" where exploits usually hide.
 
-### Comparison: Bayesian Probability vs. IATO Invariant Logic
 
-| Dimension | Initial Assumption (Bayesian) | Key Learning (IATO Logic) | Rationale for Shift |
-| --- | --- | --- | --- |
-| **Logic Type** | **Probabilistic** ($P(A | B)$) | **Deterministic** () |
-| **Enforcement** | Threshold-based Scoring | **ALU Invariant Gating** | Replaces software "weighting" with physical hardware constraints. |
-| **Performance** | Variable (Stochastic) | **Constant-Time (O(1))** | Eliminates timing side-channels inherent in complex inference. |
-| **Trust Model** | Inferred (Trust Score) | **Physical Property** | Trust is no longer an opinion; it is a register state (). |
-| **Fail-State** | Graceful Degradation | **Atomic Rejection** | A 99% safe system is 100% vulnerable to a targeted exploit. |
-
----
-
-### Key Learning
-
->The transition from Bayesian to Algebraic logic is the core "Key Learning" of the research workflow. It acknowledges that in **Hardware-Software Synthesis**, a result that is "probably correct" is a failure of formal verification.
-
-* **Bayesian Approach (Discarded):** Relied on updating beliefs based on evidence. This required "History" and "Context," which are expensive to store and vulnerable to data poisoning.
-* **IATO Invariant (Current):** Relies on **Lyapunov Stability** and **Lattice Math**. The "Truth" is contained entirely within the current instruction cycle. If the math doesn't close, the gate doesn't open.
-
----
-
-### Summary of the Learning
-
-The research confirms that **Trust is not a spectrum.** By moving the system to the **Azure Cobalt 200**'s register-transfer level, therefore, "Trust"  is transformed from a high-level Bayesian guess into a low-level **Algebraic Law**.
-
----
 
 
 **Montgomery REDC (C / eBPF):**
