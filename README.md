@@ -1,19 +1,25 @@
 
 ---
 
-# IĀTŌ-V7 — Semantics First Execution Engine for Cryptographic and Policy Critical Computation
+# IĀTŌ-V7 — ASVS-aligned security assurance framework formalizing OWASP controls as deterministic, verifiable, invariant-driven specifications for Azure cloud environments.
 
-### **IĀTŌ-V7** is a **semantics-first execution engine** designed for cryptographic and policy-critical computation, where correctness, determinism, and enforceability must hold at the hardware boundary—not merely at the software or algorithmic level.
+### **IĀTŌ-V7** is an applied security assurance system that transforms OWASP ASVS application security controls into semantic, invariant-driven specifications. It enforces deterministic control execution, enabling continuous compliance verification, operational correctness, and auditable evidence for SOC, risk, and governance teams in Azure environments.
 
->The architecture defines computation as a **deterministic evolution of a closed semantic state space**, represented by a seven-plane state model that captures all execution-relevant state explicitly. All admissible state transitions are enforced mechanically using fixed-latency, branchless hardware mechanisms, ensuring that mathematical invariants, temporal bounds, and admissibility constraints are preserved throughout execution.
-conventional secure computing approaches that rely on software abstractions, runtime checks, or probabilistic side-channel countermeasures, IĀTŌ-V7 achieves security through **structural invariance**. 
-> Execution is register resident, control-flow invariant, and data independent in timing and instruction trace. Invariant violations are resolved via irreversible hardware gate decisions rather than exceptions or recovery paths, eliminating semantic ambiguity between specification and silicon behavior.
+## **Core Focus Areas:**
 
+
+### Security control formalization (OWASP ASVS)
 ---
-### A POSIX based proof of concept demonstrates that the architecture is realizable on contemporary ARMv9-A platforms without managed runtimes, speculative execution, or adaptive system behavior. 
+### Deterministic, verifiable execution of controls
+---
+### Cloud security compliance automation (Azure)
+---
+### Risk-informed governance and assurance frameworks
+---
+### Detection coverage validation for SOC and IR operations
+---
+### Audit-ready operational evidence generation
 
-> POSIX serves solely as a minimal mediation layer for instantiation, measurement, and auditability, and is not part of the architectural model.
-By collapsing the semantic gap between formal specification, execution semantics, and physical behavior, IĀTŌ-V7 provides a foundation for cryptographic and policy critical systems whose security properties are enforced mechanically rather than inferred.
 
 ---
 
