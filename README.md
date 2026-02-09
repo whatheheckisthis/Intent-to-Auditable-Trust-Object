@@ -163,9 +163,9 @@ Every IATO Trust Object is **mathematically verified and hardware-enforced**:
 
 ---
 
-```text
+## **2. Integrated Architectural Flow** 
 
-## **2. Integrated Architectural Flow**
+```text
 
 [ FORMAL ASSUMPTION ] --> [ ADMISSIBLE SPACE ] --> [ INVARIANT LAW ] --> [ KERNEL GATE ]
       (Hilbert H)            (SVE2 Registers)       (NTT + Lyapunov)      (CSINC X0)
