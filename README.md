@@ -163,6 +163,8 @@ Every IATO Trust Object is **mathematically verified and hardware-enforced**:
 
 ---
 
+```text
+
 ## **2. Integrated Architectural Flow**
 
 [ FORMAL ASSUMPTION ] --> [ ADMISSIBLE SPACE ] --> [ INVARIANT LAW ] --> [ KERNEL GATE ]
@@ -172,7 +174,7 @@ Every IATO Trust Object is **mathematically verified and hardware-enforced**:
                                               |
                                    [ MECHANICAL ENFORCEMENT ]
                                  (Line-rate XDP_PASS / DROP)
-
+```
 
 **Highlights:**
 
