@@ -1,20 +1,19 @@
+### IĀTŌ‑V7 – Deterministic Security Assurance Framework (ASVS-Aligned)
+
+**Purpose:** Transform OWASP ASVS application security controls into deterministic, invariant-driven, verifiable specifications for Azure cloud environments.
+
+**Scope:** Continuous compliance, operational correctness, SOC readiness, and auditable evidence generation.
 
 ---
 
-# IĀTŌ-V7 — ASVS-aligned security assurance framework formalizing OWASP controls as deterministic, verifiable, invariant-driven specifications for Azure cloud environments.
-
-### **IĀTŌ-V7** is an applied security assurance system that transforms OWASP ASVS application security controls into semantic, invariant-driven specifications. It enforces deterministic control execution, enabling continuous compliance verification, operational correctness, and auditable evidence for SOC, risk, and governance teams in Azure environments.
-
-## Core Focus Areas
-
-| Focus Area | Description |
-|-----------|-------------|
-| **Security Control Formalization (OWASP ASVS)** | Translate OWASP ASVS requirements into explicit, testable, and versioned security controls. |
-| **Deterministic & Verifiable Control Execution** | Ensure security controls execute predictably with measurable, repeatable outcomes and cryptographic or policy-based verification. |
-| **Cloud Security Compliance Automation (Azure)** | Automate enforcement and validation of Azure security and compliance baselines using policy-as-code and continuous assessment. |
-| **Risk-Informed Governance & Assurance** | Align governance decisions and assurance activities with threat modeling, business risk, and control effectiveness data. |
-| **Detection Coverage Validation (SOC / IR)** | Continuously validate detection logic, alert fidelity, and response readiness across SOC and Incident Response workflows. |
-| **Audit-Ready Evidence Generation** | Generate tamper-evident, traceable operational evidence to support audits, attestations, and compliance reviews. |
+| Focus Area                                   | Description                                                                             |
+| -------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Security Control Formalization (OWASP ASVS)  | Translate ASVS requirements into **explicit, testable, versioned controls**.            |
+| Deterministic & Verifiable Control Execution | Enforce predictable, **repeatable, cryptographically verifiable outcomes**.             |
+| Cloud Security Compliance Automation (Azure) | Automate enforcement & validation using **policy-as-code and continuous assessment**.   |
+| Risk-Informed Governance & Assurance         | Align governance with **threat modeling, business risk, and control effectiveness**.    |
+| Detection Coverage Validation (SOC / IR)     | Continuously validate detection logic, alert fidelity, and response readiness.          |
+| Audit-Ready Evidence Generation              | Produce **tamper-evident, traceable operational evidence** for audits and attestations. |
 
 
 ---
