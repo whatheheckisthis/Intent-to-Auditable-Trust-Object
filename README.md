@@ -1,8 +1,30 @@
-### IĀTŌ‑V7 – Deterministic Security Assurance Framework (ASVS-Aligned)
+### IĀTŌ‑V7 – Deterministic Security Assurance Framework 
+**ASVS-Aligned Security Assurance Framework for Cloud Applications**
 
-**Purpose:** Transform OWASP ASVS application security controls into deterministic, invariant-driven, verifiable specifications for Azure cloud environments.
+---
 
-**Scope:** Continuous compliance, operational correctness, SOC readiness, and auditable evidence generation.
+
+IĀTŌ‑V7 is an **ASVS-aligned security assurance framework** that formalizes **OWASP application security controls** as **semantic, invariant-driven specifications**. It enforces **deterministic, verifiable control execution**, ensuring **compliance, operational correctness, and audit-ready assurance** across cloud environments.
+
+The framework is designed for **engineering, security, and GRC teams** to implement **repeatable and measurable security controls**, providing:
+
+* **Formalized Control Execution** – Security policies expressed as semantic invariants for precise verification.
+* **Operational Assurance** – Deterministic behavior ensures predictable enforcement in live cloud workloads.
+* **Audit-Ready Evidence** – Automatically captures verifiable outputs suitable for regulatory review, SOC, ISO 27001, and internal assurance programs.
+* **Cloud Alignment** – Fully applicable to multi-tenant, Azure-based, or hybrid cloud deployments.
+
+**Scope & Capabilities:**
+
+| Focus Area                        | Description                                                                                    |
+| --------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Application Security Controls     | ASVS-aligned verification for authentication, access control, session management, and logging. |
+| Deterministic Control Enforcement | Invariant-driven execution ensures predictable, auditable behavior.                            |
+| Evidence & Audit                  | Automated generation of verifiable assurance outputs for GRC and regulatory teams.             |
+| Cloud & Multi-Tenant Environments | Supports high-density deployments with isolation, scaling, and operational correctness.        |
+
+> IĀTŌ‑V7 provides **a bridge between engineering rigor and governance compliance**, translating formal security specifications into actionable, verifiable controls for cloud applications.
+
+
 
 ---
 
