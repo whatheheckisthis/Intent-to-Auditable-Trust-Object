@@ -145,9 +145,6 @@ IATO establishes a **“Trust Ceiling”** via machine-checked certainty, removi
 
 ---
 
-Perfect! I’ll restructure your README section into a **clean, audit-ready, concise format**, keeping all the technical rigor, deterministic enforcement, and register-level mappings, while explicitly referencing **ASVS and SEC530 controls**. I’ll also simplify diagrams and tables for readability.
-
----
 
 # **IATO – Integrated AI Trust Object Architecture**
 
