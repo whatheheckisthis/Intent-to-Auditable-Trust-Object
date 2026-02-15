@@ -1,22 +1,21 @@
-# Utility Scripts
+# `scripts/tools` utilities
 
-This directory contains standalone scripts designed to support project maintenance, diagnostics, and release workflows. Each script is self-contained and intended for manual use or integration with CI/CD systems.
+Standalone maintenance and diagnostics utilities used during development.
 
-## Available Scripts
+## Common scripts
 
-| Script | Purpose |
-|--------|---------|
-| `cleanup_logs.sh` | Archive logs older than 7 days and delete stale archives |
-| `tag_release.sh` | Create annotated Git tags and optionally push to remote |
-| `generate_report.py` | Summarize recent Git activity, logs, and file sizes |
-| `run_diagnostics.sh` | Check system setup: Python, Conda, memory, internet |
-| `build_package.sh` | Clean and build Python packages using `pyproject.toml` |
-| `check_licenses.sh` | Audit Python package licenses using `pip-licenses` |
-| `clean_workspace.sh` | Remove Python cache, build artifacts, and temp files |
+- `cleanup_logs.sh` — rotates/removes old logs.
+- `tag_release.sh` / `tag_release2.sh` — tag helpers.
+- `generate_report.py` — project activity/report helper.
+- `run_diagnostics.sh` — local system checks.
+- `build_package.sh` — package build helper.
+- `check_licenses.sh` — dependency license checks.
+- `clean_workspace.sh` — clears temporary/build artifacts.
 
 ## Usage
 
-Run any script from the root of the repository:
+Run from repository root:
 
 ```bash
-bash scripts/<script_name>.sh
+bash scripts/tools/<script_name>.sh
+```
