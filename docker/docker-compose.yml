@@ -1,3 +1,0 @@
-volumes:
-  - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-  - ./nginx/ssl:/etc/ssl:ro
