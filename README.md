@@ -132,7 +132,9 @@ Interpretation: **High** = explicit mandatory controls in onboarding tiers; **Me
 - `docs/` — supporting documentation.
 - `docker/` — local container and observability stack assets.
 - `ci/` — CI checks and environment validation scripts.
-- `bin/` — archived/legacy helper files.
+- `scripts/cli/architecture/` — canonical architecture-level CLI checks and bootstrap scripts.
+- `changelog/scripts/` — changelog generation, parsing, and analysis scripts.
+- `bin/` — archived/legacy helper files and compatibility shims.
 
 ---
 

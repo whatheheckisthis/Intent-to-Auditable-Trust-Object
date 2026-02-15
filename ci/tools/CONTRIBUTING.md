@@ -1,31 +1,23 @@
+### CI Tooling Architecture
 
+CI validation is now organized around canonical scripts in:
 
-### Conda Environment Setup
+- `scripts/cli/architecture/`
 
-The project uses GitHub Actions for CI with Conda environments managed via `setup-miniconda@v3`.
+The `ci/tools/` scripts are maintained as compatibility entry points and wrappers.
 
-- `miniforge-variant` is set to `Miniforge3`
-- `miniforge-version` is pinned (e.g., `23.3.1-0`) for reproducibility
-- Dependencies are defined in `environment.yml`
+| Entry Point | Canonical Script | Purpose |
+|--------|-------------|---|
+| `ci/tools/verify_environment.sh` | `scripts/cli/architecture/verify_environment.sh` | Validates system dependencies and Conda availability |
+| `ci/tools/verify_imports.py` | `scripts/cli/architecture/verify_imports.py` | Verifies critical Python imports |
+| `ci/tools/lint.sh` | `scripts/cli/architecture/lint.sh` | Runs `flake8` lint checks |
+| `ci/tools/bootstrap_env.sh` | `scripts/cli/architecture/bootstrap_env.sh` | Installs baseline Python packages in `testenv` |
+| `ci/tools/run_all_checks.sh` | `scripts/cli/architecture/run_all_checks.sh` | Aggregates environment + import + lint checks |
 
-### Validation Scripts in `ci/`
+### Changelog Scripts
 
-The `ci/` directory contains standalone scripts to verify the environment and enforce quality checks:
+Changelog utilities are now centralized in:
 
-| Script | Description |
-|--------|-------------|
-| `verify_environment.sh` | Ensures required CLI tools are installed (`openssl`, `git`, `pandoc`, `python3`), checks Conda installation and environment activation |
-| `verify_imports.py` | Checks that critical Python packages (`numpy`, `flake8`, `pytest`) can be successfully imported |
-| `lint.sh` | Runs `flake8` to enforce Python style and detect syntax issues |
-| `run_all_checks.sh` | Orchestrates all checks above in a single CI step |
-| `init_environment.sh` | (Legacy) Early environment setup script, now replaced by the newer modular approach |
+- `changelog/scripts/`
 
-### CI Workflow Integration
-
-These checks are integrated into GitHub Actions using the following step:
-
-```yaml
-- name: CI environment check
-  shell: bash -l {0}
-  run: |
-    bash ci/run_all_checks.sh
+Legacy files under `bin/` now forward to this location for compatibility.
