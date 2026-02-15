@@ -1,11 +1,6 @@
-# ci/import_check.py
+#!/usr/bin/env python3
+from pathlib import Path
+import runpy
 
-try:
-    import numpy
-    import flake8
-    import pytest
-except ImportError as e:
-    print(f"❌ Import failed: {e}")
-    exit(1)
-
-print("✅ All critical packages imported successfully.")
+repo_root = Path(__file__).resolve().parents[2]
+runpy.run_path(repo_root / "scripts/cli/architecture/verify_imports.py", run_name="__main__")

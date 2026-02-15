@@ -1,6 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "Activating testenv and installing required Python packages..."
-conda activate testenv
-conda install numpy flake8 pytest -c conda-forge -y
-echo "✅ Environment is now fully equipped."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+bash "$REPO_ROOT/scripts/cli/architecture/bootstrap_env.sh"

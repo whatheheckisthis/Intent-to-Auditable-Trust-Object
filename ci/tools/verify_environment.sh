@@ -1,8 +1,7 @@
-#!/bin/bash
-# CI environment verification script
+#!/usr/bin/env bash
+set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-- name: Verify CI environment setup and imports
-  shell: bash -l {0}
-  run: |
-    bash ci/verify_environment.sh
+bash "$REPO_ROOT/scripts/cli/architecture/verify_environment.sh"
