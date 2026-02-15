@@ -1,36 +1,22 @@
 services:
-  drupal:
+  nginx:
     build:
       context: .
-      dockerfile: docker/drupal/Dockerfile
-    image: iato/drupal-s3:local
-    container_name: iato-drupal
+      dockerfile: docker/nginx/Dockerfile
+    image: iato/nginx-edge:local
+    container_name: iato-nginx
     restart: unless-stopped
-    expose:
-      - "80"
-    environment:
-      # Use an external database endpoint; this compose file intentionally does not run MySQL.
-      DRUPAL_DB_HOST: ${DRUPAL_DB_HOST:-mysql.example.internal}
-      DRUPAL_DB_NAME: ${DRUPAL_DB_NAME:-drupal}
-      DRUPAL_DB_USER: ${DRUPAL_DB_USER:-drupal}
-      DRUPAL_DB_PASSWORD: ${DRUPAL_DB_PASSWORD:-change-me}
-      AWS_REGION: ${AWS_REGION:-us-east-1}
-      S3_BUCKET: ${S3_BUCKET:-drupal-files}
-      S3_PREFIX: ${S3_PREFIX:-sites/default/files}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
-    cap_add:
-      - SYS_ADMIN
-    devices:
-      - /dev/fuse:/dev/fuse
-    security_opt:
-      - apparmor:unconfined
+    ports:
+      - "${NGINX_PORT:-8080}:80"
+    depends_on:
+      apache:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost/"]
+      test: ["CMD", "wget", "-qO-", "http://localhost/healthz"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 10s
     networks:
       - web
 
@@ -55,26 +41,68 @@ services:
     networks:
       - web
 
-  nginx:
+  drupal:
     build:
       context: .
-      dockerfile: docker/nginx/Dockerfile
-    image: iato/nginx-edge:local
-    container_name: iato-nginx
+      dockerfile: docker/drupal/Dockerfile
+    image: iato/drupal-s3:local
+    container_name: iato-drupal
     restart: unless-stopped
-    ports:
-      - "8080:80"
+    expose:
+      - "80"
     depends_on:
-      apache:
+      db:
         condition: service_healthy
+    environment:
+      DRUPAL_DB_HOST: ${DRUPAL_DB_HOST:-db}
+      DRUPAL_DB_NAME: ${DRUPAL_DB_NAME:-drupal}
+      DRUPAL_DB_USER: ${DRUPAL_DB_USER:-drupal}
+      DRUPAL_DB_PASSWORD: ${DRUPAL_DB_PASSWORD:-drupal-pass}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_PREFIX: ${S3_PREFIX:-sites/default/files}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+    volumes:
+      - drupal_files:/var/www/html/sites/default/files
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse:/dev/fuse
+    security_opt:
+      - apparmor:unconfined
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/healthz"]
+      test: ["CMD", "curl", "-fsS", "http://localhost/"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 10s
+      start_period: 30s
     networks:
       - web
+
+  db:
+    image: mariadb:11
+    container_name: iato-db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DRUPAL_DB_NAME:-drupal}
+      MARIADB_USER: ${DRUPAL_DB_USER:-drupal}
+      MARIADB_PASSWORD: ${DRUPAL_DB_PASSWORD:-drupal-pass}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-root-pass}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - web
+
+volumes:
+  drupal_files:
+  db_data:
 
 networks:
   web:

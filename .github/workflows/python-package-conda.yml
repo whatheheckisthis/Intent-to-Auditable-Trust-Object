@@ -1,53 +1,60 @@
-name: Python Package using Conda
+name: Docker Compose Stack + Elastic Beanstalk Bundle
 
-on: [push]
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+concurrency:
+  group: compose-eb-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build-linux:
+  compose-architecture:
+    name: Validate nginx/apache/drupal/db compose architecture
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set up Miniconda
-        uses: conda-incubator/setup-miniconda@v3
+      - name: Generate runtime .env for CI
+        run: cp .env.example .env
+
+      - name: Validate Docker Compose definition
+        run: docker compose config
+
+      - name: Build and start stack
+        run: docker compose up -d --build
+
+      - name: Verify reverse-proxy health endpoint
+        run: |
+          for i in {1..15}; do
+            if curl -fsS http://localhost:8080/healthz >/dev/null; then
+              echo "nginx /healthz is healthy"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Health check did not become ready in time"
+          docker compose logs --no-color
+          exit 1
+
+      - name: Package Elastic Beanstalk deployment bundle
+        run: |
+          zip -r eb-docker-compose-bundle.zip \
+            docker-compose.yml \
+            .env.example \
+            docker \
+            README.md
+
+      - name: Upload Elastic Beanstalk bundle artifact
+        uses: actions/upload-artifact@v4
         with:
-          miniforge-variant: Miniforge3
-          miniforge-version: latest
-          python-version: 3.10
-          activate-environment: testenv
-          environment-file: environment.yml
-          auto-activate-base: false
+          name: eb-docker-compose-bundle
+          path: eb-docker-compose-bundle.zip
 
-      - name: Verify Conda Environment
-        shell: bash -l {0}
-        run: |
-          echo "[conda info]"
-          conda info
-          echo "[conda list]"
-          conda list
-          echo "[which python]"
-          which python
-          echo "[python version]"
-          python --version
-
-      - name: Optional: Import check for critical packages
-        shell: bash -l {0}
-        run: |
-          python -c "import numpy"  # replace or expand with actual dependencies
-
-      - name: Install flake8 and pytest
-        shell: bash -l {0}
-        run: |
-          conda install flake8 pytest
-
-      - name: Lint with flake8
-        shell: bash -l {0}
-        run: |
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
-      - name: Test with pytest
-        shell: bash -l {0}
-        run: |
-          pytest
+      - name: Shutdown stack
+        if: always()
+        run: docker compose down -v
