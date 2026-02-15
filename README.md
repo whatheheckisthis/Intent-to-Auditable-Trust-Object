@@ -1,10 +1,9 @@
 # Intent-to-Auditable-Trust-Object (IATO)
 
-IATO is an SRE-oriented security assurance framework that turns operational intent into auditable trust evidence. It is designed to be deterministic, maintainable, and control-mappable for regulated environments.
 
 ---
 
-## 1) Purpose and Audience
+## 1) Purpose-Audience
 
 This README is structured for:
 - **SRE teams** operating reliability and incident response workflows.
@@ -15,7 +14,7 @@ Outcome: a clear eligibility structure, operating model, and control mapping to 
 
 ---
 
-## 2) Eligibility Structure (What must exist before onboarding)
+## 2) Eligibility-Structure 
 
 A system or service is eligible for IATO onboarding only when all P0 requirements are met.
 
@@ -27,7 +26,7 @@ A system or service is eligible for IATO onboarding only when all P0 requirement
 | **P1 - Assured** | Adds measurable reliability and security posture. | SLO/SLI definitions, alert routing, key rotation records, vulnerability remediation SLA, immutable audit logs. | SOC 2 **CC6.6**, **CC7.1**, **CC7.3**; ASVS **V2**, **V9**, **V14**; Essential Eight **Privileged Access**, **Application Control** |
 | **P2 - Continuous Audit** | Continuous evidence generation and governance. | Automated evidence export, quarterly access recertification, control exception workflow, control effectiveness review. | SOC 2 **CC3.2**, **CC4.1**, **CC8.1**; ASVS **V1.14**, **V13**; Essential Eight **User Application Hardening**, **Restrict Admin Privileges** |
 
-### 2.2 Entry and exit criteria
+### 2.2 Entry-exit-criteria
 
 | Stage | Entry Criteria | Exit Criteria | Evidence Output |
 |---|---|---|---|
@@ -38,9 +37,9 @@ A system or service is eligible for IATO onboarding only when all P0 requirement
 
 ---
 
-## 3) SRE Operating Model
+## 3) SRE-Operating-Model
 
-### 3.1 Reliability + security workflow graph
+### 3.1 Reliability + security-workflow
 
 ```mermaid
 flowchart LR
@@ -54,7 +53,7 @@ flowchart LR
     H --> I[Audit-ready Trust Object]
 ```
 
-### 3.2 Control loop responsibilities
+### 3.2 Control-loop-responsibilities
 
 | Function | SRE | Security | Platform | GRC |
 |---|---|---|---|---|
@@ -68,11 +67,11 @@ flowchart LR
 
 ---
 
-## 4) Control Mapping Matrix (SOC 2 + ASVS + Essential Eight)
+## 4) Control-Mapping (SOC 2 + ASVS + Essential Eight)
 
 ### 4.1 Technical control mapping table
 
-| IATO Control Domain | Implementation Expectation | SOC 2 Inline Ref | ASVS Inline Ref | Essential Eight Inline Ref | Primary Evidence |
+| IATO Control Domain | Implementation Expectation | SOC 2 Ref | ASVS Ref | Essential Eight Ref | Primary Evidence |
 |---|---|---|---|---|---|
 | **Identity & Access Management** | RBAC, least privilege, JML lifecycle, MFA, break-glass auditing | [SOC2:CC6.1], [SOC2:CC6.2], [SOC2:CC6.3] | [ASVS:V2], [ASVS:V3] | [E8:MFA], [E8:RestrictAdmin] | Access reviews, auth logs, privilege change tickets |
 | **Secure Configuration & Hardening** | Baseline hardened images, configuration drift checks, change approvals | [SOC2:CC5.2], [SOC2:CC8.1] | [ASVS:V1], [ASVS:V14] | [E8:AppControl], [E8:UserAppHardening] | Golden image digests, config scan reports |
