@@ -1,7 +1,11 @@
 # Intent-to-Auditable-Trust-Object (IATO)
 
 
----
+
+
+
+
+
 
 ## 1) Purpose-Audience
 
