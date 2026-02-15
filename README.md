@@ -138,15 +138,27 @@ Interpretation: **High** = explicit mandatory controls in onboarding tiers; **Me
 
 ## 7) Deployment and Local Validation
 
-### 7.1 Environment setup
-1. `conda env create -f environment.yml`
-2. `conda activate testenv`
-3. `bash ci/tools/run_all_checks.sh`
+### 7.1 Local stack setup (`nginx -> apache -> drupal -> mariadb`)
+1. Copy environment defaults:
+   - `cp .env.example .env`
+2. Start the stack:
+   - `docker compose up -d --build`
+3. Check health:
+   - `curl -fsS http://localhost:8080/healthz`
+4. Stop and remove resources:
+   - `docker compose down -v`
 
 ### 7.2 Optional observability stack
 ```bash
 docker compose -f docker/compose/php-observability-stack.yml up --build
 ```
+
+### 7.3 Elastic Beanstalk deployment workflow
+1. Install and configure EB CLI (`pip install awsebcli`, `aws configure`).
+2. Initialize the app: `eb init`.
+3. Create/update environment: `eb create` or `eb deploy`.
+
+`eb deploy` packages the repository (including `docker-compose.yml`) and uploads the bundle to S3 before deployment.
 
 ---
 
@@ -160,25 +172,30 @@ docker compose -f docker/compose/php-observability-stack.yml up --build
 
 ---
 
-## 9) Drupal reverse-proxy stack (Nginx + Apache + Drupal)
+## 9) Drupal reverse-proxy stack (Nginx + Apache + Drupal + MariaDB)
 
-This repository now includes a 3-container web stack:
+This repository now includes a 4-service web stack:
 
 - `nginx` (edge entrypoint)
 - `apache` (internal reverse proxy)
 - `drupal` (Drupal runtime)
+- `db` (MariaDB persistence)
 
-`docker-compose.yml` intentionally **does not** run MySQL. Configure `DRUPAL_DB_*` values to point at an external database service.
+`docker-compose.yml` runs four services: `nginx`, `apache`, `drupal`, and `db` (MariaDB).
+
+- Request flow: `client -> nginx:80 -> apache:8080 -> drupal:80`
+- Data persistence:
+  - `db_data` named volume for MariaDB data
+  - `drupal_files` named volume for `sites/default/files` when S3 is not configured
 
 ### 9.1 Run the stack
 
 ```bash
-docker compose up --build
+cp .env.example .env
+docker compose up -d --build
 ```
 
-Traffic flow:
-
-`client -> nginx:80 -> apache:8080 -> drupal:80`
+Open Drupal at `http://localhost:8080`.
 
 ### 9.2 S3-backed Drupal uploads (`sites/default/files`)
 
