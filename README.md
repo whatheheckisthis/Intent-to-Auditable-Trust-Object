@@ -157,3 +157,49 @@ docker compose -f docker/compose/php-observability-stack.yml up --build
 - **Essential Eight** references use `E8:<control>` (e.g., `E8:MFA`).
 
 > Note: Final control interpretation remains organization-specific and should be validated by internal compliance/legal stakeholders.
+
+---
+
+## 9) Drupal reverse-proxy stack (Nginx + Apache + Drupal)
+
+This repository now includes a 3-container web stack:
+
+- `nginx` (edge entrypoint)
+- `apache` (internal reverse proxy)
+- `drupal` (Drupal runtime)
+
+`docker-compose.yml` intentionally **does not** run MySQL. Configure `DRUPAL_DB_*` values to point at an external database service.
+
+### 9.1 Run the stack
+
+```bash
+docker compose up --build
+```
+
+Traffic flow:
+
+`client -> nginx:80 -> apache:8080 -> drupal:80`
+
+### 9.2 S3-backed Drupal uploads (`sites/default/files`)
+
+The Drupal image mounts S3 with `s3fs` and maps only:
+
+- `/var/www/html/sites/default/files`
+
+to S3. This keeps Drupal core files and database storage off S3.
+
+Required environment variables:
+
+- `S3_BUCKET`
+- `AWS_REGION`
+- Optional `S3_PREFIX` (defaults to `sites/default/files`)
+- Either AWS access keys (`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`) or IAM role credentials
+
+### 9.3 Conda lock from `pyproject.toml`
+
+Dependency definitions live in `pyproject.toml` with `tool.conda-lock` settings.
+
+```bash
+conda-lock lock --file pyproject.toml
+conda-lock install --name iato-dev conda-lock.yml
+```
