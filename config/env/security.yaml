@@ -1,9 +1,0 @@
-encryption:
-  algorithm: aes-256-cbc
-  salt: true
-  iterations: 100000
-  key_length: 32
-
-api_keys:
-  path: keys/
-  default_passphrase: change_this

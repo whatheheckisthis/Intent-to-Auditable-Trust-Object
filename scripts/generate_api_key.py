@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 import getpass
 
-KEY_DIR = Path("config/keys")
+KEY_DIR = Path("scripts/keys")
 KEY_DIR.mkdir(parents=True, exist_ok=True)
 
 def generate_key(filename: str):
