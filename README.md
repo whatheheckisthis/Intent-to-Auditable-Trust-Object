@@ -126,7 +126,7 @@ Interpretation: **High** = explicit mandatory controls in onboarding tiers; **Me
 
 ## 6) Repository Layout
 
-- `config/` — environment defaults, runtime/security settings, setup helpers.
+- `scripts/tools/` — maintained operational helpers for diagnostics, cleanup, release tasks, and reporting.
 - `scripts/` — orchestration and research scripts.
 - `tests/` — validation code, schemas, and sample evidence.
 - `docs/` — supporting documentation.
