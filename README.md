@@ -1,198 +1,156 @@
 # Intent-to-Auditable-Trust-Object (IATO)
 
-IATO is a deterministic security assurance project designed to transform intent into auditable trust evidence through repeatable controls, telemetry, and policy-driven workflows.
-
-## Multi-Step Security Architecture
-
-### Step 1: Define control intent and trust boundaries
-- Identify business-critical systems, data classifications, and trust zones.
-- Map control objectives to:
-  - **Essential Eight** maturity practices (hardening, patching, privilege restriction, MFA, backups).
-  - **SOC 2** trust service criteria (Security, Availability, Processing Integrity, Confidentiality, Privacy).
-- Create system boundaries for applications, supporting services, and third-party integrations.
-
-### Step 2: Establish IAM governance as a first-class control plane
-- Implement role-based access control (RBAC) and least privilege for users, services, and automation identities.
-- Enforce lifecycle controls:
-  - Joiner/Mover/Leaver provisioning and deprovisioning.
-  - Credential rotation and secrets handling.
-  - Break-glass access with approval and immutable audit trail.
-- Require strong authentication (MFA where applicable) and policy-backed authorization.
-
-### Step 3: Build telemetry foundations (logs, metrics, traces)
-- Standardize structured logging at application, infrastructure, and security layers.
-- Expose service and platform metrics for availability, latency, error rate, and saturation.
-- Instrument distributed traces for request-path visibility across dependencies.
-- Protect telemetry integrity with retention, access controls, and tamper-evident storage where required.
-
-### Step 4: Implement monitoring (reactive)
-**Monitoring answers: _"What is failing?"_**
-- Define predefined, threshold-based metrics and SLO/SLI alerts (for example CPU, memory, 5xx rate, queue lag, cert expiry).
-- Route alerts to on-call workflows with severity, ownership, and escalation policy.
-- Use runbooks for deterministic triage and incident response.
-
-### Step 5: Implement observability (proactive + investigative)
-**Observability answers: _"Why is it failing?"_**
-- Correlate logs, metrics, and traces to identify causal paths and hidden system interactions.
-- Support exploratory investigation beyond predefined dashboards.
-- Use high-cardinality dimensions and trace context to isolate blast radius and root cause quickly.
-
-### Step 6: Close the assurance loop with evidence and audits
-- Continuously map telemetry and control outputs to Essential Eight and SOC 2 control evidence.
-- Capture:
-  - Control execution logs.
-  - IAM decision records.
-  - Incident timelines and corrective actions.
-- Produce auditable trust artifacts from reproducible pipelines.
+IATO is an SRE-oriented security assurance framework that turns operational intent into auditable trust evidence. It is designed to be deterministic, maintainable, and control-mappable for regulated environments.
 
 ---
 
-## Repository Layout
+## 1) Purpose and Audience
 
-- `config/` — environment defaults, runtime/security settings, and setup helpers.
-- `scripts/` — core research and orchestration scripts.
-- `tests/` — validation code, schemas, and sample data.
-- `docs/` — project documentation and notes.
+This README is structured for:
+- **SRE teams** operating reliability and incident response workflows.
+- **Security and GRC teams** mapping implementation evidence to compliance controls.
+- **Platform teams** building repeatable, policy-driven pipelines.
+
+Outcome: a clear eligibility structure, operating model, and control mapping to **SOC 2**, **OWASP ASVS**, and **Essential Eight**.
+
+---
+
+## 2) Eligibility Structure (What must exist before onboarding)
+
+A system or service is eligible for IATO onboarding only when all P0 requirements are met.
+
+### 2.1 Eligibility tiers
+
+| Tier | Description | Mandatory Artifacts | Control References |
+|---|---|---|---|
+| **P0 - Foundational** | Minimum bar for production onboarding. | Service inventory, owner, data classification, runbook, logs/metrics/traces, IAM roles, backup policy. | SOC 2 **CC1.2**, **CC6.1**, **CC7.2**; ASVS **V1**, **V7**, **V10**; Essential Eight **Patch**, **MFA**, **Backups** |
+| **P1 - Assured** | Adds measurable reliability and security posture. | SLO/SLI definitions, alert routing, key rotation records, vulnerability remediation SLA, immutable audit logs. | SOC 2 **CC6.6**, **CC7.1**, **CC7.3**; ASVS **V2**, **V9**, **V14**; Essential Eight **Privileged Access**, **Application Control** |
+| **P2 - Continuous Audit** | Continuous evidence generation and governance. | Automated evidence export, quarterly access recertification, control exception workflow, control effectiveness review. | SOC 2 **CC3.2**, **CC4.1**, **CC8.1**; ASVS **V1.14**, **V13**; Essential Eight **User Application Hardening**, **Restrict Admin Privileges** |
+
+### 2.2 Entry and exit criteria
+
+| Stage | Entry Criteria | Exit Criteria | Evidence Output |
+|---|---|---|---|
+| **Intake** | Service owner assigned, criticality rated, trust boundary documented. | Control owner approved and service registered in inventory. | Service profile + boundary record |
+| **Implementation** | P0 artifacts complete. | Telemetry and IAM controls validated by CI checks. | Control test logs + validation report |
+| **Operationalization** | Alerting and runbooks active. | Two successful incident simulations completed. | Incident timeline + corrective actions |
+| **Audit-ready** | Evidence pipeline enabled. | Control-to-evidence map exported and signed-off. | Audit packet + change history |
+
+---
+
+## 3) SRE Operating Model
+
+### 3.1 Reliability + security workflow graph
+
+```mermaid
+flowchart LR
+    A[Define Service Intent] --> B[Set SLO/SLI + Risk Class]
+    B --> C[Implement Controls + Telemetry]
+    C --> D[Detect via Monitoring]
+    D --> E[Investigate via Observability]
+    E --> F[Respond + Recover]
+    F --> G[Collect Immutable Evidence]
+    G --> H[Map Evidence to Controls]
+    H --> I[Audit-ready Trust Object]
+```
+
+### 3.2 Control loop responsibilities
+
+| Function | SRE | Security | Platform | GRC |
+|---|---|---|---|---|
+| Service reliability objectives | **A/R** | C | C | I |
+| IAM and secrets controls | C | **A/R** | R | I |
+| Telemetry instrumentation | **A/R** | C | R | I |
+| Incident response execution | **A/R** | R | C | I |
+| Compliance evidence mapping | C | R | C | **A/R** |
+
+(A = Accountable, R = Responsible, C = Consulted, I = Informed)
+
+---
+
+## 4) Control Mapping Matrix (SOC 2 + ASVS + Essential Eight)
+
+### 4.1 Technical control mapping table
+
+| IATO Control Domain | Implementation Expectation | SOC 2 Inline Ref | ASVS Inline Ref | Essential Eight Inline Ref | Primary Evidence |
+|---|---|---|---|---|---|
+| **Identity & Access Management** | RBAC, least privilege, JML lifecycle, MFA, break-glass auditing | [SOC2:CC6.1], [SOC2:CC6.2], [SOC2:CC6.3] | [ASVS:V2], [ASVS:V3] | [E8:MFA], [E8:RestrictAdmin] | Access reviews, auth logs, privilege change tickets |
+| **Secure Configuration & Hardening** | Baseline hardened images, configuration drift checks, change approvals | [SOC2:CC5.2], [SOC2:CC8.1] | [ASVS:V1], [ASVS:V14] | [E8:AppControl], [E8:UserAppHardening] | Golden image digests, config scan reports |
+| **Vulnerability & Patch Management** | Risk-ranked remediation SLAs and emergency patch path | [SOC2:CC7.1], [SOC2:CC7.2] | [ASVS:V1.2], [ASVS:V14.2] | [E8:PatchApps], [E8:PatchOS] | CVE backlog age, patch deployment logs |
+| **Observability & Detection** | Unified logs/metrics/traces, alert thresholds, anomaly detection | [SOC2:CC7.2], [SOC2:CC7.3] | [ASVS:V7], [ASVS:V10] | [E8:Monitoring] | Alert histories, traces, SIEM exports |
+| **Incident Response & Recovery** | Severity matrix, runbooks, recovery tests, postmortems | [SOC2:CC7.4], [SOC2:CC7.5] | [ASVS:V1.14], [ASVS:V10.3] | [E8:Backups] | Incident timeline, RTO/RPO tests, PIR records |
+| **Auditability & Evidence Integrity** | Tamper-evident logs, retention policy, signed evidence bundles | [SOC2:CC3.2], [SOC2:CC4.1] | [ASVS:V1.1], [ASVS:V13] | [E8:Governance] | Hash manifests, retention policies, audit packets |
+
+### 4.2 Coverage graph (table view)
+
+| Domain \ Framework | SOC 2 | ASVS | Essential Eight |
+|---|---:|---:|---:|
+| IAM | High | High | High |
+| Hardening | Medium | High | High |
+| Patch/Vulnerability | High | Medium | High |
+| Observability/Detection | High | Medium | Medium |
+| Incident/Recovery | High | Medium | High |
+| Evidence/Governance | High | Medium | Medium |
+
+Interpretation: **High** = explicit mandatory controls in onboarding tiers; **Medium** = required but may be risk-adjusted by service criticality.
+
+---
+
+## 5) Evidence Model (Maintainable by default)
+
+### 5.1 Evidence design principles
+- Keep evidence generation **automated** and attached to delivery pipelines.
+- Store evidence with immutable timestamps and hash integrity metadata.
+- Use a single control identifier format across teams (`CTRL-<DOMAIN>-<ID>`).
+- Link every exception to an owner, expiry date, and compensating control.
+
+### 5.2 Evidence record schema (minimal)
+
+| Field | Required | Example |
+|---|---|---|
+| `control_id` | Yes | `CTRL-IAM-006` |
+| `service` | Yes | `payments-api` |
+| `environment` | Yes | `prod` |
+| `timestamp_utc` | Yes | `2026-02-15T02:30:00Z` |
+| `source` | Yes | `ci/tools/run_all_checks.sh` |
+| `artifact_uri` | Yes | `s3://audit-bucket/evidence/...` |
+| `hash_sha256` | Yes | `<digest>` |
+| `mapped_controls` | Yes | `SOC2:CC6.1, ASVS:V2, E8:MFA` |
+| `approver` | Conditional | `security-oncall` |
+| `exception_id` | Conditional | `EXC-2026-0042` |
+
+---
+
+## 6) Repository Layout
+
+- `config/` — environment defaults, runtime/security settings, setup helpers.
+- `scripts/` — orchestration and research scripts.
+- `tests/` — validation code, schemas, and sample evidence.
+- `docs/` — supporting documentation.
 - `docker/` — local container and observability stack assets.
 - `ci/` — CI checks and environment validation scripts.
-- `bin/` — archived/legacy helper files not used in the primary workflow.
+- `bin/` — archived/legacy helper files.
 
-## Docker Images and Dev Environment Dependencies
+---
 
-The repository includes container assets for local execution and observability testing. For a PHP-based web control plane that supports both Apache and NGINX reverse proxy patterns, use the following baseline dependencies.
+## 7) Deployment and Local Validation
 
-### PHP + Apache base image (application runtime)
+### 7.1 Environment setup
+1. `conda env create -f environment.yml`
+2. `conda activate testenv`
+3. `bash ci/tools/run_all_checks.sh`
 
-```dockerfile
-FROM php:8.2-apache
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    git \
-    unzip \
-    libzip-dev \
-    libicu-dev \
-    libonig-dev \
-    libxml2-dev \
-    && docker-php-ext-install pdo pdo_mysql intl zip \
-    && a2enmod rewrite headers ssl status \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /var/www/html
-COPY . /var/www/html
-```
-
-### NGINX sidecar/reverse proxy dependency
-- `nginx:alpine` for request routing and static content acceleration in local development.
-- Bind-mounted configuration from `docker/nginx/php-observability.nginx.conf` for PHP upstream routing.
-- Route upstream traffic to the PHP/Apache service.
-
-### Real workload compose example (`docker/compose/php-observability-stack.yml`)
-
-```yaml
-version: "3.9"
-
-networks:
-  iato-net:
-    driver: bridge
-
-volumes:
-  redis-data:
-  prometheus-data:
-  grafana-data:
-
-services:
-  php-apache:
-    build:
-      context: ../..
-      dockerfile: docker/php-apache.Dockerfile
-    container_name: iato-php-apache
-    environment:
-      APP_ENV: dev
-      APP_DEBUG: "true"
-      REDIS_HOST: redis
-    volumes:
-      - ../../:/var/www/html
-      - ../../docker/src/99-local.ini:/usr/local/etc/php/conf.d/99-local.ini:ro
-      - ../../docker/src/status.conf:/etc/apache2/conf-enabled/status.conf:ro
-    expose:
-      - "80"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/server-status?auto"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    networks:
-      - iato-net
-
-  nginx:
-    image: nginx:alpine
-    container_name: iato-nginx
-    depends_on:
-      php-apache:
-        condition: service_healthy
-    ports:
-      - "8080:80"
-    volumes:
-      - ../../docker/nginx/php-observability.nginx.conf:/etc/nginx/nginx.conf:ro
-      - ../../docker/nginx/ssl:/etc/nginx/ssl:ro
-    networks:
-      - iato-net
-
-  redis:
-    image: redis:7-alpine
-    container_name: iato-redis
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis-data:/data
-    networks:
-      - iato-net
-
-  prometheus:
-    image: prom/prometheus:v2.54.1
-    container_name: iato-prometheus
-    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus"]
-    ports:
-      - "9090:9090"
-    volumes:
-      - ../../docker/rules/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus-data:/prometheus
-    networks:
-      - iato-net
-
-  grafana:
-    image: grafana/grafana:11.1.4
-    container_name: iato-grafana
-    depends_on:
-      - prometheus
-    ports:
-      - "3000:3000"
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
-    volumes:
-      - grafana-data:/var/lib/grafana
-    networks:
-      - iato-net
-```
-
-Run it with:
-
+### 7.2 Optional observability stack
 ```bash
 docker compose -f docker/compose/php-observability-stack.yml up --build
 ```
 
-## Getting Started
+---
 
-1. Create the Python environment:
-   - `conda env create -f environment.yml`
-2. Activate it:
-   - `conda activate testenv`
-3. Run repository checks:
-   - `bash ci/tools/run_all_checks.sh`
-4. (Optional) Start container stack:
-   - `docker compose -f docker/compose/docker-compose.yml up --build`
+## 8) Control Reference Legend
 
-## Scope Note
+- **SOC 2** references use `SOC2:<criterion>` (e.g., `SOC2:CC6.1`).
+- **ASVS** references use `ASVS:<section>` (e.g., `ASVS:V2`).
+- **Essential Eight** references use `E8:<control>` (e.g., `E8:MFA`).
 
-This repository includes both active workflows and historical artifacts. Prioritize `config/`, `scripts/`, `tests/`, `docs/`, `docker/`, and `ci/tools/` for current implementation paths.
+> Note: Final control interpretation remains organization-specific and should be validated by internal compliance/legal stakeholders.
