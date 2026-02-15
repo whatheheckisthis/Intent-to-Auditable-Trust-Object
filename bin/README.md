@@ -1,13 +1,9 @@
-# Archived and Legacy Files (`bin/`)
+# `bin/` directory purpose
 
-This directory contains deprecated, superseded, or redundant scripts and files that are no longer part of the active workflow but are preserved for historical reference or review.
+This folder stores legacy, archival, or one-off helper files.
 
-## Structure
+## Important
 
-- `bin/legacy/`: Scripts or files replaced by updated versions (e.g., old CI scripts, duplicate import checks)
-- `bin/scratch/` (optional): Temporary or experimental files not yet reviewed or categorized
-
-## Notes
-
-- Files in this folder are not executed or imported during CI or packaging.
-- Consider deleting or refactoring them after full review.
+- Content in `bin/` is **not** the canonical source for active project workflows.
+- Prefer `ci/tools/`, `scripts/`, `config/`, and `docs/` for maintained automation and documentation.
+- Keep files here only when needed for history or manual reference.
