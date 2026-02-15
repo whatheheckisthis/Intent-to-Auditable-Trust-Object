@@ -126,15 +126,13 @@ Interpretation: **High** = explicit mandatory controls in onboarding tiers; **Me
 
 ## 6) Repository Layout
 
-- `scripts/tools/` — maintained operational helpers for diagnostics, cleanup, release tasks, and reporting.
-- `scripts/` — orchestration and research scripts.
-- `tests/` — validation code, schemas, and sample evidence.
-- `docs/` — supporting documentation.
+High-signal directories only:
+
 - `docker/` — local container and observability stack assets.
-- `ci/` — CI checks and environment validation scripts.
-- `scripts/cli/architecture/` — canonical architecture-level CLI checks and bootstrap scripts.
-- `changelog/scripts/` — changelog generation, parsing, and analysis scripts.
-- `bin/` — archived/legacy helper files and compatibility shims.
+- `ci/` — CI checks and environment validation tooling.
+- `infrastructure/` — environment and provisioning assets.
+- `changelog/` — release history and changelog materials.
+- `bin/` — compatibility helper files.
 
 ---
 

@@ -1,9 +1,0 @@
-timestamp,packet_id,validator_id,entropy,prov_hash,signature_meta,metadata,pi_new_prob,T_score,reason
-2025-08-10T06:37:13.589785Z,pkt-000048,v7,0.063598,sha256:3b2690d26d4679d3386e,SIG:placeholder,"{""type"": ""inference"", ""size"": 214}",0.01709956555323603,0.0,signature_mismatch_placeholder
-2025-08-10T06:42:00.594394Z,pkt-000335,v20,0.772574,sha256:fcfdcccdae742669a354,SIG:placeholder,"{""type"": ""inference"", ""size"": 120}",0.001706169452945296,0.003155,signature_mismatch_placeholder
-2025-08-10T06:58:39.609683Z,pkt-001334,v5,0.054321,sha256:000467554b790bab5be6,SIG:placeholder,"{""type"": ""inference"", ""size"": 319}",0.018781032260426885,0.011387,signature_mismatch_placeholder
-2025-08-10T07:03:01.614117Z,pkt-001596,v9,0.621261,sha256:5d4e30a0ac583246c4ce,SIG:placeholder,"{""type"": ""inference"", ""size"": 163}",0.011264701215576482,0.004471,signature_mismatch_placeholder
-2025-08-10T06:53:27.604541Z,pkt-001022,v16,0.763331,sha256:4aa864a48ab1fc1f49cd,SIG:placeholder,"{""type"": ""inference"", ""size"": 206}",0.0047098483444636685,0.013976,signature_mismatch_placeholder
-2025-08-10T07:00:01.611300Z,pkt-001416,v10,0.550226,sha256:1ee7b06a4b5e55b090be,SIG:placeholder,"{""type"": ""inference"", ""size"": 169}",0.0023262132140164987,0.007648,signature_mismatch_placeholder
-2025-08-10T06:50:28.601689Z,pkt-000843,v14,0.974961,sha256:c7e3cb5cab7d29febf04,SIG:placeholder,"{""type"": ""inference"", ""size"": 176}",0.004175921816663815,0.007409,signature_mismatch_placeholder
-2025-08-10T06:50:59.602133Z,pkt-000874,v16,0.489527,sha256:fe89d6adee84f4d737a3,SIG:placeholder,"{""type"": ""inference"", ""size"": 240}",0.005767037979595872,0.009613,signature_mismatch_placeholder
