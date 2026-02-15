@@ -4,6 +4,13 @@
 ---
 
 
+## Repository hygiene update
+
+This repository was restructured to reduce redundant artifacts and keep canonical paths clear:
+- Removed duplicate files that had equivalent content under alternate names/extensions.
+- Normalized a misspelled test folder from `tests/jypter/` to `tests/jupyter/`.
+- Removed empty placeholder files in `bin/` that did not contain executable logic.
+
 IĀTŌ‑V7 is an **ASVS-aligned security assurance framework** that formalizes **OWASP application security controls** as **semantic, invariant-driven specifications**. It enforces **deterministic, verifiable control execution**, ensuring **compliance, operational correctness, and audit-ready assurance** across cloud environments.
 
 The framework is designed for **engineering, security, and GRC teams** to implement **repeatable and measurable security controls**, providing:
