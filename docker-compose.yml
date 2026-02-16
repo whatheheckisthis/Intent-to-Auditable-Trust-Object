@@ -7,10 +7,14 @@ services:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
+    env_file:
+      - .env
     environment:
-      ENCLAVE_ENROLMENT_KEY: ${ENCLAVE_ENROLMENT_KEY}
+      ENCLAVE_ENROLMENT_KEY: ${ENCLAVE_ENROLMENT_KEY:?set in .env}
     volumes:
-      - enclave-config:/etc/enclave/profiles
+      - enclave-profiles:/etc/enclave/profiles
+    networks:
+      - enclave_net
 
   prometheus:
     image: prom/prometheus:v2.53.1
@@ -19,9 +23,11 @@ services:
     network_mode: "service:enclave"
     depends_on:
       - enclave
+      - nginx
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
@@ -33,14 +39,91 @@ services:
     network_mode: "service:enclave"
     depends_on:
       - prometheus
+    env_file:
+      - .env
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: changeme
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set in .env}
+      GF_SERVER_HTTP_PORT: 3000
     volumes:
       - grafana-data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
 
+  db:
+    image: mariadb:11.4
+    container_name: mariadb
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MARIADB_DATABASE: ${DRUPAL_DB_NAME:-drupal}
+      MARIADB_USER: ${DRUPAL_DB_USER:-drupal}
+      MARIADB_PASSWORD: ${DRUPAL_DB_PASSWORD:?set in .env}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?set in .env}
+    command: ["--transaction-isolation=READ-COMMITTED", "--binlog-format=ROW"]
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  drupal:
+    build:
+      context: .
+      dockerfile: docker/drupal/Dockerfile
+    container_name: drupal
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DRUPAL_DB_HOST: db
+      DRUPAL_DB_NAME: ${DRUPAL_DB_NAME:-drupal}
+      DRUPAL_DB_USER: ${DRUPAL_DB_USER:-drupal}
+      DRUPAL_DB_PASSWORD: ${DRUPAL_DB_PASSWORD:?set in .env}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app_net
+
+  apache:
+    build:
+      context: .
+      dockerfile: docker/apache/Dockerfile
+    container_name: apache
+    restart: unless-stopped
+    depends_on:
+      - drupal
+    networks:
+      - app_net
+
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    container_name: nginx
+    restart: unless-stopped
+    depends_on:
+      - apache
+    ports:
+      - "${NGINX_PORT:-8080}:80"
+    networks:
+      - app_net
+      - enclave_net
+
 volumes:
+  mariadb-data:
   prometheus-data:
+  enclave-profiles:
   grafana-data:
-  enclave-config:
+
+networks:
+  app_net:
+    driver: bridge
+    internal: true
+  enclave_net:
+    driver: bridge
