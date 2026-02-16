@@ -34,7 +34,6 @@ platforms = ["linux-64", "osx-64"]
 
 [tool.conda-lock.dependencies]
 python = "3.11"
-pip = "*"
 
 [tool.conda-lock.dependencies.pip]
 iato-ops = {path = ".", editable = true}
