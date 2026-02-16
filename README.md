@@ -32,6 +32,7 @@
   - [9.1 Run the stack](#91-run-the-stack)
   - [9.2 S3-backed Drupal uploads (`sites/default/files`)](#92-s3-backed-drupal-uploads-sitesdefaultfiles)
   - [9.3 Conda lock from `pyproject.toml`](#93-conda-lock-from-pyprojecttoml)
+- [10) Cyber Risk Management Controls Document](#10-cyber-risk-management-controls-document)
 
 ---
 
@@ -248,3 +249,9 @@ Dependency definitions live in `pyproject.toml` with `tool.conda-lock` settings.
 conda-lock lock --file pyproject.toml
 conda-lock install --name iato-dev conda-lock.yml
 ```
+
+## 10) Cyber Risk Management Controls Document
+
+The repository cyber risk management controls document is available at:
+
+- [`docs/cyber-risk-controls.md`](docs/cyber-risk-controls.md)
