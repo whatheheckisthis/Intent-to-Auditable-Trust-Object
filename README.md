@@ -165,6 +165,14 @@ High-signal directories only:
 - `bin/docs/` — archival notes and process documentation.
 - `bin/web-assets/` — static dependency visualization assets.
 
+Pinned root configuration files:
+
+- `.dockerignore` — controls Docker build context size and excludes local cache/artifact files.
+- `.env.example` — baseline environment variables for local Docker stack startup.
+- `Dockerfile` — base PHP-FPM image definition used for repository containerization workflows.
+- `docker-compose.yml` — canonical local multi-service stack (`nginx`, `apache`, `drupal`, `db`).
+- `pyproject.toml` — Python project metadata and conda-lock dependency configuration.
+
 ---
 
 ## 7) Deployment and Local Validation .....
