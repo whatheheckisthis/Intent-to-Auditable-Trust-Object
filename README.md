@@ -7,6 +7,34 @@
 
 
 
+## Table of Contents
+
+- [1) Purpose-Audience](#1-purpose-audience)
+- [2) Eligibility-Structure](#2-eligibility-structure)
+  - [2.1 Eligibility tiers](#21-eligibility-tiers)
+  - [2.2 Entry-exit-criteria](#22-entry-exit-criteria)
+- [3) SRE-Operating-Model](#3-sre-operating-model)
+  - [3.1 Reliability + security-workflow](#31-reliability--security-workflow)
+  - [3.2 Control-loop-responsibilities](#32-control-loop-responsibilities)
+- [4) Control-Mapping (SOC 2 + ASVS + Essential Eight)](#4-control-mapping-soc-2--asvs--essential-eight)
+  - [4.1 Technical control mapping table](#41-technical-control-mapping-table)
+  - [4.2 Coverage graph (table view)](#42-coverage-graph-table-view)
+- [5) Evidence Model (Maintainable by default)](#5-evidence-model-maintainable-by-default)
+  - [5.1 Evidence design principles](#51-evidence-design-principles)
+  - [5.2 Evidence record schema (minimal)](#52-evidence-record-schema-minimal)
+- [6) Repository Layout](#6-repository-layout)
+- [7) Deployment and Local Validation](#7-deployment-and-local-validation)
+  - [7.1 Local stack setup (`nginx -> apache -> drupal -> mariadb`)](#71-local-stack-setup-nginx---apache---drupal---mariadb)
+  - [7.2 Optional observability stack](#72-optional-observability-stack)
+  - [7.3 Elastic Beanstalk deployment workflow](#73-elastic-beanstalk-deployment-workflow)
+- [8) Control Reference Legend](#8-control-reference-legend)
+- [9) Drupal reverse-proxy stack (Nginx + Apache + Drupal + MariaDB)](#9-drupal-reverse-proxy-stack-nginx--apache--drupal--mariadb)
+  - [9.1 Run the stack](#91-run-the-stack)
+  - [9.2 S3-backed Drupal uploads (`sites/default/files`)](#92-s3-backed-drupal-uploads-sitesdefaultfiles)
+  - [9.3 Conda lock from `pyproject.toml`](#93-conda-lock-from-pyprojecttoml)
+
+---
+
 ## 1) Purpose-Audience
 
 This README is structured for:
