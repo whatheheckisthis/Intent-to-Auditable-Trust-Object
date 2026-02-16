@@ -32,6 +32,12 @@ A practical framework for turning operational intent into audit-ready trust evid
     - [9.2 S3-backed Drupal Uploads (`sites/default/files`)](#92-s3-backed-drupal-uploads-sitesdefaultfiles)
     - [9.3 Conda Lock from `pyproject.toml`](#93-conda-lock-from-pyprojecttoml)
   - [10) Cyber Risk Management Controls Document](#10-cyber-risk-management-controls-document)
+  - [11) PCAP TCP Handshake Exporter (C#)](#11-pcap-tcp-handshake-exporter-c)
+  - [12) Enclave-Secured Auditable Trust Object Stack](#12-enclave-secured-auditable-trust-object-stack)
+    - [12.1 Components](#121-components)
+    - [12.2 WSL2 Quick Start](#122-wsl2-quick-start)
+    - [12.3 Verification](#123-verification)
+    - [12.4 Included Configuration Files](#124-included-configuration-files)
 
 ---
 
@@ -351,3 +357,87 @@ dotnet run --project src/PcapHandshakeExporter/PcapHandshakeExporter.csproj -- /
 - `SequenceNumber`
 - `AcknowledgmentNumber`
 - `HandshakeType`
+
+---
+
+## 12) Enclave-Secured Auditable Trust Object Stack
+
+This subsection adds an Enclave-first deployment profile that keeps the application plane private while exposing access through Enclave DNS and virtual addressing.
+
+### 12.1 Components
+
+- `enclave_agent` (`enclavenetworks/enclave:latest`) with:
+  - `cap_add: [NET_ADMIN]`
+  - `devices: [/dev/net/tun]`
+  - `ENCLAVE_ENROLMENT_KEY` loaded from `.env`
+- `node-exporter` sidecar using:
+  - `network_mode: "service:enclave"`
+  - `pid: "host"`
+  - host mounts `/proc -> /host/proc:ro` and `/sys -> /host/sys:ro`
+- `prometheus` and `grafana` sharing the Enclave network namespace (`network_mode: "service:enclave"`).
+- `nginx` Enclave Gateway bound to TLS `443` and routing:
+  - `drupal.enclave` -> `apache:8080`
+  - `grafana.enclave` -> `grafana:3000`
+- `drupal`, `apache`, and `mariadb` isolated on private `app_net`.
+
+### 12.2 WSL2 Quick Start
+
+```bash
+cp .env.example .env
+```
+
+Set in `.env`:
+- `ENCLAVE_ENROLMENT_KEY`
+- `DRUPAL_DB_PASSWORD`
+- `MARIADB_ROOT_PASSWORD`
+- `GRAFANA_ADMIN_PASSWORD`
+
+Create certs for the gateway:
+
+```bash
+mkdir -p certs
+openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
+  -keyout certs/tls.key \
+  -out certs/tls.crt \
+  -subj "/CN=grafana.enclave"
+```
+
+Start:
+
+```bash
+docker compose up -d --build
+```
+
+### 12.3 Verification
+
+1. Enrolment:
+
+```bash
+docker logs enclave_agent
+```
+
+2. Node Exporter and Prometheus reachability from Enclave namespace:
+
+```bash
+docker exec enclave_agent wget -qO- http://localhost:9100/metrics | head
+```
+
+```bash
+docker exec enclave_agent wget -qO- http://localhost:9090/-/ready
+```
+
+3. Browser validation through Enclave DNS:
+
+- `https://grafana.enclave`
+
+4. Trust Object verification in Grafana:
+
+- Confirm pre-provisioned Prometheus datasource at `http://localhost:9090`
+- Open the **Node Exporter Full** dashboard
+- Verify CPU/memory/filesystem/load panels are populated on startup
+
+### 12.4 Included Configuration Files
+
+- `docker-compose.yml`
+- `prometheus.yml`
+- `nginx.conf`
