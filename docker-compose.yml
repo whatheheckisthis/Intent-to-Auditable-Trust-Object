@@ -1,7 +1,7 @@
 services:
   enclave:
     image: enclavenetworks/enclave:latest
-    container_name: enclave
+    container_name: enclave_agent
     restart: unless-stopped
     cap_add:
       - NET_ADMIN
@@ -16,6 +16,27 @@ services:
     networks:
       - enclave_net
       - app_net
+    ports:
+      - "443:443"
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: node-exporter
+    restart: unless-stopped
+    network_mode: "service:enclave"
+    pid: "host"
+    depends_on:
+      - enclave
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/host
+      - --web.listen-address=:9100
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($|/)
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro,rslave
 
   prometheus:
     image: prom/prometheus:v2.53.1
@@ -30,23 +51,8 @@ services:
       - --storage.tsdb.path=/prometheus
       - --web.enable-lifecycle
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
-
-  node-exporter:
-    image: prom/node-exporter:v1.8.2
-    container_name: node-exporter
-    restart: unless-stopped
-    network_mode: "service:enclave"
-    pid: "host"
-    depends_on:
-      - enclave
-    command:
-      - --path.procfs=/host/proc
-      - --path.sysfs=/host/sys
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
 
   grafana:
     image: grafana/grafana:11.1.0
@@ -120,10 +126,8 @@ services:
       - app_net
 
   nginx:
-    build:
-      context: .
-      dockerfile: docker/nginx/Dockerfile
-    container_name: nginx
+    image: nginx:1.27-alpine
+    container_name: enclave-gateway
     restart: unless-stopped
     depends_on:
       - enclave
@@ -131,6 +135,7 @@ services:
       - apache
     network_mode: "service:enclave"
     volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./certs:/etc/nginx/certs:ro
 
 volumes:
