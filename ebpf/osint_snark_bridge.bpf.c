@@ -5,14 +5,14 @@
 #include <linux/udp.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
+#include "snark_fpga_mmio.h"
 
 // NOTE:
 // eBPF cannot safely dereference arbitrary MMIO addresses from XDP context.
 // This bridge models MMIO as pinned array maps that are mirrored by a trusted
 // user-space daemon performing the real FPGA BAR read/write operations.
 
-#define FPGA_MMIO_WORDS 128
-#define WITNESS_WORDS 8
+#define WITNESS_WORDS FPGA_MMIO_WITNESS_WORDS
 #define ETH_P_IPV4 0x0800
 
 struct osint_packet_meta {
@@ -83,7 +83,14 @@ static __always_inline int parse_l3l4(void *data, void *data_end,
 
 static __always_inline void push_mmio_packet_meta(const struct osint_packet_meta *m) {
     // Layout example for FPGA command doorbell registers.
-    const __u32 keys[] = {0, 1, 2, 3, 4, 5};
+    const __u32 keys[] = {
+        FPGA_MMIO_REG_SRC_IP,
+        FPGA_MMIO_REG_DST_IP,
+        FPGA_MMIO_REG_PORTS,
+        FPGA_MMIO_REG_PKT_META,
+        FPGA_MMIO_REG_FLOW_HASH,
+        FPGA_MMIO_REG_TS_LOW
+    };
     const __u32 vals[] = {
         (__u32)m->src_ip,
         (__u32)m->dst_ip,
@@ -100,7 +107,7 @@ static __always_inline void push_mmio_packet_meta(const struct osint_packet_meta
 }
 
 static __always_inline int pull_witness(struct xdp_witness_cb *cb) {
-    __u32 key = 16;
+    __u32 key = FPGA_MMIO_REG_WITNESS_STATUS;
     __u32 status = 0;
     __u32 *status_ptr = bpf_map_lookup_elem(&fpga_mmio_shadow, &key);
     if (!status_ptr) {
@@ -109,16 +116,16 @@ static __always_inline int pull_witness(struct xdp_witness_cb *cb) {
 
     // status bit0 == proof ready
     status = *status_ptr;
-    if ((status & 0x1) == 0) {
+    if ((status & FPGA_WITNESS_READY_MASK) == 0) {
         cb->valid = 0;
         return 1;
     }
 
     cb->valid = 1;
-    cb->epoch_id = status >> 1;
+    cb->epoch_id = status >> FPGA_WITNESS_EPOCH_SHIFT;
 #pragma clang loop unroll(full)
     for (int i = 0; i < WITNESS_WORDS; i++) {
-        __u32 w_key = 32 + i;
+        __u32 w_key = FPGA_MMIO_WITNESS_BASE + i;
         __u32 *w_ptr = bpf_map_lookup_elem(&fpga_mmio_shadow, &w_key);
         cb->witness[i] = w_ptr ? *w_ptr : 0;
     }
