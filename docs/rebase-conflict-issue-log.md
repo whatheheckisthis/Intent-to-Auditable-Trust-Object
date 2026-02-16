@@ -41,3 +41,24 @@ Rebase introduced overlapping changelog updates where one side omitted context f
 ### Issue comments
 1. **Maintainer comment:** Documentation conflicts are low risk but still require traceable rationale.
 2. **Reviewer comment:** Keep future changelog edits in one section per topic to reduce rebase friction.
+
+---
+
+## Issue 3: Branch Conflict Persistence Verification (Monitoring Stack Series)
+
+**Summary:**
+A follow-up maintenance pass was requested because branch conflicts were reported as still present after the monitoring-stack updates.
+
+### Sub-issue 3.1: Rebase baseline verification
+- **Observation:** Branch `work` was already linear on top of commit `a904129` with no divergent merge-base drift.
+- **Resolution:** Executed `git rebase a904129`; Git reported `Current branch work is up to date.`
+- **Status:** Closed.
+
+### Sub-issue 3.2: Conflict-state validation
+- **Observation:** Repository had no active rebase state, no conflict markers, and no staged/unmerged files.
+- **Resolution:** Confirmed clean working tree and retained existing commit order.
+- **Status:** Closed.
+
+### Issue comments
+1. **Maintainer comment:** If conflicts are reported by remote hosting UI, refresh branch against the current remote target branch and retry the merge check.
+2. **Reviewer comment:** Keep this log updated with exact rebase commands and outcomes to simplify audit trails.
