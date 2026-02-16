@@ -1,104 +1,46 @@
 services:
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.1
-    container_name: zookeeper
+  enclave:
+    image: enclavenetworks/enclave:latest
+    container_name: enclave
     restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
     environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
-    networks:
-      - monitoring
-
-  kafka:
-    image: confluentinc/cp-kafka:7.6.1
-    container_name: kafka
-    restart: unless-stopped
-    depends_on:
-      - zookeeper
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_JMX_PORT: 9999
-      KAFKA_JMX_HOSTNAME: kafka
-    ports:
-      - "9092:9092"
-      - "9999:9999"
-    networks:
-      - monitoring
-
-  redis:
-    image: redis:7.2-alpine
-    container_name: redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    networks:
-      - monitoring
-
-  kafka_exporter:
-    image: danielqsj/kafka-exporter:v1.7.0
-    container_name: kafka_exporter
-    restart: unless-stopped
-    depends_on:
-      - kafka
-    command:
-      - --kafka.server=kafka:9092
-    ports:
-      - "9308:9308"
-    networks:
-      - monitoring
-
-  redis_exporter:
-    image: oliver006/redis_exporter:v1.62.0
-    container_name: redis_exporter
-    restart: unless-stopped
-    depends_on:
-      - redis
-    environment:
-      REDIS_ADDR: redis://redis:6379
-    ports:
-      - "9121:9121"
-    networks:
-      - monitoring
+      ENCLAVE_ENROLMENT_KEY: ${ENCLAVE_ENROLMENT_KEY}
+    volumes:
+      - enclave-config:/etc/enclave/profiles
 
   prometheus:
     image: prom/prometheus:v2.53.1
     container_name: prometheus
     restart: unless-stopped
-    volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    network_mode: "service:enclave"
+    depends_on:
+      - enclave
     command:
       - --config.file=/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
-    depends_on:
-      - kafka_exporter
-      - redis_exporter
-    networks:
-      - monitoring
+      - --storage.tsdb.path=/prometheus
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
 
   grafana:
     image: grafana/grafana:11.1.0
     container_name: grafana
     restart: unless-stopped
+    network_mode: "service:enclave"
     depends_on:
       - prometheus
-    ports:
-      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: changeme
     volumes:
-      - grafana_data:/var/lib/grafana
+      - grafana-data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-    networks:
-      - monitoring
 
 volumes:
-  grafana_data:
-
-networks:
-  monitoring:
-    driver: bridge
+  prometheus-data:
+  grafana-data:
+  enclave-config:
