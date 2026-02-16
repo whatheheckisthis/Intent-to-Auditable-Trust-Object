@@ -1,54 +1,76 @@
+`timescale 1ns/1ps
+
+// Radix-2 NTT butterfly for Kyber ring arithmetic (mod q=3329).
+// - Uses Montgomery reduction with arithmetic right shift (ASR) by 16.
+// - Intended for in-stride lane processing (no RAM lookup side channel).
 module ntt_butterfly #(
-    parameter int W = 32,
-    parameter logic [W-1:0] Q = 32'd2013265921,
-    parameter logic [W-1:0] Q_INV_NEG = 32'd2013265919
+    parameter int W = 16,
+    parameter logic signed [W-1:0] Q = 16'sd3329,
+    parameter logic [W-1:0] QINV = 16'd62209  // q^{-1} mod 2^16 used by Kyber montgomery reduce
 ) (
-    input  logic         clk,
-    input  logic         rst_n,
-    input  logic         in_valid,
-    input  logic [W-1:0] coeff_a_i,
-    input  logic [W-1:0] coeff_b_i,
-    input  logic [W-1:0] twiddle_i,
-    output logic         out_valid,
-    output logic [W-1:0] coeff_a_o,
-    output logic [W-1:0] coeff_b_o
+    input  logic                      clk,
+    input  logic                      rst_n,
+    input  logic                      in_valid,
+    input  logic signed [W-1:0]       coeff_a_i,
+    input  logic signed [W-1:0]       coeff_b_i,
+    input  logic signed [W-1:0]       twiddle_i,
+    output logic                      out_valid,
+    output logic signed [W-1:0]       coeff_a_o,
+    output logic signed [W-1:0]       coeff_b_o
 );
+    logic signed [W-1:0] z_lane_a;
+    logic signed [W-1:0] z_lane_b;
+    logic signed [W-1:0] z_lane_tw;
 
-    logic [W-1:0] z_lane_a;
-    logic [W-1:0] z_lane_b;
-    logic [W-1:0] z_lane_tw;
-
-    logic [2*W-1:0] mul_s1;
-    logic [W-1:0]   a_s2;
-    logic [W-1:0]   mul_red_s2;
+    logic signed [2*W-1:0] mul_s1;
+    logic signed [W-1:0]   a_s2;
+    logic signed [W-1:0]   mul_red_s2;
 
     logic [2:0] valid_pipe;
 
-    function automatic logic [W-1:0] montgomery_asr_reduce(input logic [2*W-1:0] t);
-        logic [W-1:0] m;
-        logic [2*W:0] u_full;
-        logic [W:0]   u_shift;
-        logic [W:0]   u_sub;
+    function automatic logic signed [W-1:0] reduce_q(input logic signed [W:0] x);
+        logic signed [W:0] y;
         begin
-            m = t[W-1:0] * Q_INV_NEG;
-            u_full = t + (m * Q);
-            u_shift = u_full[2*W:W];
-            u_sub = u_shift - {1'b0, Q};
-            montgomery_asr_reduce = u_sub[W] ? u_shift[W-1:0] : u_sub[W-1:0];
+            y = x;
+            if (y >= Q)
+                y = y - Q;
+            if (y < 0)
+                y = y + Q;
+            reduce_q = y[W-1:0];
         end
     endfunction
 
-    function automatic logic [W-1:0] add_mod_q(input logic [W-1:0] x, input logic [W-1:0] y);
-        logic [W:0] s;
+    function automatic logic signed [W-1:0] montgomery_asr_reduce(input logic signed [2*W-1:0] t);
+        logic signed [W-1:0] u16;
+        logic signed [2*W-1:0] corr;
+        logic signed [2*W-1:0] shifted;
         begin
-            s = {1'b0, x} + {1'b0, y};
-            add_mod_q = (s >= {1'b0, Q}) ? (s - {1'b0, Q})[W-1:0] : s[W-1:0];
+            // Kyber-style Montgomery-ASR:
+            //   u = (t * QINV) mod 2^16
+            //   r = (t - u*q) >>> 16
+            //   return centered modulo q
+            u16 = t[W-1:0] * $signed(QINV);
+            corr = t - (u16 * Q);
+            shifted = corr >>> W;
+            montgomery_asr_reduce = reduce_q(shifted[W:0]);
         end
     endfunction
 
-    function automatic logic [W-1:0] sub_mod_q(input logic [W-1:0] x, input logic [W-1:0] y);
+    function automatic logic signed [W-1:0] add_mod_q(
+        input logic signed [W-1:0] x,
+        input logic signed [W-1:0] y
+    );
         begin
-            sub_mod_q = (x >= y) ? (x - y) : (x + Q - y);
+            add_mod_q = reduce_q({x[W-1], x} + {y[W-1], y});
+        end
+    endfunction
+
+    function automatic logic signed [W-1:0] sub_mod_q(
+        input logic signed [W-1:0] x,
+        input logic signed [W-1:0] y
+    );
+        begin
+            sub_mod_q = reduce_q({x[W-1], x} - {y[W-1], y});
         end
     endfunction
 
@@ -70,15 +92,15 @@ module ntt_butterfly #(
 
             if (in_valid) begin
                 // Z-register lane load logic for streaming coefficients.
-                z_lane_a  <= coeff_a_i;
-                z_lane_b  <= coeff_b_i;
-                z_lane_tw <= twiddle_i;
+                z_lane_a  <= reduce_q(coeff_a_i);
+                z_lane_b  <= reduce_q(coeff_b_i);
+                z_lane_tw <= reduce_q(twiddle_i);
             end
 
             // Stage 1: multiply b*twiddle.
             mul_s1 <= z_lane_b * z_lane_tw;
 
-            // Stage 2: Montgomery-ASR reduction.
+            // Stage 2: Montgomery-ASR reduction modulo q=3329.
             a_s2       <= z_lane_a;
             mul_red_s2 <= montgomery_asr_reduce(mul_s1);
 

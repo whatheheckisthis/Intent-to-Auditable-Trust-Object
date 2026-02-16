@@ -22,6 +22,7 @@
 
 /* Witness status register format */
 #define FPGA_WITNESS_READY_MASK         0x1U
-#define FPGA_WITNESS_EPOCH_SHIFT        1U
+#define FPGA_WITNESS_FAIL_MASK          0x2U
+#define FPGA_WITNESS_EPOCH_SHIFT        2U
 
 #endif /* SNARK_FPGA_MMIO_H */

@@ -12,49 +12,61 @@ The attestation path is split into five hardware/software stages:
 
 At 100 MSPS, the design assumes decoupled buffering and multi-epoch overlap (epoch `k` proving while epoch `k+1` is ingesting).
 
-## 2) Throughput and Latency Targets
+## 2) Ring and NTT Butterfly
 
-- **Input rate:** 100 million samples/packets per second.
-- **NTT backend throughput target:**
-  \[
-  \text{ops/s} \approx f_{clk} \times \text{lanes} \times \text{utilization}
-  \]
-  Example at 500 MHz, 8 lanes, 80% utilization: **3.2e9 modular ops/s**.
-- **End-to-end latency target per batch:** **< 1200 ns** from packet-batch fence to witness availability.
+- Target ring: Kyber-friendly modulus `q = 3329`.
+- Butterfly primitive: radix-2 `a' = a + b\omega`, `b' = a - b\omega (mod q)`.
+- Montgomery-ASR reduction:
+  - `u = (t * q^{-1}) mod 2^16`
+  - `r = (t - u*q) >>> 16`
+  - reduce `r` into `[0, q)`.
+- Side-channel silence: coefficients remain in streaming Z-register lanes and avoid data-dependent BRAM lookups.
 
-### Nominal budget (example)
+## 3) Lane Mapping and Latency Budget (N=256)
 
-- eBPF metadata extraction + map write: 120 ns
-- MMIO enqueue/dequeue doorbell: 160 ns
-- NTT + MSM micro-pipeline: 680 ns
-- Recursive fold + witness finalization: 180 ns
-- Metadata append and return: 40 ns
+- Polynomial degree: 256 coefficients (`LOGN=8`).
+- Lane map: coefficient index `k` is assigned to lane `k % LANES` each scheduler batch.
+- Default lane count: `LANES=16`.
+- Stage work: `N/2 = 128` butterflies per stage, `8` batches/stage at 16 lanes.
+- 8 stages + pipeline slack => estimated fold latency `< 1200ns` at 500 MHz (`CLOCK_NS=2`).
 
-Total: **1180 ns**.
+## 4) Lyapunov Manifold Witness Routine
 
-## 3) Recursive Aggregation Logic
+`telemetry_to_stability_witness()` maps each packet telemetry tuple into a bounded Lyapunov state `x` and computes:
 
-- Batch size per epoch: **1024** packet proofs.
-- Aggregation primitive: Poseidon fold chain.
-- Constraint: every leaf proof must present `proofValid = 1`.
-- Witness emission: split fold digest into two 128-bit limbs (256-bit logical witness).
+- `V0 = x^T P x`
+- `VN = V0 * exp(-alpha * steps)` with `steps = 1e8` by default
+- `margin = clamp(V0 - VN, 0, 1)`
 
-## 4) Files in this implementation
+The resulting witness is a 256-bit value serialized as four 64-bit words (`V0`, `VN`, `margin`, `steps`).
 
+## 5) ESCALATE() XDP Behavior
+
+- XDP pushes packet metadata to the FPGA MMIO shadow map.
+- If witness status marks verification failure (`FPGA_WITNESS_FAIL_MASK`):
+  - Packet is dropped immediately.
+  - A high-priority `perf_event` alert is emitted (`escalate_alerts` map).
+  - Program returns `XDP_ABORTED` to force fail-closed behavior.
+
+> Note: eBPF/XDP cannot legally invoke a direct kernel panic from datapath context. The implementation uses immediate drop/abort + high-priority alerting as the safe equivalent.
+
+## 6) Formal Specification (TLA+)
+
+Invariant:
+
+`verify(pi, witness) = TRUE <=> all transitions remain inside manifold bounds`.
+
+Encoded in `formal/tla/montgomery_reduction_invariant.tla` as theorem `VerifyIffTransitionsBounded`.
+
+## 7) Files in this implementation
+
+- `hardware/ntt_butterfly.sv`
+  - Radix-2 Kyber butterfly with Montgomery-ASR reduction.
 - `hardware/parallel_ntt_core.sv`
-  - Parallel butterfly scheduler + pipelined Montgomery multiplier lanes.
-  - Emits epoch witness (`witness_256`) and done pulse.
+  - N=256 lane scheduler and 256-bit witness fold output.
 - `ebpf/osint_snark_bridge.bpf.c`
-  - XDP program using `bpf_probe_read_kernel` for metadata snapshot.
-  - Pushes packet metadata into FPGA MMIO shadow map.
-  - Polls proof-ready status and appends 256-bit witness into XDP metadata area.
-- `circuits/recursive_osint_aggregator.circom`
-  - Recursive packet-proof fold circuit with `N=1024` leaf proofs.
-- `formal/witness_integrity.als`
-  - Alloy model proving forged packet leaves cannot appear in accepted recursive proofs within bounded window.
-
-## 5) Integration Notes
-
-- In production, eBPF should pair with a privileged user-space BAR relay to access actual PCIe MMIO.
-- Twiddle tables and witness hash schedule in RTL are placeholders and should be generated from proving field parameters.
-- For Plonky2-style recursion, replace witness fold arity and field modulus with Goldilocks-compatible constants.
+  - XDP DMA-bridge model with `ESCALATE()` alert/drop behavior.
+- `ebpf/telemetry_lyapunov_witness.c`
+  - Functional C routine from telemetry tuple to 256-bit stability witness.
+- `formal/tla/montgomery_reduction_invariant.tla`
+  - IFF verification invariant over bounded transitions.

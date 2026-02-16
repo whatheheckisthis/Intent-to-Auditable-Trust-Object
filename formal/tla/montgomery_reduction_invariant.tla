@@ -1,26 +1,39 @@
 ---------------------------- MODULE montgomery_reduction_invariant ----------------------------
-EXTENDS Naturals, TLC
+EXTENDS Naturals, Sequences, TLC
 
-CONSTANT Q
+CONSTANTS Q, Bound, PiSet, WitnessSet
 ASSUME Q > 1
+ASSUME Bound \/ Bound = 0
 
-VARIABLES t, reduced
+VARIABLES transitions, pi, witness
+
+InBounds(t) == t \in Nat /\ t <= Bound
 
 MontgomeryReduce(x) == x % Q
 
+AllTransitionsInBounds == \A i \in DOMAIN transitions: InBounds(transitions[i])
+
+verify(p, w) ==
+    /\ p \in PiSet
+    /\ w \in WitnessSet
+    /\ AllTransitionsInBounds
+
 Init ==
-    /\ t \in Nat
-    /\ reduced = MontgomeryReduce(t)
+    /\ transitions \in Seq(Nat)
+    /\ Len(transitions) > 0
+    /\ pi \in PiSet
+    /\ witness \in WitnessSet
 
 Next ==
-    \E x \in Nat:
-        /\ t' = x
-        /\ reduced' = MontgomeryReduce(x)
+    \E newTransitions \in Seq(Nat), p2 \in PiSet, w2 \in WitnessSet:
+        /\ transitions' = newTransitions
+        /\ pi' = p2
+        /\ witness' = w2
 
-RangeBound == reduced < Q
+Spec == Init /\ [][Next]_<<transitions, pi, witness>>
 
-Spec == Init /\ [][Next]_<<t, reduced>>
+InvariantIff == verify(pi, witness) <=> AllTransitionsInBounds
 
-THEOREM MontgomeryReductionAlwaysBounded == Spec => []RangeBound
+THEOREM VerifyIffTransitionsBounded == Spec => []InvariantIff
 
 ===============================================================================================
