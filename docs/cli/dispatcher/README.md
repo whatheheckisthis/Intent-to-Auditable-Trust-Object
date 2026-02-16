@@ -21,3 +21,8 @@ This example demonstrates a command-driven dispatcher with:
 javac docs/cli/dispatcher/*.java
 java docs.cli.dispatcher.Dispatcher greet Alice
 ```
+
+## IAM policy parser (Python)
+
+Production parser entrypoint: `docs/cli/dispatcher/iam_policy_parser.py` (stdout emits one JSON object only).
+
