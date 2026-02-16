@@ -1,11 +1,11 @@
 ; fast_mask.asm
 ; NASM x86_64 routine to zero sensitive buffers quickly.
-; SysV ABI: void fast_mask(void *buf, size_t len)
+; SysV ABI: void fast_clear_buffer(void *buf, size_t len)
 
-global fast_mask
+global fast_clear_buffer
 section .text
 
-fast_mask:
+fast_clear_buffer:
     ; rdi = buffer pointer, rsi = length
     test rdi, rdi
     jz .done

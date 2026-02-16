@@ -12,7 +12,7 @@ TARGET_POLICY ?=
 
 DISPATCHER = dispatcher
 ASM_OBJ = fast_mask.o
-C_OBJ = dispatcher.o
+C_OBJ = dispatcher.o pkcs11_signer.o
 RESULT_JSON = result.json
 
 .PHONY: all clean run parse-json log-restful
@@ -22,11 +22,14 @@ all: $(DISPATCHER)
 $(ASM_OBJ): fast_mask.asm
 	$(NASM) -f elf64 -o $@ $<
 
-$(C_OBJ): dispatcher.c
+dispatcher.o: dispatcher.c pkcs11_signer.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+pkcs11_signer.o: pkcs11_signer.c pkcs11_signer.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(DISPATCHER): $(ASM_OBJ) $(C_OBJ)
-	$(CC) -o $@ $(ASM_OBJ) $(C_OBJ) $(LDFLAGS)
+	$(CC) -o $@ $(ASM_OBJ) $(C_OBJ) $(LDFLAGS) -ldl -lcrypto
 
 parse-json:
 	@test -n "$(TARGET_POLICY)" || (echo "ERROR: TARGET_POLICY is required" && exit 1)
@@ -34,15 +37,9 @@ parse-json:
 
 run: all
 	@test -n "$(TARGET_POLICY)" || (echo "ERROR: TARGET_POLICY is required" && exit 1)
-	./$(DISPATCHER) "$(TARGET_POLICY)"
+	./$(DISPATCHER) parse-iam "$(TARGET_POLICY)"
 
-log-restful: parse-json
-	@test -n "$(API_KEY)" || (echo "ERROR: API_KEY is required" && exit 1)
-	@test -n "$(REST_URL)" || (echo "ERROR: REST_URL is required" && exit 1)
-	curl --fail --silent --show-error -X POST "$(REST_URL)" \
-		-H "Authorization: Bearer $(API_KEY)" \
-		-H "Content-Type: application/json" \
-		-d @$(RESULT_JSON)
+log-restful: run
 
 clean:
-	rm -f $(DISPATCHER) $(ASM_OBJ) $(C_OBJ) $(RESULT_JSON)
+	rm -f $(DISPATCHER) $(ASM_OBJ) dispatcher.o pkcs11_signer.o $(RESULT_JSON)
