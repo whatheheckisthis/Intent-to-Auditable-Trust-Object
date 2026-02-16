@@ -1,109 +1,104 @@
 services:
-  nginx:
-    build:
-      context: .
-      dockerfile: docker/nginx/Dockerfile
-    image: iato/nginx-edge:local
-    container_name: iato-nginx
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - monitoring
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: kafka
+    restart: unless-stopped
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_JMX_PORT: 9999
+      KAFKA_JMX_HOSTNAME: kafka
+    ports:
+      - "9092:9092"
+      - "9999:9999"
+    networks:
+      - monitoring
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis
     restart: unless-stopped
     ports:
-      - "${NGINX_PORT:-8080}:80"
-    depends_on:
-      apache:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 10s
+      - "6379:6379"
     networks:
-      - web
+      - monitoring
 
-  apache:
-    build:
-      context: .
-      dockerfile: docker/apache/Dockerfile
-    image: iato/apache-proxy:local
-    container_name: iato-apache
+  kafka_exporter:
+    image: danielqsj/kafka-exporter:v1.7.0
+    container_name: kafka_exporter
     restart: unless-stopped
-    expose:
-      - "8080"
     depends_on:
-      drupal:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 15s
+      - kafka
+    command:
+      - --kafka.server=kafka:9092
+    ports:
+      - "9308:9308"
     networks:
-      - web
+      - monitoring
 
-  drupal:
-    build:
-      context: .
-      dockerfile: docker/drupal/Dockerfile
-    image: iato/drupal-s3:local
-    container_name: iato-drupal
+  redis_exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: redis_exporter
     restart: unless-stopped
-    expose:
-      - "80"
     depends_on:
-      db:
-        condition: service_healthy
+      - redis
     environment:
-      DRUPAL_DB_HOST: ${DRUPAL_DB_HOST:-db}
-      DRUPAL_DB_NAME: ${DRUPAL_DB_NAME:-drupal}
-      DRUPAL_DB_USER: ${DRUPAL_DB_USER:-drupal}
-      DRUPAL_DB_PASSWORD: ${DRUPAL_DB_PASSWORD:-drupal-pass}
-      AWS_REGION: ${AWS_REGION:-us-east-1}
-      S3_BUCKET: ${S3_BUCKET:-}
-      S3_PREFIX: ${S3_PREFIX:-sites/default/files}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
-    volumes:
-      - drupal_files:/var/www/html/sites/default/files
-    cap_add:
-      - SYS_ADMIN
-    devices:
-      - /dev/fuse:/dev/fuse
-    security_opt:
-      - apparmor:unconfined
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
+      REDIS_ADDR: redis://redis:6379
+    ports:
+      - "9121:9121"
     networks:
-      - web
+      - monitoring
 
-  db:
-    image: mariadb:11
-    container_name: iato-db
+  prometheus:
+    image: prom/prometheus:v2.53.1
+    container_name: prometheus
     restart: unless-stopped
-    environment:
-      MARIADB_DATABASE: ${DRUPAL_DB_NAME:-drupal}
-      MARIADB_USER: ${DRUPAL_DB_USER:-drupal}
-      MARIADB_PASSWORD: ${DRUPAL_DB_PASSWORD:-drupal-pass}
-      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-root-pass}
     volumes:
-      - db_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 20s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    depends_on:
+      - kafka_exporter
+      - redis_exporter
     networks:
-      - web
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - monitoring
 
 volumes:
-  drupal_files:
-  db_data:
+  grafana_data:
 
 networks:
-  web:
+  monitoring:
     driver: bridge
