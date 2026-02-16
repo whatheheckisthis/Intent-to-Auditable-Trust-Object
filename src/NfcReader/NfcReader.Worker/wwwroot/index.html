@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NFC Reader Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    #events { margin-top: 1rem; }
+    .event { padding: 0.5rem; border-bottom: 1px solid #ddd; }
+  </style>
+</head>
+<body>
+  <h1>NFC Reader Events</h1>
+  <p>Listening for NFC tag events from SignalR hub...</p>
+  <div id="events"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+  <script>
+    const events = document.getElementById('events');
+    const connection = new signalR.HubConnectionBuilder().withUrl('/hubs/nfc').build();
+
+    connection.on('TagRead', (tag) => {
+      const item = document.createElement('div');
+      item.className = 'event';
+      item.textContent = `${tag.readAtUtc} | Reader=${tag.readerName} | UID=${tag.uid} | ATR=${tag.atr ?? 'N/A'}`;
+      events.prepend(item);
+    });
+
+    connection.start().catch(err => {
+      const item = document.createElement('div');
+      item.className = 'event';
+      item.textContent = `Failed to connect: ${err}`;
+      events.prepend(item);
+    });
+  </script>
+</body>
+</html>
