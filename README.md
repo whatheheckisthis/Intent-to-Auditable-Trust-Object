@@ -2,41 +2,36 @@
 
 
 
+## Table of Contents 
 
-
-
-
-
-## Table of Contents .....
-
-- [1](#1-purpose--audience-) Purpose & Audience .....
-- [2](#2-eligibility-structure-) Eligibility Structure .....
-  - [2.1](#21-eligibility-tiers-) Eligibility Tiers .....
-  - [2.2](#22-entry-and-exit-criteria-) Entry and Exit Criteria .....
-- [3](#3-sre-operating-model-) SRE Operating Model .....
-  - [3.1](#31-reliability-and-security-workflow-) Reliability and Security Workflow .....
-  - [3.2](#32-control-loop-responsibilities-) Control Loop Responsibilities .....
-- [4](#4-control-mapping-soc-2--asvs--essential-eight-) Control Mapping (SOC 2 + ASVS + Essential Eight) .....
-  - [4.1](#41-technical-control-mapping-table-) Technical Control Mapping Table .....
-  - [4.2](#42-coverage-graph-table-view-) Coverage Graph (Table View) .....
-- [5](#5-evidence-model-maintainable-by-default-) Evidence Model (Maintainable by Default) .....
-  - [5.1](#51-evidence-design-principles-) Evidence Design Principles .....
-  - [5.2](#52-evidence-record-schema-minimal-) Evidence Record Schema (Minimal) .....
-- [6](#6-repository-layout-) Repository Layout .....
-- [7](#7-deployment-and-local-validation-) Deployment and Local Validation .....
-  - [7.1](#71-local-stack-setup-nginx---apache---drupal---mariadb-) Local Stack Setup (`nginx -> apache -> drupal -> mariadb`) .....
-  - [7.2](#72-optional-observability-stack-) Optional Observability Stack .....
-  - [7.3](#73-elastic-beanstalk-deployment-workflow-) Elastic Beanstalk Deployment Workflow .....
-- [8](#8-control-reference-legend-) Control Reference Legend .....
-- [9](#9-drupal-reverse-proxy-stack-nginx--apache--drupal--mariadb-) Drupal Reverse-Proxy Stack (Nginx + Apache + Drupal + MariaDB) .....
+- [1](#1-purpose--audience-) Purpose & Audience 
+- [2](#2-eligibility-structure-) Eligibility Structure 
+  - [2.1](#21-eligibility-tiers-) Eligibility Tiers 
+  - [2.2](#22-entry-and-exit-criteria-) Entry and Exit Criteria 
+- [3](#3-sre-operating-model-) SRE Operating Model 
+  - [3.1](#31-reliability-and-security-workflow-) Reliability and Security Workflow 
+  - [3.2](#32-control-loop-responsibilities-) Control Loop Responsibilities 
+- [4](#4-control-mapping-soc-2--asvs--essential-eight-) Control Mapping (SOC 2 + ASVS + Essential Eight) 
+  - [4.1](#41-technical-control-mapping-table-) Technical Control Mapping Table 
+  - [4.2](#42-coverage-graph-table-view-) Coverage Graph (Table View) 
+- [5](#5-evidence-model-maintainable-by-default-) Evidence Model (Maintainable by Default) 
+  - [5.1](#51-evidence-design-principles-) Evidence Design Principles 
+  - [5.2](#52-evidence-record-schema-minimal-) Evidence Record Schema (Minimal) 
+- [6](#6-repository-layout-) Repository Layout 
+- [7](#7-deployment-and-local-validation-) Deployment and Local Validation 
+  - [7.1](#71-local-stack-setup-nginx---apache---drupal---mariadb-) Local Stack Setup (`nginx -> apache -> drupal -> mariadb`) 
+  - [7.2](#72-optional-observability-stack-) Optional Observability Stack 
+  - [7.3](#73-elastic-beanstalk-deployment-workflow-) Elastic Beanstalk Deployment Workflow 
+- [8](#8-control-reference-legend-) Control Reference Legend 
+- [9](#9-drupal-reverse-proxy-stack-nginx--apache--drupal--mariadb-) Drupal Reverse-Proxy Stack (Nginx + Apache + Drupal + MariaDB) 
   - [9.1](#91-run-the-stack-) Run the Stack .....
-  - [9.2](#92-s3-backed-drupal-uploads-sitesdefaultfiles-) S3-backed Drupal Uploads (`sites/default/files`) .....
-  - [9.3](#93-conda-lock-from-pyprojecttoml-) Conda Lock from `pyproject.toml` .....
-- [10](#10-cyber-risk-management-controls-document-) Cyber Risk Management Controls Document .....
+  - [9.2](#92-s3-backed-drupal-uploads-sitesdefaultfiles-) S3-backed Drupal Uploads (`sites/default/files`) 
+  - [9.3](#93-conda-lock-from-pyprojecttoml-) Conda Lock from `pyproject.toml` 
+- [10](#10-cyber-risk-management-controls-document-) Cyber Risk Management Controls Document 
 
 ---
 
-## 1) Purpose & Audience .....
+## 1) Purpose & Audience 
 
 This README is structured for:
 - **SRE teams** operating reliability and incident response workflows.
@@ -47,32 +42,32 @@ Outcome: a clear eligibility structure, operating model, and control mapping to 
 
 ---
 
-## 2) Eligibility Structure .....
+## 2) Eligibility Structure 
 
 A system or service is eligible for IATO onboarding only when all P0 requirements are met.
 
-### 2.1 Eligibility Tiers .....
+### 2.1 Eligibility Tiers 
 
 | Tier | Description | Mandatory Artifacts | Control References |
 |---|---|---|---|
 | **P0 - Foundational** | Minimum bar for production onboarding. | Service inventory, owner, data classification, runbook, logs/metrics/traces, IAM roles, backup policy. | SOC 2 **CC1.2**, **CC6.1**, **CC7.2**; ASVS **V1**, **V7**, **V10**; Essential Eight **Patch**, **MFA**, **Backups** |
-| **P1 - Assured** | Adds measurable reliability and security posture. | SLO/SLI definitions, alert routing, key rotation records, vulnerability remediation SLA, immutable audit logs. | SOC 2 **CC6.6**, **CC7.1**, **CC7.3**; ASVS **V2**, **V9**, **V14**; Essential Eight **Privileged Access**, **Application Control** |
+| **P1 - Assured** | Adds measurable reliability and security posture. | SLO/SLI definitions, alert routing, key rotation records, vulnerability remediation SLA, and immutable audit logs. | SOC 2 **CC6.6**, **CC7.1**, **CC7.3**; ASVS **V2**, **V9**, **V14**; Essential Eight **Privileged Access**, **Application Control** |
 | **P2 - Continuous Audit** | Continuous evidence generation and governance. | Automated evidence export, quarterly access recertification, control exception workflow, control effectiveness review. | SOC 2 **CC3.2**, **CC4.1**, **CC8.1**; ASVS **V1.14**, **V13**; Essential Eight **User Application Hardening**, **Restrict Admin Privileges** |
 
-### 2.2 Entry and Exit Criteria .....
+### 2.2 Entry and Exit Criteria 
 
 | Stage | Entry Criteria | Exit Criteria | Evidence Output |
 |---|---|---|---|
 | **Intake** | Service owner assigned, criticality rated, trust boundary documented. | Control owner approved and service registered in inventory. | Service profile + boundary record |
 | **Implementation** | P0 artifacts complete. | Telemetry and IAM controls validated by CI checks. | Control test logs + validation report |
-| **Operationalization** | Alerting and runbooks active. | Two successful incident simulations completed. | Incident timeline + corrective actions |
+| **Operationalization** | Alerting and runbooks are active. | Two successful incident simulations completed. | Incident timeline + corrective actions |
 | **Audit-ready** | Evidence pipeline enabled. | Control-to-evidence map exported and signed-off. | Audit packet + change history |
 
 ---
 
-## 3) SRE Operating Model .....
+## 3) SRE Operating Model 
 
-### 3.1 Reliability and Security Workflow .....
+### 3.1 Reliability and Security Workflow 
 
 ```mermaid
 flowchart LR
@@ -86,7 +81,7 @@ flowchart LR
     H --> I[Audit-ready Trust Object]
 ```
 
-### 3.2 Control Loop Responsibilities .....
+### 3.2 Control Loop Responsibilities 
 
 | Function | SRE | Security | Platform | GRC |
 |---|---|---|---|---|
@@ -100,9 +95,9 @@ flowchart LR
 
 ---
 
-## 4) Control Mapping (SOC 2 + ASVS + Essential Eight) .....
+## 4) Control Mapping (SOC 2 + ASVS + Essential Eight) 
 
-### 4.1 Technical Control Mapping Table .....
+### 4.1 Technical Control Mapping Table 
 
 | IATO Control Domain | Implementation Expectation | SOC 2 Ref | ASVS Ref | Essential Eight Ref | Primary Evidence |
 |---|---|---|---|---|---|
@@ -113,7 +108,7 @@ flowchart LR
 | **Incident Response & Recovery** | Severity matrix, runbooks, recovery tests, postmortems | [SOC2:CC7.4], [SOC2:CC7.5] | [ASVS:V1.14], [ASVS:V10.3] | [E8:Backups] | Incident timeline, RTO/RPO tests, PIR records |
 | **Auditability & Evidence Integrity** | Tamper-evident logs, retention policy, signed evidence bundles | [SOC2:CC3.2], [SOC2:CC4.1] | [ASVS:V1.1], [ASVS:V13] | [E8:Governance] | Hash manifests, retention policies, audit packets |
 
-### 4.2 Coverage Graph (Table View) .....
+### 4.2 Coverage Graph (Table View) 
 
 | Domain \ Framework | SOC 2 | ASVS | Essential Eight |
 |---|---:|---:|---:|
@@ -128,15 +123,15 @@ Interpretation: **High** = explicit mandatory controls in onboarding tiers; **Me
 
 ---
 
-## 5) Evidence Model (Maintainable by Default) .....
+## 5) Evidence Model (Maintainable by Default) 
 
-### 5.1 Evidence Design Principles .....
+### 5.1 Evidence Design Principles 
 - Keep evidence generation **automated** and attached to delivery pipelines.
 - Store evidence with immutable timestamps and hash integrity metadata.
 - Use a single control identifier format across teams (`CTRL-<DOMAIN>-<ID>`).
 - Link every exception to an owner, expiry date, and compensating control.
 
-### 5.2 Evidence Record Schema (Minimal) .....
+### 5.2 Evidence Record Schema (Minimal) 
 
 | Field | Required | Example |
 |---|---|---|
@@ -153,7 +148,7 @@ Interpretation: **High** = explicit mandatory controls in onboarding tiers; **Me
 
 ---
 
-## 6) Repository Layout .....
+## 6) Repository Layout 
 
 High-signal directories only:
 
@@ -175,9 +170,9 @@ Pinned root configuration files:
 
 ---
 
-## 7) Deployment and Local Validation .....
+## 7) Deployment and Local Validation 
 
-### 7.1 Local Stack Setup (`nginx -> apache -> drupal -> mariadb`) .....
+### 7.1 Local Stack Setup (`nginx -> apache -> drupal -> mariadb`) 
 1. Copy environment defaults:
    - `cp .env.example .env`
 2. Start the stack:
@@ -187,12 +182,12 @@ Pinned root configuration files:
 4. Stop and remove resources:
    - `docker compose down -v`
 
-### 7.2 Optional Observability Stack .....
+### 7.2 Optional Observability Stack 
 ```bash
 docker compose -f docker/compose/php-observability-stack.yml up --build
 ```
 
-### 7.3 Elastic Beanstalk Deployment Workflow .....
+### 7.3 Elastic Beanstalk Deployment Workflow 
 1. Install and configure EB CLI (`pip install awsebcli`, `aws configure`).
 2. Initialize the app: `eb init`.
 3. Create/update environment: `eb create` or `eb deploy`.
@@ -201,7 +196,7 @@ docker compose -f docker/compose/php-observability-stack.yml up --build
 
 ---
 
-## 8) Control Reference Legend .....
+## 8) Control Reference Legend 
 
 - **SOC 2** references use `SOC2:<criterion>` (e.g., `SOC2:CC6.1`).
 - **ASVS** references use `ASVS:<section>` (e.g., `ASVS:V2`).
@@ -211,7 +206,7 @@ docker compose -f docker/compose/php-observability-stack.yml up --build
 
 ---
 
-## 9) Drupal Reverse-Proxy Stack (Nginx + Apache + Drupal + MariaDB) .....
+## 9) Drupal Reverse-Proxy Stack (Nginx + Apache + Drupal + MariaDB)
 
 This repository now includes a 4-service web stack:
 
@@ -227,7 +222,7 @@ This repository now includes a 4-service web stack:
   - `db_data` named volume for MariaDB data
   - `drupal_files` named volume for `sites/default/files` when S3 is not configured
 
-### 9.1 Run the Stack .....
+### 9.1 Run the Stack 
 
 ```bash
 cp .env.example .env
@@ -236,7 +231,7 @@ docker compose up -d --build
 
 Open Drupal at `http://localhost:8080`.
 
-### 9.2 S3-backed Drupal Uploads (`sites/default/files`) .....
+### 9.2 S3-backed Drupal Uploads (`sites/default/files`) 
 
 The Drupal image mounts S3 with `s3fs` and maps only:
 
@@ -251,7 +246,7 @@ Required environment variables:
 - Optional `S3_PREFIX` (defaults to `sites/default/files`)
 - Either AWS access keys (`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`) or IAM role credentials
 
-### 9.3 Conda Lock from `pyproject.toml` .....
+### 9.3 Conda Lock from `pyproject.toml` 
 
 Dependency definitions live in `pyproject.toml` with `tool.conda-lock` settings.
 
@@ -260,7 +255,7 @@ conda-lock lock --file pyproject.toml
 conda-lock install --name iato-dev conda-lock.yml
 ```
 
-## 10) Cyber Risk Management Controls Document .....
+## 10) Cyber Risk Management Controls Document 
 
 The repository cyber risk management controls document is available at:
 
