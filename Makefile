@@ -3,8 +3,12 @@
 
 CC ?= gcc
 NASM ?= nasm
+CLANG ?= clang
 CFLAGS ?= -O2 -Wall -Wextra
+XDP_CFLAGS ?= -O2 -g -target bpf -D__TARGET_ARCH_x86
 LDFLAGS ?=
+KANI ?= kani
+CONTROL_FLAG ?= control-flag
 
 API_KEY ?=
 REST_URL ?=
@@ -14,8 +18,10 @@ DISPATCHER = dispatcher
 ASM_OBJ = fast_mask.o
 C_OBJ = dispatcher.o pkcs11_signer.o
 RESULT_JSON = result.json
+XDP_SRC = formal/ebpf/osint_dispatcher_xdp_firewall.c
+XDP_OBJ = formal/ebpf/osint_dispatcher_xdp_firewall.o
 
-.PHONY: all clean run parse-json log-restful
+.PHONY: all clean run parse-json log-restful xdp-build verify-ebpf
 
 all: $(DISPATCHER)
 
@@ -41,5 +47,22 @@ run: all
 
 log-restful: run
 
+xdp-build: $(XDP_OBJ)
+
+$(XDP_OBJ): $(XDP_SRC)
+	$(CLANG) $(XDP_CFLAGS) -c -o $@ $<
+
+verify-ebpf: $(XDP_SRC)
+	@if command -v $(KANI) >/dev/null 2>&1; then \
+		echo "Running Kani Rust Verifier over C source for anomaly scanning"; \
+		$(KANI) c $<; \
+	elif command -v $(CONTROL_FLAG) >/dev/null 2>&1; then \
+		echo "Running ControlFlag over eBPF source for anomaly scanning"; \
+		$(CONTROL_FLAG) check $<; \
+	else \
+		echo "ERROR: neither $(KANI) nor $(CONTROL_FLAG) is installed"; \
+		exit 1; \
+	fi
+
 clean:
-	rm -f $(DISPATCHER) $(ASM_OBJ) dispatcher.o pkcs11_signer.o $(RESULT_JSON)
+	rm -f $(DISPATCHER) $(ASM_OBJ) dispatcher.o pkcs11_signer.o $(RESULT_JSON) $(XDP_OBJ)
