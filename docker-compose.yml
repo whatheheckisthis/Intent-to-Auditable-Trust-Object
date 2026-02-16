@@ -62,9 +62,12 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set in .env}
       GF_SERVER_HTTP_PORT: 3000
+    ports:
+      - "3000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
 
   db:
     image: mariadb:11.4
@@ -125,12 +128,9 @@ services:
     container_name: nginx
     restart: unless-stopped
     depends_on:
-      - apache
-    ports:
-      - "${NGINX_PORT:-8080}:80"
-    networks:
-      - app_net
-      - enclave_net
+      - enclave
+      - grafana
+    network_mode: "service:enclave"
 
 volumes:
   mariadb-data:
