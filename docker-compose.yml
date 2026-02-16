@@ -32,6 +32,20 @@ services:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
 
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: node-exporter
+    restart: unless-stopped
+    network_mode: "service:enclave"
+    pid: host
+    depends_on:
+      - enclave
+    command:
+      - --path.rootfs=/host
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+    volumes:
+      - /:/host:ro,rslave
   grafana:
     image: grafana/grafana:11.1.0
     container_name: grafana
