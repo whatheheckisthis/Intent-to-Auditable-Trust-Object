@@ -305,3 +305,32 @@ The repository cyber risk management controls document is available at:
 - [`docs/cyber-risk-controls.md`](docs/cyber-risk-controls.md)
 
 Also see [Control Mapping](#4-control-mapping-soc-2--asvs--essential-eight) and [Evidence Model](#5-evidence-model-maintainable-by-default) for implementation context.
+
+---
+
+## 11) PCAP TCP Handshake Exporter (C#)
+
+A small .NET console app is provided at `src/PcapHandshakeExporter` to parse `.pcap` files with **SharpPcap** and **PacketDotNet**, then export TCP handshake packets (`SYN`, `SYN-ACK`, `ACK`) to `handshake_data.csv`.
+
+### Build
+
+```bash
+dotnet build src/PcapHandshakeExporter/PcapHandshakeExporter.csproj
+```
+
+### Run
+
+```bash
+dotnet run --project src/PcapHandshakeExporter/PcapHandshakeExporter.csproj -- /path/to/capture.pcap
+```
+
+### CSV Output
+
+`handshake_data.csv` contains:
+
+- `Timestamp`
+- `SourceIP`
+- `DestinationIP`
+- `SequenceNumber`
+- `AcknowledgmentNumber`
+- `HandshakeType`
