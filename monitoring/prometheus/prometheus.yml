@@ -14,7 +14,7 @@ scrape_configs:
       - targets:
           - localhost:9090
 
-  - job_name: host-metrics
+  - job_name: host-monitoring
     static_configs:
       - targets:
           - localhost:9100
