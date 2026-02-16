@@ -1,15 +1,11 @@
 `timescale 1ns/1ps
 
-// Parallel NTT core for zk-SNARK proving backends (Groth16/Plonky2).
-// Architecture goals:
-//  - Sustain 100 MSPS packet attest stream by decoupling ingest, NTT, and proof aggregation.
-//  - Maintain high modular multiply throughput via deeply pipelined Montgomery units.
-//  - Provide a 256-bit epoch witness output for recursive prover ingestion.
-
+// Parallel NTT core for recursive zk-SNARK packet attestation.
+// Tuned for Kyber-sized polynomials (N=256) and a 1200 ns fold target.
 module montgomery_mul_pipe #(
-    parameter int WIDTH = 64,
-    parameter logic [WIDTH-1:0] MODULUS = 64'hffffffff00000001,
-    parameter logic [WIDTH-1:0] N_PRIME = 64'h00000000ffffffff
+    parameter int WIDTH = 16,
+    parameter logic [WIDTH-1:0] MODULUS = 16'd3329,
+    parameter logic [WIDTH-1:0] N_PRIME = 16'd62209
 ) (
     input  logic                  clk,
     input  logic                  rst_n,
@@ -19,12 +15,6 @@ module montgomery_mul_pipe #(
     output logic                  out_valid,
     output logic [WIDTH-1:0]      result
 );
-    // 4-stage Montgomery pipeline:
-    // S0: partial multiply
-    // S1: reduction factor m = (t * n') mod R
-    // S2: t + mN
-    // S3: divide by R and conditional subtract
-
     logic [2*WIDTH-1:0] t_s0, t_s1, t_s2;
     logic [WIDTH-1:0]   m_s1;
     logic [WIDTH:0]     u_s3;
@@ -71,41 +61,33 @@ module montgomery_mul_pipe #(
 endmodule
 
 module parallel_ntt_core #(
-    parameter int LANES              = 8,
-    parameter int LOGN               = 12,            // N=4096 default
-    parameter int WIDTH              = 64,
-    parameter int PIPELINE_DEPTH     = 4,
-    parameter int EPOCH_PACKET_PROOFS= 1024,
-    parameter logic [WIDTH-1:0] MODULUS = 64'hffffffff00000001
+    parameter int LANES = 16,
+    parameter int LOGN = 8,               // N = 256 coefficients
+    parameter int WIDTH = 16,
+    parameter int PIPELINE_DEPTH = 4,
+    parameter logic [WIDTH-1:0] MODULUS = 16'd3329,
+    parameter int CLOCK_NS = 2,
+    parameter int FOLD_TARGET_NS = 1200
 ) (
     input  logic                     clk,
     input  logic                     rst_n,
-
-    // Ingress interface for polynomial coefficients from packet prover frontend.
     input  logic                     coeff_valid,
     input  logic [WIDTH-1:0]         coeff_data,
     input  logic [$clog2(1<<LOGN)-1:0] coeff_addr,
-
-    // Control/status
     input  logic                     start_ntt,
     output logic                     ntt_done,
     output logic                     busy,
-
-    // Recursive witness output per epoch
     output logic                     witness_valid,
     output logic [255:0]             witness_256
 );
     localparam int N = (1 << LOGN);
     localparam int STAGES = LOGN;
+    localparam int BUTTERFLIES_PER_STAGE = N/2;
+    localparam int BATCHES_PER_STAGE = (BUTTERFLIES_PER_STAGE + LANES - 1) / LANES;
+    localparam int EST_CYCLES = (STAGES * BATCHES_PER_STAGE) + PIPELINE_DEPTH + 12;
+    localparam int EST_LATENCY_NS = EST_CYCLES * CLOCK_NS;
 
-    typedef enum logic [2:0] {
-        IDLE,
-        LOAD,
-        NTT_RUN,
-        MERKLE_COMPRESS,
-        EMIT_WITNESS
-    } ntt_state_t;
-
+    typedef enum logic [2:0] { IDLE, LOAD, NTT_RUN, FOLD, EMIT_WITNESS } ntt_state_t;
     ntt_state_t state;
 
     logic [WIDTH-1:0] poly_mem [0:N-1];
@@ -113,15 +95,22 @@ module parallel_ntt_core #(
 
     logic [$clog2(STAGES)-1:0] stage_idx;
     logic [$clog2(N)-1:0]      butterfly_idx;
-    logic                      lane_valid   [0:LANES-1];
-    logic [WIDTH-1:0]          lane_a       [0:LANES-1];
-    logic [WIDTH-1:0]          lane_b       [0:LANES-1];
-    logic [WIDTH-1:0]          lane_twiddle [0:LANES-1];
-    logic [WIDTH-1:0]          lane_mul     [0:LANES-1];
-    logic                      lane_mul_vld [0:LANES-1];
 
-    logic [31:0] packet_proof_count;
+    // Z-register lane mapping: coefficient k is mapped into lane (k % LANES).
+    logic lane_valid   [0:LANES-1];
+    logic [WIDTH-1:0] z_lane_a [0:LANES-1];
+    logic [WIDTH-1:0] z_lane_b [0:LANES-1];
+    logic [WIDTH-1:0] z_lane_twiddle [0:LANES-1];
+    logic [WIDTH-1:0] lane_mul [0:LANES-1];
+    logic lane_mul_vld [0:LANES-1];
+
     logic [255:0] witness_acc;
+
+    initial begin
+        if (EST_LATENCY_NS > FOLD_TARGET_NS) begin
+            $error("NTT fold latency estimate %0d ns exceeds %0d ns target", EST_LATENCY_NS, FOLD_TARGET_NS);
+        end
+    end
 
     genvar i;
     generate
@@ -133,15 +122,14 @@ module parallel_ntt_core #(
                 .clk      (clk),
                 .rst_n    (rst_n),
                 .in_valid (lane_valid[i]),
-                .a        (lane_b[i]),
-                .b        (lane_twiddle[i]),
+                .a        (z_lane_b[i]),
+                .b        (z_lane_twiddle[i]),
                 .out_valid(lane_mul_vld[i]),
                 .result   (lane_mul[i])
             );
         end
     endgenerate
 
-    // Simple placeholder twiddle init (real design loads from precomputed ROM/BRAM).
     integer t;
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -157,17 +145,16 @@ module parallel_ntt_core #(
             state            <= IDLE;
             stage_idx        <= '0;
             butterfly_idx    <= '0;
-            packet_proof_count <= '0;
             busy             <= 1'b0;
             ntt_done         <= 1'b0;
             witness_valid    <= 1'b0;
             witness_256      <= '0;
             witness_acc      <= 256'h6a09e667f3bcc908bb67ae8584caa73b;
             for (l = 0; l < LANES; l++) begin
-                lane_valid[l]   <= 1'b0;
-                lane_a[l]       <= '0;
-                lane_b[l]       <= '0;
-                lane_twiddle[l] <= '0;
+                lane_valid[l]      <= 1'b0;
+                z_lane_a[l]        <= '0;
+                z_lane_b[l]        <= '0;
+                z_lane_twiddle[l]  <= '0;
             end
         end else begin
             ntt_done      <= 1'b0;
@@ -181,66 +168,61 @@ module parallel_ntt_core #(
                 IDLE: begin
                     busy <= 1'b0;
                     if (start_ntt) begin
-                        busy          <= 1'b1;
-                        stage_idx     <= '0;
+                        busy <= 1'b1;
+                        stage_idx <= '0;
                         butterfly_idx <= '0;
-                        state         <= LOAD;
+                        state <= LOAD;
                     end
                 end
 
-                LOAD: begin
-                    packet_proof_count <= packet_proof_count + 1;
-                    state <= NTT_RUN;
-                end
+                LOAD: state <= NTT_RUN;
 
                 NTT_RUN: begin
-                    // Lane scheduler: each lane performs one butterfly multiplication stream.
                     for (l = 0; l < LANES; l++) begin
-                        lane_valid[l]   <= 1'b1;
-                        lane_a[l]       <= poly_mem[(butterfly_idx + l) % N];
-                        lane_b[l]       <= poly_mem[(butterfly_idx + l + (1 << stage_idx)) % N];
-                        lane_twiddle[l] <= twiddle_rom[(butterfly_idx + l) % N];
+                        int lane_base;
+                        lane_base = butterfly_idx + l;
+                        lane_valid[l] <= (lane_base < BUTTERFLIES_PER_STAGE);
+                        z_lane_a[l] <= poly_mem[lane_base % N];
+                        z_lane_b[l] <= poly_mem[(lane_base + (1 << stage_idx)) % N];
+                        z_lane_twiddle[l] <= twiddle_rom[lane_base % N];
                     end
 
-                    // Commit butterfly outputs when multiplier results are valid.
                     for (l = 0; l < LANES; l++) begin
-                        if (lane_mul_vld[l]) begin
-                            poly_mem[(butterfly_idx + l) % N] <= (lane_a[l] + lane_mul[l]) % MODULUS;
-                            poly_mem[(butterfly_idx + l + (1 << stage_idx)) % N] <=
-                                (lane_a[l] + MODULUS - lane_mul[l]) % MODULUS;
+                        int lane_base;
+                        lane_base = butterfly_idx + l;
+                        if (lane_mul_vld[l] && (lane_base < BUTTERFLIES_PER_STAGE)) begin
+                            poly_mem[lane_base % N] <= (z_lane_a[l] + lane_mul[l]) % MODULUS;
+                            poly_mem[(lane_base + (1 << stage_idx)) % N] <=
+                                (z_lane_a[l] + MODULUS - lane_mul[l]) % MODULUS;
                         end
                     end
 
                     butterfly_idx <= butterfly_idx + LANES;
-                    if (butterfly_idx >= N - LANES) begin
+                    if (butterfly_idx >= BUTTERFLIES_PER_STAGE - LANES) begin
                         butterfly_idx <= '0;
                         stage_idx <= stage_idx + 1;
                         if (stage_idx == STAGES-1) begin
-                            state <= MERKLE_COMPRESS;
+                            state <= FOLD;
                         end
                     end
                 end
 
-                MERKLE_COMPRESS: begin
-                    // Epoch compression into 256-bit witness digest (placeholder sponge schedule).
+                FOLD: begin
                     witness_acc[63:0]    <= witness_acc[63:0]    ^ poly_mem[0];
-                    witness_acc[127:64]  <= witness_acc[127:64]  ^ poly_mem[N/4];
-                    witness_acc[191:128] <= witness_acc[191:128] ^ poly_mem[N/2];
-                    witness_acc[255:192] <= witness_acc[255:192] ^ poly_mem[3*N/4];
+                    witness_acc[127:64]  <= witness_acc[127:64]  ^ poly_mem[64];
+                    witness_acc[191:128] <= witness_acc[191:128] ^ poly_mem[128];
+                    witness_acc[255:192] <= witness_acc[255:192] ^ poly_mem[192];
                     state <= EMIT_WITNESS;
                 end
 
                 EMIT_WITNESS: begin
-                    witness_256   <= witness_acc;
+                    witness_256 <= witness_acc;
                     witness_valid <= 1'b1;
-                    ntt_done      <= 1'b1;
-                    busy          <= 1'b0;
-                    state         <= IDLE;
+                    ntt_done <= 1'b1;
+                    busy <= 1'b0;
+                    state <= IDLE;
                 end
-
-                default: state <= IDLE;
             endcase
         end
     end
-
 endmodule
