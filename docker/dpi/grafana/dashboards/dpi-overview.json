@@ -1,0 +1,94 @@
+{
+  "id": null,
+  "uid": "dpi-overview",
+  "title": "DPI Real-Time Flow Metrics",
+  "tags": ["dpi", "kafka", "redis"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Global Throughput (bytes/sec)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "redis-datasource",
+        "uid": "${DS_REDIS-TIMESERIES}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "TS.RANGE ts:global:bps - + AGGREGATION sum 1000",
+          "type": "timeserie"
+        }
+      ],
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 0}
+    },
+    {
+      "id": 2,
+      "title": "Global Packet Rate (packets/sec)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "redis-datasource",
+        "uid": "${DS_REDIS-TIMESERIES}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "TS.RANGE ts:global:pps - + AGGREGATION sum 1000",
+          "type": "timeserie"
+        }
+      ],
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 0}
+    },
+    {
+      "id": 3,
+      "title": "Top Flows by Bytes",
+      "type": "table",
+      "datasource": {
+        "type": "redis-datasource",
+        "uid": "${DS_REDIS-TIMESERIES}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "ZREVRANGE flows:top:bytes 0 20 WITHSCORES",
+          "type": "table"
+        }
+      ],
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 9}
+    },
+    {
+      "id": 4,
+      "title": "Protocol Throughput",
+      "type": "timeseries",
+      "datasource": {
+        "type": "redis-datasource",
+        "uid": "${DS_REDIS-TIMESERIES}"
+      },
+      "targets": [
+        {
+          "refId": "TCP",
+          "query": "TS.RANGE ts:protocol:TCP:bps - + AGGREGATION sum 1000",
+          "type": "timeserie"
+        },
+        {
+          "refId": "UDP",
+          "query": "TS.RANGE ts:protocol:UDP:bps - + AGGREGATION sum 1000",
+          "type": "timeserie"
+        },
+        {
+          "refId": "ICMP",
+          "query": "TS.RANGE ts:protocol:ICMP:bps - + AGGREGATION sum 1000",
+          "type": "timeserie"
+        }
+      ],
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 9}
+    }
+  ]
+}
