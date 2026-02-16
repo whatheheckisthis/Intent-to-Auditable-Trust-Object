@@ -201,6 +201,8 @@ High-signal directories only:
 - `bin/scripts/` — legacy shell/python helper files.
 - `bin/docs/` — archival notes and process documentation.
 - `bin/web-assets/` — static dependency visualization assets.
+- `tests/` — deployment-grade automated test suites (Python and C#).
+- `docs/notebooks/` — executable notebook documentation (`.ipynb`) for workflows and validation.
 
 Pinned root configuration files:
 
@@ -295,6 +297,21 @@ Dependency definitions live in `pyproject.toml` with `tool.conda-lock` settings.
 conda-lock lock --file pyproject.toml
 conda-lock install --name iato-dev conda-lock.yml
 ```
+
+### 9.4 IAM Parser + REST Log Automation (`Makefile`)
+
+Use the root `Makefile` to parse an IAM policy and POST the JSON result to your API endpoint.
+
+```bash
+# from environment or .env
+export TARGET_POLICY=path/to/policy.json
+export LOG_ENDPOINT=https://<your-api-endpoint>/risk-results
+export API_KEY=<bearer-token>
+
+make parse-iam
+```
+
+The `parse-iam` target validates required variables, runs `iato_ops/iam_policy_parser.py`, writes `result.json`, then posts it to `LOG_ENDPOINT` with `Authorization: Bearer <API_KEY>`.
 
 ---
 
