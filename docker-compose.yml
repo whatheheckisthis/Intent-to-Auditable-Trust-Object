@@ -22,7 +22,7 @@ services:
   xdp-auditor:
     build:
       context: ./ebpf
-      dockerfile: Dockerfile
+      dockerfile: netflow-sidecar/Dockerfile
     container_name: xdp-auditor
     restart: unless-stopped
     network_mode: "service:enclave"
@@ -33,11 +33,10 @@ services:
       XDP_INTERFACE: ${XDP_INTERFACE:-eth0}
       XDP_MODE: ${XDP_MODE:-drv}
       METRICS_ADDR: 0.0.0.0:9400
+      NETFLOW_POLL_INTERVAL: ${NETFLOW_POLL_INTERVAL:-10s}
+      NETFLOW_TOPK: ${NETFLOW_TOPK:-50}
     volumes:
-      - ./ebpf:/opt/xdp:ro
-      - /sys/kernel/debug:/sys/kernel/debug
-      - /lib/modules:/lib/modules:ro
-      - /usr/src:/usr/src:ro
+      - /sys/kernel/btf:/sys/kernel/btf:ro
 
   node-exporter:
     image: prom/node-exporter:v1.8.2

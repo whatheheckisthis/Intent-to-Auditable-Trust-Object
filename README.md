@@ -2,8 +2,8 @@
 
 This repository ships a secure and auditable monitoring architecture that combines:
 
-- **Line-rate kernel telemetry** from an XDP/eBPF audit hook (`xdp_audit.c`),
-- **An enclave-secured userspace sidecar** that exports Prometheus metrics,
+- **Line-rate kernel telemetry** from a CO-RE XDP/eBPF netflow filter (`ebpf/netflow_filter.bpf.c`),
+- **A Go-based enclave sidecar** that reads an eBPF LRU flow map and exports Prometheus metrics,
 - **A private overlay network backbone** for observability and dashboard access,
 - **An isolated app plane** (`Nginx -> Drupal -> MariaDB`) on `app_net`.
 
@@ -11,18 +11,25 @@ This repository ships a secure and auditable monitoring architecture that combin
 
 ### Software-Verilog Layer (Kernel/NIC path)
 
-- `ebpf/xdp_audit.c` attaches at the XDP hook and is intended for **`XDP_DRV`** (driver mode) and optionally **`XDP_HW`** where NIC offload is supported.
-- The program performs a packet-timing audit and emits events through a `BPF_MAP_TYPE_PERF_EVENT_ARRAY` map named `audit_events`.
-- The TVLA-inspired logic computes an online timing baseline (mean + variance via Welford updates) and flags packets where the absolute timing deviation yields a high t-score (`|t| >= 4`) after minimum samples are collected.
+- `ebpf/netflow_filter.bpf.c` attaches at the XDP hook and is intended for **`XDP_DRV`** (driver mode) and optionally **`XDP_HW`** where NIC offload is supported.
+- The program parses IPv4 TCP/UDP headers and implements `netflow_filter` by aggregating packet + byte counters per 5-tuple flow.
+- Flow state is stored in `flow_map` using `BPF_MAP_TYPE_LRU_HASH` so stale entries can be evicted under high-volume traffic rather than exhausting map capacity.
+- The BPF object is built with BTF/CO-RE (`vmlinux.h` generated from `/sys/kernel/btf/vmlinux`) for portability across compatible kernels.
 
 ### Bridge Layer (Userspace sidecar)
 
-- `ebpf/agent.py` dynamically loads and attaches the XDP program.
-- The sidecar consumes perf events from the eBPF map and exposes `/metrics` on port `9400`.
+- `ebpf/netflow-sidecar/main.go` loads and attaches the XDP program, then polls `flow_map`.
+- The sidecar exports `/metrics` on port `9400` over the enclave vNET namespace.
+- Exported metrics include:
+  - `xdp_netflow_active_flows`
+  - `xdp_netflow_packets_total_snapshot`
+  - `xdp_netflow_bytes_total_snapshot`
+  - `xdp_netflow_flow_packets` (top-N)
+  - `xdp_netflow_flow_bytes` (top-N)
 - Container runs with:
   - `network_mode: "service:enclave"`
   - `privileged: true`
-  - host mounts for `/sys/kernel/debug`, `/lib/modules`, `/usr/src`.
+  - host mount for `/sys/kernel/btf`.
 
 ### Hybrid Compose Topology
 
@@ -33,9 +40,10 @@ This repository ships a secure and auditable monitoring architecture that combin
 
 ## 2) Key Files
 
-- `ebpf/xdp_audit.c`
-- `ebpf/agent.py`
-- `ebpf/Dockerfile`
+- `ebpf/netflow_filter.bpf.c`
+- `ebpf/netflow-sidecar/main.go`
+- `ebpf/netflow-sidecar/entrypoint.sh`
+- `ebpf/netflow-sidecar/Dockerfile`
 - `docker-compose.yml`
 - `prometheus.yml`
 
@@ -44,7 +52,7 @@ This repository ships a secure and auditable monitoring architecture that combin
 1. **Prerequisites**
 
    - Docker Desktop with WSL2 backend enabled.
-   - Linux kernel with eBPF/XDP support in your WSL distro.
+   - Linux kernel with eBPF/XDP support and `/sys/kernel/btf/vmlinux` exposed.
    - Enclave enrolment key.
 
 2. **Prepare environment**
@@ -64,6 +72,8 @@ This repository ships a secure and auditable monitoring architecture that combin
 
    - `XDP_INTERFACE=eth0`
    - `XDP_MODE=drv` (`drv`, `hw`, or `skb`)
+   - `NETFLOW_POLL_INTERVAL=10s`
+   - `NETFLOW_TOPK=50`
 
 3. **Create TLS certificate**
 
@@ -95,7 +105,7 @@ docker logs xdp-auditor --tail=50
 
 You should see startup output similar to:
 
-- `XDP audit hook attached on eth0 with mode=drv`
+- `netflow_filter attached to eth0 (mode=drv)`
 
 ### B. Verify Prometheus metrics path
 
@@ -116,9 +126,9 @@ Open these URLs from your browser:
 
 Login to Grafana and validate scrape health + XDP series:
 
-- `xdp_audit_events_total`
-- `xdp_audit_leak_flags_total`
-- `xdp_audit_last_tscore`
+- `xdp_netflow_active_flows`
+- `xdp_netflow_packets_total_snapshot`
+- `xdp_netflow_flow_packets`
 
 ## 5) Teardown
 
