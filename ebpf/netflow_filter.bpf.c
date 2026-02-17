@@ -20,7 +20,7 @@ struct flow_metrics {
 };
 
 struct {
-    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(type, BPF_MAP_TYPE_PERCPU_HASH);
     __uint(max_entries, 262144);
     __type(key, struct flow_id);
     __type(value, struct flow_metrics);
@@ -85,8 +85,8 @@ int netflow_filter(struct xdp_md *ctx)
 
     struct flow_metrics *m = bpf_map_lookup_elem(&flow_map, &id);
     if (m) {
-        __sync_fetch_and_add(&m->packets, 1);
-        __sync_fetch_and_add(&m->bytes, pkt_len);
+        m->packets += 1;
+        m->bytes += pkt_len;
         m->last_seen_ns = now;
     } else {
         struct flow_metrics init = {
