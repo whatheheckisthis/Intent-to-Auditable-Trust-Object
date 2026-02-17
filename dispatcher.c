@@ -41,7 +41,19 @@ typedef struct {
     flow_key_t key;
     uint64_t packets;
     uint64_t bytes;
+    uint64_t first_seen_ns;
+    uint64_t last_seen_ns;
 } aggregated_flow_t;
+
+typedef struct {
+    uint64_t unix_ts;
+    flow_key_t masked_key;
+    uint64_t packets;
+    uint64_t bytes;
+    uint64_t first_seen_ns;
+    uint64_t last_seen_ns;
+    uint8_t sha256[SHA256_DIGEST_LENGTH];
+} evidence_t;
 
 extern void fast_mask_ip_pair(void *src16, void *dst16, uint8_t family);
 
@@ -55,11 +67,10 @@ static void on_signal(int signo) {
     keep_running = 0;
 }
 
-static int sign_evidence(const unsigned char *digest,
-                         size_t digest_len,
+static int sign_evidence(const evidence_t *evidence,
                          unsigned char *signature,
                          size_t *signature_len) {
-    if (sign_log_hsm((unsigned char *)digest, digest_len) != 0) {
+    if (sign_log_hsm((unsigned char *)evidence->sha256, SHA256_DIGEST_LENGTH) != 0) {
         return -1;
     }
 
@@ -113,14 +124,24 @@ static int aggregate_flow_map(int map_fd, aggregated_flow_t *out, size_t out_cap
 
         uint64_t packets = 0;
         uint64_t bytes = 0;
+        uint64_t first_seen_ns = 0;
+        uint64_t last_seen_ns = 0;
         for (int i = 0; i < ncpu; ++i) {
             packets += percpu[i].packets;
             bytes += percpu[i].bytes;
+            if (percpu[i].first_seen_ns != 0 && (first_seen_ns == 0 || percpu[i].first_seen_ns < first_seen_ns)) {
+                first_seen_ns = percpu[i].first_seen_ns;
+            }
+            if (percpu[i].last_seen_ns > last_seen_ns) {
+                last_seen_ns = percpu[i].last_seen_ns;
+            }
         }
 
         out[count].key = next;
         out[count].packets = packets;
         out[count].bytes = bytes;
+        out[count].first_seen_ns = first_seen_ns;
+        out[count].last_seen_ns = last_seen_ns;
         count++;
 
         prev = next;
@@ -202,7 +223,13 @@ static int export_metrics_http(uint16_t port) {
             break;
         }
 
-        char body[512];
+        double verification_success = 1.0;
+        const uint64_t total = verified_flows_total + unverified_flows_total;
+        if (total > 0) {
+            verification_success = (double)verified_flows_total / (double)total;
+        }
+
+        char body[768];
         int body_len = snprintf(
             body,
             sizeof(body),
@@ -214,12 +241,16 @@ static int export_metrics_http(uint16_t port) {
             "ato_unverified_flows_total %llu\n"
             "# HELP ato_signed_evidence_total Number of signed evidence records emitted.\n"
             "# TYPE ato_signed_evidence_total counter\n"
-            "ato_signed_evidence_total %llu\n",
+            "ato_signed_evidence_total %llu\n"
+            "# HELP ato_signature_verification_success Signature verification success ratio.\n"
+            "# TYPE ato_signature_verification_success gauge\n"
+            "ato_signature_verification_success %.6f\n",
             (unsigned long long)verified_flows_total,
             (unsigned long long)unverified_flows_total,
-            (unsigned long long)signed_evidence_total);
+            (unsigned long long)signed_evidence_total,
+            verification_success);
 
-        char response[1024];
+        char response[1400];
         int n = snprintf(response,
                          sizeof(response),
                          "HTTP/1.1 200 OK\r\n"
@@ -267,15 +298,26 @@ static int run_dispatch_loop(const char *map_path, const char *log_path, unsigne
         }
 
         for (size_t i = 0; i < len; ++i) {
-            flow_key_t masked = flows[i].key;
-            fast_mask_ip_pair(masked.src_addr, masked.dst_addr, masked.family == AF_INET ? 4 : 6);
+            evidence_t evidence = {
+                .unix_ts = (uint64_t)time(NULL),
+                .masked_key = flows[i].key,
+                .packets = flows[i].packets,
+                .bytes = flows[i].bytes,
+                .first_seen_ns = flows[i].first_seen_ns,
+                .last_seen_ns = flows[i].last_seen_ns,
+            };
 
-            unsigned char digest[SHA256_DIGEST_LENGTH];
-            SHA256((const unsigned char *)&masked, sizeof(masked), digest);
+            fast_mask_ip_pair(evidence.masked_key.src_addr,
+                              evidence.masked_key.dst_addr,
+                              evidence.masked_key.family == AF_INET ? 4 : 6);
+
+            SHA256((const unsigned char *)&evidence,
+                   sizeof(evidence) - SHA256_DIGEST_LENGTH,
+                   evidence.sha256);
 
             unsigned char signature[512];
             size_t sig_len = sizeof(signature);
-            int verified = sign_evidence(digest, sizeof(digest), signature, &sig_len) == 0;
+            int verified = sign_evidence(&evidence, signature, &sig_len) == 0;
             if (verified) {
                 verified_flows_total += 1;
             } else {
@@ -289,22 +331,30 @@ static int run_dispatch_loop(const char *map_path, const char *log_path, unsigne
                 strcpy(encoded, "UNSIGNED");
             }
 
+            char digest_hex[SHA256_DIGEST_LENGTH * 2 + 1] = {0};
+            for (size_t j = 0; j < SHA256_DIGEST_LENGTH; ++j) {
+                snprintf(digest_hex + (j * 2), 3, "%02x", evidence.sha256[j]);
+            }
+
             char src_txt[INET6_ADDRSTRLEN] = {0};
             char dst_txt[INET6_ADDRSTRLEN] = {0};
-            format_addr(masked.family, masked.src_addr, src_txt, sizeof(src_txt));
-            format_addr(masked.family, masked.dst_addr, dst_txt, sizeof(dst_txt));
+            format_addr(evidence.masked_key.family, evidence.masked_key.src_addr, src_txt, sizeof(src_txt));
+            format_addr(evidence.masked_key.family, evidence.masked_key.dst_addr, dst_txt, sizeof(dst_txt));
 
-            char line[1700];
+            char line[2200];
             snprintf(line,
                      sizeof(line),
-                     "ts=%ld family=%u src=%s dst=%s proto=%u packets=%llu bytes=%llu verified=%d signature=%s",
-                     time(NULL),
-                     masked.family,
+                     "ts=%llu family=%u src=%s dst=%s proto=%u packets=%llu bytes=%llu first_seen_ns=%llu last_seen_ns=%llu digest_sha256=%s verified=%d signature=%s",
+                     (unsigned long long)evidence.unix_ts,
+                     evidence.masked_key.family,
                      src_txt,
                      dst_txt,
-                     masked.proto,
-                     (unsigned long long)flows[i].packets,
-                     (unsigned long long)flows[i].bytes,
+                     evidence.masked_key.proto,
+                     (unsigned long long)evidence.packets,
+                     (unsigned long long)evidence.bytes,
+                     (unsigned long long)evidence.first_seen_ns,
+                     (unsigned long long)evidence.last_seen_ns,
+                     digest_hex,
                      verified,
                      encoded);
 
