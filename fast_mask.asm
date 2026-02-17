@@ -1,20 +1,31 @@
 ; fast_mask.asm
-; NASM x86_64 routine to zero sensitive buffers quickly.
-; SysV ABI: void fast_clear_buffer(void *buf, size_t len)
+; SysV ABI:
+;   void fast_mask_ip_pairs(unsigned char *buf, const unsigned char *mask, size_t blocks16)
+;
+; Applies SIMD mask to each 16-byte block: buf[i] &= mask[i]
+; Uses movdqu + pand to support unaligned flow records.
 
-global fast_clear_buffer
+global fast_mask_ip_pairs
 section .text
 
-fast_clear_buffer:
-    ; rdi = buffer pointer, rsi = length
+fast_mask_ip_pairs:
+    ; rdi=buf, rsi=mask, rdx=blocks16
     test rdi, rdi
     jz .done
     test rsi, rsi
     jz .done
+    test rdx, rdx
+    jz .done
 
-    xor eax, eax          ; value to store
-    mov rcx, rsi          ; byte count
-    rep stosb             ; memset(buf, 0, len)
+.loop:
+    movdqu xmm0, [rdi]
+    movdqu xmm1, [rsi]
+    pand xmm0, xmm1
+    movdqu [rdi], xmm0
+
+    add rdi, 16
+    dec rdx
+    jnz .loop
 
 .done:
     ret

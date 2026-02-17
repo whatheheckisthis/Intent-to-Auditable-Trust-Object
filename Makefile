@@ -8,6 +8,7 @@ CFLAGS ?= -O2 -Wall -Wextra
 BPF_ARCH_INCLUDE ?= /usr/include/x86_64-linux-gnu
 XDP_CFLAGS ?= -O2 -g -target bpf -D__TARGET_ARCH_x86 -I$(BPF_ARCH_INCLUDE)
 LDFLAGS ?=
+LDLIBS ?= -ldl -lcrypto -lpthread
 KANI ?= kani
 CONTROL_FLAG ?= control-flag
 
@@ -24,7 +25,7 @@ XDP_OBJ = formal/ebpf/osint_dispatcher_xdp_firewall.o
 SNARK_XDP_SRC = ebpf/osint_snark_bridge.bpf.c
 SNARK_XDP_OBJ = ebpf/osint_snark_bridge.bpf.o
 
-.PHONY: all clean run parse-json log-restful xdp-build snark-xdp-build verify-ebpf
+.PHONY: all clean run log-restful xdp-build snark-xdp-build verify-ebpf
 
 all: $(DISPATCHER)
 
@@ -38,15 +39,10 @@ pkcs11_signer.o: pkcs11_signer.c pkcs11_signer.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(DISPATCHER): $(ASM_OBJ) $(C_OBJ)
-	$(CC) -o $@ $(ASM_OBJ) $(C_OBJ) $(LDFLAGS) -ldl -lcrypto
-
-parse-json:
-	@test -n "$(TARGET_POLICY)" || (echo "ERROR: TARGET_POLICY is required" && exit 1)
-	python3 iam_parser.py --file "$(TARGET_POLICY)" > $(RESULT_JSON)
+	$(CC) -o $@ $(ASM_OBJ) $(C_OBJ) $(LDFLAGS) $(LDLIBS)
 
 run: all
-	@test -n "$(TARGET_POLICY)" || (echo "ERROR: TARGET_POLICY is required" && exit 1)
-	./$(DISPATCHER) parse-iam "$(TARGET_POLICY)"
+	./$(DISPATCHER)
 
 log-restful: run
 

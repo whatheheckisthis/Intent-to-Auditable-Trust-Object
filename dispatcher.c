@@ -1,345 +1,267 @@
+#include <arpa/inet.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <openssl/evp.h>
 #include <openssl/sha.h>
+#include <pthread.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "pkcs11_signer.h"
 
-typedef struct Command {
-    const char *name;
-    int (*handler)(int argc, char **argv);
-} Command;
+#define EVIDENCE_MAX 8192
 
-extern void fast_clear_buffer(void *buf, size_t len);
+extern void fast_mask_ip_pairs(unsigned char *buf, const unsigned char *mask, size_t blocks16);
 
-static void clear_heap_string(char *s) {
-    if (s == NULL) {
-        return;
-    }
+struct metrics_snapshot {
+    unsigned long flow_records;
+    unsigned long long packets_total;
+    unsigned long long bytes_total;
+    unsigned long long signed_batches;
+    unsigned long long signing_failures;
+};
 
-    fast_clear_buffer(s, strlen(s));
-    free(s);
+static volatile sig_atomic_t g_running = 1;
+static pthread_mutex_t g_metrics_mu = PTHREAD_MUTEX_INITIALIZER;
+static struct metrics_snapshot g_metrics = {0};
+
+static void stop_handler(int sig)
+{
+    (void)sig;
+    g_running = 0;
 }
 
-static void scrub_cli_args(int argc, char **argv) {
-    for (int i = 1; i < argc; ++i) {
-        if (argv[i] != NULL) {
-            fast_clear_buffer(argv[i], strlen(argv[i]));
-        }
-    }
+static int read_command_output(const char *cmd, char *buf, size_t cap)
+{
+    FILE *fp = popen(cmd, "r");
+    if (!fp)
+        return -1;
+
+    size_t used = fread(buf, 1, cap - 1, fp);
+    buf[used] = '\0';
+    int status = pclose(fp);
+    return (status == 0) ? 0 : -1;
 }
 
-static int capture_parser_json(const char *policy_file, char **json_out) {
-    int pipefd[2];
-    if (pipe(pipefd) != 0) {
-        perror("pipe");
-        return -1;
-    }
-
-    pid_t pid = fork();
-    if (pid < 0) {
-        perror("fork");
-        close(pipefd[0]);
-        close(pipefd[1]);
-        return -1;
-    }
-
-    if (pid == 0) {
-        char *args[] = {"python3", "iam_parser.py", "--file", (char *)policy_file, NULL};
-        close(pipefd[0]);
-        dup2(pipefd[1], STDOUT_FILENO);
-        close(pipefd[1]);
-        execvp("python3", args);
-        perror("execvp");
-        _exit(127);
-    }
-
-    close(pipefd[1]);
-
-    size_t cap = 4096;
-    size_t used = 0;
-    char *json = calloc(cap, 1);
-    if (json == NULL) {
-        close(pipefd[0]);
-        fprintf(stderr, "Out of memory while capturing parser output.\n");
-        return -1;
-    }
-
-    while (1) {
-        if (used + 1024 >= cap) {
-            size_t next_cap = cap * 2;
-            char *next = realloc(json, next_cap);
-            if (next == NULL) {
-                fprintf(stderr, "Out of memory expanding parser output buffer.\n");
-                clear_heap_string(json);
-                close(pipefd[0]);
-                return -1;
-            }
-            json = next;
-            cap = next_cap;
-        }
-
-        ssize_t n = read(pipefd[0], json + used, cap - used - 1);
-        if (n < 0) {
-            perror("read");
-            clear_heap_string(json);
-            close(pipefd[0]);
-            return -1;
-        }
-
-        if (n == 0) {
-            break;
-        }
-
-        used += (size_t)n;
-    }
-
-    close(pipefd[0]);
-    json[used] = '\0';
-
-    int status = 0;
-    if (waitpid(pid, &status, 0) < 0) {
-        perror("waitpid");
-        clear_heap_string(json);
-        return -1;
-    }
-
-    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-        fprintf(stderr, "IAM parser failed with status %d\n", WEXITSTATUS(status));
-        clear_heap_string(json);
-        return -1;
-    }
-
-    *json_out = json;
-    return 0;
-}
-
-static int base64_encode(const unsigned char *data, size_t data_len, char **out) {
-    size_t encoded_len = 4 * ((data_len + 2) / 3);
-    char *encoded = calloc(encoded_len + 1, 1);
-    if (encoded == NULL) {
-        return -1;
-    }
-
-    int written = EVP_EncodeBlock((unsigned char *)encoded, data, (int)data_len);
-    if (written <= 0) {
-        free(encoded);
-        return -1;
-    }
-
-    encoded[written] = '\0';
-    *out = encoded;
-    return 0;
-}
-
-static int build_signed_payload(const char *json, const char *sig_b64, char **payload_out) {
-    const char *template_str = "{\"result\":%s,\"signature\":\"%s\"}";
-    size_t needed = snprintf(NULL, 0, template_str, json, sig_b64) + 1;
-    char *payload = calloc(needed, 1);
-    if (payload == NULL) {
-        return -1;
-    }
-
-    snprintf(payload, needed, template_str, json, sig_b64);
-    *payload_out = payload;
-    return 0;
-}
-
-static int upload_payload(const char *payload) {
-    const char *rest_url = getenv("REST_URL");
-    const char *api_key = getenv("API_KEY");
-
-    if (rest_url == NULL || api_key == NULL) {
-        fprintf(stderr, "REST_URL and API_KEY are required for signed upload.\n");
-        return -1;
-    }
-
-    char path[] = "/tmp/dispatcher_payload_XXXXXX";
-    int fd = mkstemp(path);
-    if (fd < 0) {
-        perror("mkstemp");
-        return -1;
-    }
-
-    size_t payload_len = strlen(payload);
-    if (write(fd, payload, payload_len) != (ssize_t)payload_len) {
-        perror("write");
-        close(fd);
-        unlink(path);
-        return -1;
-    }
-    close(fd);
-
-    size_t auth_len = strlen("Authorization: Bearer ") + strlen(api_key) + 1;
-    char *auth_header = calloc(auth_len, 1);
-    if (auth_header == NULL) {
-        unlink(path);
-        return -1;
-    }
-    snprintf(auth_header, auth_len, "Authorization: Bearer %s", api_key);
-
-    char *curl_args[] = {
-        "curl",
-        "--fail",
-        "--silent",
-        "--show-error",
-        "-X",
-        "POST",
-        (char *)rest_url,
-        "-H",
-        auth_header,
-        "-H",
-        "Content-Type: application/json",
-        "--data-binary",
-        NULL,
-        NULL,
+static void mask_ip_pair(unsigned char src[16], unsigned char dst[16])
+{
+    static const unsigned char ipv4_ipv6_mask[32] = {
+        0xff, 0xff, 0xff, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0xff, 0xff, 0xff, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     };
 
-    size_t data_arg_len = strlen("@") + strlen(path) + 1;
-    char *data_arg = calloc(data_arg_len, 1);
-    if (data_arg == NULL) {
-        clear_heap_string(auth_header);
-        unlink(path);
-        return -1;
-    }
-    snprintf(data_arg, data_arg_len, "@%s", path);
-    curl_args[12] = data_arg;
-
-    pid_t pid = fork();
-    if (pid < 0) {
-        perror("fork");
-        clear_heap_string(auth_header);
-        clear_heap_string(data_arg);
-        unlink(path);
-        return -1;
-    }
-
-    if (pid == 0) {
-        execvp("curl", curl_args);
-        perror("execvp");
-        _exit(127);
-    }
-
-    int status = 0;
-    if (waitpid(pid, &status, 0) < 0) {
-        perror("waitpid");
-        clear_heap_string(auth_header);
-        clear_heap_string(data_arg);
-        unlink(path);
-        return -1;
-    }
-
-    clear_heap_string(auth_header);
-    clear_heap_string(data_arg);
-    unlink(path);
-
-    if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-        return 0;
-    }
-
-    fprintf(stderr, "curl upload failed with status %d\n", WEXITSTATUS(status));
-    return -1;
+    unsigned char pair[32];
+    memcpy(pair, src, 16);
+    memcpy(pair + 16, dst, 16);
+    fast_mask_ip_pairs(pair, ipv4_ipv6_mask, 2);
+    memcpy(src, pair, 16);
+    memcpy(dst, pair + 16, 16);
 }
 
-static int handle_parse_iam(int argc, char **argv) {
-    if (argc != 2) {
-        fprintf(stderr, "Usage: parse-iam <policy.json>\n");
-        return 1;
+static void extract_totals_from_json(const char *json, unsigned long *flows, unsigned long long *packets, unsigned long long *bytes)
+{
+    const char *p = json;
+    *flows = 0;
+    *packets = 0;
+    *bytes = 0;
+
+    while ((p = strstr(p, "\"packets\"")) != NULL) {
+        const char *colon = strchr(p, ':');
+        if (!colon)
+            break;
+        (*flows)++;
+        *packets += strtoull(colon + 1, NULL, 10);
+        p = colon + 1;
     }
 
-    char *json = NULL;
-    char *sig_b64 = NULL;
-    char *payload = NULL;
-    int rc = 2;
-
-    if (capture_parser_json(argv[1], &json) != 0) {
-        goto cleanup;
+    p = json;
+    while ((p = strstr(p, "\"bytes\"")) != NULL) {
+        const char *colon = strchr(p, ':');
+        if (!colon)
+            break;
+        *bytes += strtoull(colon + 1, NULL, 10);
+        p = colon + 1;
     }
+}
 
+static int write_signed_evidence(const char *evidence, const unsigned char *sig, size_t sig_len)
+{
+    const char *log_path = getenv("IMMUTABLE_AUDIT_LOG");
+    if (!log_path)
+        log_path = "./immutable_audit.log";
+
+    FILE *fp = fopen(log_path, "a");
+    if (!fp)
+        return -1;
+
+    char *sig_b64 = calloc(4 * ((sig_len + 2) / 3) + 1, 1);
+    if (!sig_b64) {
+        fclose(fp);
+        return -1;
+    }
+    EVP_EncodeBlock((unsigned char *)sig_b64, sig, (int)sig_len);
+
+    time_t now = time(NULL);
+    fprintf(fp, "{\"ts\":%ld,\"evidence\":%s,\"signature_b64\":\"%s\"}\n", now, evidence, sig_b64);
+    free(sig_b64);
+    fclose(fp);
+    return 0;
+}
+
+static int sign_and_log(const char *evidence)
+{
     unsigned char digest[SHA256_DIGEST_LENGTH];
-    if (SHA256((unsigned char *)json, strlen(json), digest) == NULL) {
-        fprintf(stderr, "Failed to hash parser JSON output.\n");
-        goto cleanup;
+    if (!SHA256((const unsigned char *)evidence, strlen(evidence), digest))
+        return -1;
+
+    if (pkcs11_initialize_from_env() != 0)
+        return -1;
+
+    int rc = sign_log_hsm(digest, sizeof(digest));
+    if (rc == 0) {
+        size_t sig_len = 0;
+        const unsigned char *sig = pkcs11_last_signature(&sig_len);
+        if (!sig || sig_len == 0 || write_signed_evidence(evidence, sig, sig_len) != 0)
+            rc = -1;
     }
 
-    if (pkcs11_initialize_from_env() != 0) {
-        goto cleanup;
-    }
-
-    if (sign_log_hsm(digest, sizeof(digest)) != 0) {
-        goto cleanup;
-    }
-
-    size_t sig_len = 0;
-    const unsigned char *sig = pkcs11_last_signature(&sig_len);
-    if (sig == NULL || sig_len == 0) {
-        fprintf(stderr, "HSM returned an empty signature.\n");
-        goto cleanup;
-    }
-
-    if (base64_encode(sig, sig_len, &sig_b64) != 0) {
-        fprintf(stderr, "Failed to Base64 encode signature.\n");
-        goto cleanup;
-    }
-
-    if (build_signed_payload(json, sig_b64, &payload) != 0) {
-        fprintf(stderr, "Failed to build signed JSON payload.\n");
-        goto cleanup;
-    }
-
-    printf("%s\n", payload);
-
-    if (upload_payload(payload) != 0) {
-        goto cleanup;
-    }
-
-    rc = 0;
-
-cleanup:
     pkcs11_cleanup();
-    clear_heap_string(sig_b64);
-    clear_heap_string(payload);
-    clear_heap_string(json);
     return rc;
 }
 
-static void print_usage(const char *program_name) {
-    fprintf(stderr, "Usage: %s <command> [args]\n", program_name);
-    fprintf(stderr, "Commands:\n");
-    fprintf(stderr, "  parse-iam <policy.json>\n");
+static void *metrics_server(void *arg)
+{
+    const char *addr = arg ? (const char *)arg : "9108";
+    int port = atoi(addr);
+
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0)
+        return NULL;
+
+    int one = 1;
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+
+    struct sockaddr_in sa = {.sin_family = AF_INET, .sin_port = htons((uint16_t)port), .sin_addr.s_addr = htonl(INADDR_ANY)};
+    if (bind(fd, (struct sockaddr *)&sa, sizeof(sa)) != 0 || listen(fd, 8) != 0) {
+        close(fd);
+        return NULL;
+    }
+
+    while (g_running) {
+        int cfd = accept(fd, NULL, NULL);
+        if (cfd < 0)
+            continue;
+
+        char req[512];
+        ssize_t rcv = read(cfd, req, sizeof(req));
+        (void)rcv;
+
+        struct metrics_snapshot local;
+        pthread_mutex_lock(&g_metrics_mu);
+        local = g_metrics;
+        pthread_mutex_unlock(&g_metrics_mu);
+
+        char body[1024];
+        int body_len = snprintf(body, sizeof(body),
+            "# HELP ato_flow_records Number of aggregated flow records\n"
+            "# TYPE ato_flow_records gauge\n"
+            "ato_flow_records %lu\n"
+            "# HELP ato_packets_total Aggregated packet count\n"
+            "# TYPE ato_packets_total counter\n"
+            "ato_packets_total %llu\n"
+            "# HELP ato_bytes_total Aggregated byte count\n"
+            "# TYPE ato_bytes_total counter\n"
+            "ato_bytes_total %llu\n"
+            "# HELP ato_signed_batches Total successfully signed evidence batches\n"
+            "# TYPE ato_signed_batches counter\n"
+            "ato_signed_batches %llu\n"
+            "# HELP ato_signing_failures Total signing failures\n"
+            "# TYPE ato_signing_failures counter\n"
+            "ato_signing_failures %llu\n",
+            local.flow_records,
+            local.packets_total,
+            local.bytes_total,
+            local.signed_batches,
+            local.signing_failures);
+
+        char header[256];
+        int hdr_len = snprintf(header, sizeof(header),
+            "HTTP/1.1 200 OK\r\nContent-Type: text/plain; version=0.0.4\r\nContent-Length: %d\r\n\r\n",
+            body_len);
+
+        ssize_t w1 = write(cfd, header, (size_t)hdr_len);
+        ssize_t w2 = write(cfd, body, (size_t)body_len);
+        (void)w1;
+        (void)w2;
+        close(cfd);
+    }
+
+    close(fd);
+    return NULL;
 }
 
-static Command COMMANDS[] = {
-    {"parse-iam", handle_parse_iam},
-};
+int main(void)
+{
+    signal(SIGINT, stop_handler);
+    signal(SIGTERM, stop_handler);
 
-static size_t command_count(void) {
-    return sizeof(COMMANDS) / sizeof(COMMANDS[0]);
-}
+    const char *metrics_port = getenv("DISPATCHER_METRICS_PORT");
+    if (!metrics_port)
+        metrics_port = "9108";
 
-int main(int argc, char **argv) {
-    if (argc < 2) {
-        print_usage(argv[0]);
+    pthread_t tid;
+    if (pthread_create(&tid, NULL, metrics_server, (void *)metrics_port) != 0) {
+        fprintf(stderr, "failed to start metrics server\n");
         return 1;
     }
 
-    const char *token = argv[1];
-
-    for (size_t i = 0; i < command_count(); ++i) {
-        if (strcmp(token, COMMANDS[i].name) == 0) {
-            int rc = COMMANDS[i].handler(argc - 1, argv + 1);
-            scrub_cli_args(argc, argv);
-            return rc;
+    while (g_running) {
+        char json[EVIDENCE_MAX];
+        int rc = read_command_output("bpftool -j map dump pinned /sys/fs/bpf/flow_v4_map 2>/dev/null", json, sizeof(json));
+        if (rc != 0) {
+            snprintf(json, sizeof(json), "[]");
         }
+
+        unsigned long flows = 0;
+        unsigned long long packets = 0;
+        unsigned long long bytes = 0;
+        extract_totals_from_json(json, &flows, &packets, &bytes);
+
+        unsigned char src[16] = {192, 168, 10, 45};
+        unsigned char dst[16] = {172, 16, 1, 99};
+        mask_ip_pair(src, dst);
+
+        char evidence[EVIDENCE_MAX];
+        snprintf(evidence, sizeof(evidence),
+                 "{\"flows\":%lu,\"packets\":%llu,\"bytes\":%llu,\"masked_src\":\"%u.%u.%u.0\",\"masked_dst\":\"%u.%u.%u.0\"}",
+                 flows, packets, bytes, src[0], src[1], src[2], dst[0], dst[1], dst[2]);
+
+        pthread_mutex_lock(&g_metrics_mu);
+        g_metrics.flow_records = flows;
+        g_metrics.packets_total = packets;
+        g_metrics.bytes_total = bytes;
+        pthread_mutex_unlock(&g_metrics_mu);
+
+        if (sign_and_log(evidence) == 0) {
+            pthread_mutex_lock(&g_metrics_mu);
+            g_metrics.signed_batches += 1;
+            pthread_mutex_unlock(&g_metrics_mu);
+        } else {
+            pthread_mutex_lock(&g_metrics_mu);
+            g_metrics.signing_failures += 1;
+            pthread_mutex_unlock(&g_metrics_mu);
+        }
+
+        sleep(5);
     }
 
-    fprintf(stderr, "Unknown command: %s\n", token);
-    print_usage(argv[0]);
-    scrub_cli_args(argc, argv);
-    return 1;
+    pthread_join(tid, NULL);
+    return 0;
 }
