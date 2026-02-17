@@ -32,7 +32,7 @@ services:
     environment:
       XDP_INTERFACE: ${XDP_INTERFACE:-eth0}
       XDP_MODE: ${XDP_MODE:-drv}
-      METRICS_ADDR: 0.0.0.0:9400
+      METRICS_ADDR: 0.0.0.0:9500
       NETFLOW_POLL_INTERVAL: ${NETFLOW_POLL_INTERVAL:-10s}
       NETFLOW_TOPK: ${NETFLOW_TOPK:-50}
       BPF_OBJECT: /opt/netflow/xdp_audit.bpf.o
@@ -40,6 +40,25 @@ services:
       - /sys/kernel/btf:/sys/kernel/btf:ro
       - /sys/fs/bpf:/sys/fs/bpf
       - /lib/modules:/lib/modules:ro
+
+  dispatcher:
+    build:
+      context: .
+      dockerfile: docker/dispatcher/Dockerfile
+    container_name: ato-dispatcher
+    restart: unless-stopped
+    network_mode: "service:enclave"
+    privileged: true
+    depends_on:
+      - enclave
+      - xdp-auditor
+    environment:
+      FLOW_MAP_PATH: /sys/fs/bpf/flow_map
+      SIGNED_EVIDENCE_LOG: /var/log/audit/signed_evidence.log
+      DISPATCH_INTERVAL_S: ${DISPATCH_INTERVAL_S:-5}
+    volumes:
+      - /sys/fs/bpf:/sys/fs/bpf
+      - signed-audit-log:/var/log/audit
 
   node-exporter:
     image: prom/node-exporter:v1.8.2
@@ -69,6 +88,7 @@ services:
       - enclave
       - node-exporter
       - xdp-auditor
+      - dispatcher
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
@@ -166,6 +186,7 @@ volumes:
   prometheus-data:
   enclave-profiles:
   grafana-data:
+  signed-audit-log:
 
 networks:
   app_net:
