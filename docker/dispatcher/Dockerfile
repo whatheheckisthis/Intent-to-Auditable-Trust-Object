@@ -1,7 +1,7 @@
 FROM ubuntu:24.04
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    build-essential clang llvm libbpf-dev libelf-dev libssl-dev libpkcs11-helper1-dev pkg-config ca-certificates && \
+    build-essential clang llvm nasm libbpf-dev libelf-dev libssl-dev libpkcs11-helper1-dev pkg-config ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/ato
