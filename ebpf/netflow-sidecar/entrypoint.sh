@@ -12,7 +12,7 @@ bpftool btf dump file /sys/kernel/btf/vmlinux format c > /opt/netflow/vmlinux.h
 
 clang -O2 -g -target bpf -D__TARGET_ARCH_x86 \
   -I/opt/netflow \
-  -c /opt/netflow/netflow_filter.bpf.c \
-  -o /opt/netflow/netflow_filter.bpf.o
+  -c /opt/netflow/xdp_audit.c \
+  -o /opt/netflow/xdp_audit.bpf.o
 
 exec /usr/local/bin/netflow-sidecar

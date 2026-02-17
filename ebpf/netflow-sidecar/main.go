@@ -2,16 +2,12 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"log"
-	"math/bits"
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"sort"
 	"strconv"
@@ -19,312 +15,247 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	bpf "github.com/aquasecurity/libbpfgo"
 )
 
-type flowID struct {
+type flowKey struct {
 	SrcIP   uint32
 	DstIP   uint32
 	SrcPort uint16
 	DstPort uint16
 	Proto   uint8
+	Pad     [3]byte
 }
 
 type flowMetrics struct {
 	Packets    uint64
 	Bytes      uint64
 	LastSeenNS uint64
+	FirstSeen  uint64
+}
+
+type auditEvent struct {
+	TSNS          uint64
+	WindowPackets uint64
+	PktDeltaNS    uint64
+	SrcIP         uint32
+	DstIP         uint32
+	SrcPort       uint16
+	DstPort       uint16
+	Proto         uint8
+	Reason        uint8
 }
 
 type flowSnapshot struct {
-	Key   flowID
+	Key   flowKey
 	Value flowMetrics
 }
 
-type state struct {
-	mu        sync.RWMutex
-	active    int
-	totalPkts uint64
-	totalByts uint64
-	lastPoll  int64
-	topFlows  []flowSnapshot
-}
-
-type mapEntry struct {
-	Key    []string         `json:"key"`
-	Value  []string         `json:"value"`
-	Values []perCPUMapValue `json:"values"`
-}
-
-type perCPUMapValue struct {
-	Value []string `json:"value"`
-}
-
-type mapSummary struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+type collectorState struct {
+	mu           sync.RWMutex
+	activeFlows  int
+	totalPackets uint64
+	totalBytes   uint64
+	lastPollUnix int64
+	topFlows     []flowSnapshot
 }
 
 func main() {
 	iface := getenv("XDP_INTERFACE", "eth0")
+	objPath := getenv("BPF_OBJECT", "/opt/netflow/xdp_audit.bpf.o")
 	metricsAddr := getenv("METRICS_ADDR", "0.0.0.0:9400")
-	xdpMode := getenv("XDP_MODE", "drv")
-	objPath := getenv("BPF_OBJECT", "/opt/netflow/netflow_filter.bpf.o")
 	topK := atoiOr(getenv("NETFLOW_TOPK", "50"), 50)
 	pollEvery := durationOr(getenv("NETFLOW_POLL_INTERVAL", "10s"), 10*time.Second)
 
-	if topK < 1 {
-		topK = 1
-	}
-
-	if err := attachXDP(iface, xdpMode, objPath); err != nil {
-		log.Fatalf("attach xdp: %v", err)
-	}
-	defer func() {
-		if err := detachXDP(iface, xdpMode); err != nil {
-			log.Printf("detach xdp warning: %v", err)
-		}
-	}()
-	log.Printf("netflow_filter attached to %s (mode=%s)", iface, xdpMode)
-
-	mapID, err := findFlowMapID()
+	module, err := bpf.NewModuleFromFile(objPath)
 	if err != nil {
-		log.Fatalf("locate flow_map: %v", err)
+		log.Fatalf("open BPF object: %v", err)
 	}
-	log.Printf("flow_map id=%d", mapID)
+	defer module.Close()
 
-	st := &state{}
+	if err := module.BPFLoadObject(); err != nil {
+		log.Fatalf("load BPF object: %v", err)
+	}
 
-	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/metrics" {
-			http.NotFound(w, r)
-			return
-		}
-		serveMetrics(w, st)
-	})
+	prog, err := module.GetProgram("netflow_filter")
+	if err != nil {
+		log.Fatalf("lookup program: %v", err)
+	}
 
-	go func() {
-		if err := http.ListenAndServe(metricsAddr, nil); err != nil {
-			log.Fatalf("metrics server failed: %v", err)
-		}
-	}()
-	log.Printf("prometheus metrics listening at %s", metricsAddr)
+	link, err := prog.AttachXDP(iface)
+	if err != nil {
+		log.Fatalf("attach XDP to %s: %v", iface, err)
+	}
+	defer link.Destroy()
+	log.Printf("netflow_filter attached via libbpf on %s", iface)
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+	state := &collectorState{}
+
+	flowMap, err := module.GetMap("flow_map")
+	if err != nil {
+		log.Fatalf("lookup flow_map: %v", err)
+	}
+
+	events := make(chan []byte, 1024)
+	rb, err := module.InitRingBuf("events", events)
+	if err != nil {
+		log.Fatalf("init ringbuf: %v", err)
+	}
+	defer rb.Stop()
+	rb.Start()
+
+	go consumeAuditEvents(events)
+	go serveMetrics(metricsAddr, state)
 
 	ticker := time.NewTicker(pollEvery)
 	defer ticker.Stop()
 
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+
 	for {
 		select {
-		case <-ctx.Done():
-			log.Println("shutdown requested")
-			return
 		case <-ticker.C:
-			if err := pollFlowMap(mapID, topK, st); err != nil {
-				log.Printf("poll flow_map failed: %v", err)
+			if err := snapshotFlows(flowMap, topK, state); err != nil {
+				log.Printf("flow map snapshot failed: %v", err)
 			}
+		case s := <-sig:
+			log.Printf("received %s, shutting down", s)
+			return
 		}
 	}
 }
 
-func attachXDP(iface, mode, objPath string) error {
-	args := []string{"link", "set", "dev", iface}
-	switch strings.ToLower(mode) {
-	case "hw":
-		args = append(args, "xdpoffload", "obj", objPath, "sec", "xdp")
-	case "skb":
-		args = append(args, "xdpgeneric", "obj", objPath, "sec", "xdp")
-	default:
-		args = append(args, "xdpdrv", "obj", objPath, "sec", "xdp")
-	}
-	return run("ip", args...)
-}
-
-func detachXDP(iface, mode string) error {
-	args := []string{"link", "set", "dev", iface}
-	switch strings.ToLower(mode) {
-	case "hw":
-		args = append(args, "xdpoffload", "off")
-	case "skb":
-		args = append(args, "xdpgeneric", "off")
-	default:
-		args = append(args, "xdpdrv", "off")
-	}
-	return run("ip", args...)
-}
-
-func findFlowMapID() (int, error) {
-	out, err := exec.Command("bpftool", "-j", "map", "show").Output()
-	if err != nil {
-		return 0, err
-	}
-	var maps []mapSummary
-	if err := json.Unmarshal(out, &maps); err != nil {
-		return 0, err
-	}
-	for _, m := range maps {
-		if m.Name == "flow_map" {
-			return m.ID, nil
+func consumeAuditEvents(events <-chan []byte) {
+	for raw := range events {
+		if len(raw) < 40 {
+			continue
 		}
+		var evt auditEvent
+		if err := binary.Read(bytes.NewReader(raw), binary.LittleEndian, &evt); err != nil {
+			continue
+		}
+		log.Printf("Trust Violation reason=%d src=%s:%d dst=%s:%d proto=%d delta_ns=%d window_pkts=%d ts_ns=%d",
+			evt.Reason,
+			ipString(evt.SrcIP), ntohs(evt.SrcPort),
+			ipString(evt.DstIP), ntohs(evt.DstPort),
+			evt.Proto,
+			evt.PktDeltaNS,
+			evt.WindowPackets,
+			evt.TSNS,
+		)
 	}
-	return 0, fmt.Errorf("flow_map not found")
 }
 
-func pollFlowMap(mapID, topK int, st *state) error {
-	out, err := exec.Command("bpftool", "-j", "map", "dump", "id", strconv.Itoa(mapID)).Output()
-	if err != nil {
-		return err
-	}
-	var entries []mapEntry
-	if len(bytes.TrimSpace(out)) > 0 {
-		if err := json.Unmarshal(out, &entries); err != nil {
-			return err
-		}
-	}
+func snapshotFlows(flowMap *bpf.BPFMap, topK int, st *collectorState) error {
+	iter := flowMap.Iterator()
+	flows := []flowSnapshot{}
+	var totalPkts, totalBytes uint64
 
-	flows := make([]flowSnapshot, 0, len(entries))
-	var pkts, byts uint64
-	for _, e := range entries {
-		k, err := parseFlowKey(e.Key)
+	for iter.Next() {
+		key := iter.Key()
+		if len(key) < 16 {
+			continue
+		}
+		perCPU, err := flowMap.GetValue(key)
 		if err != nil {
 			continue
 		}
-		v, err := parseFlowValues(e)
-		if err != nil {
-			continue
-		}
+
+		k := decodeFlowKey(key)
+		v := aggregatePerCPUValue(perCPU)
+		totalPkts += v.Packets
+		totalBytes += v.Bytes
 		flows = append(flows, flowSnapshot{Key: k, Value: v})
-		pkts += v.Packets
-		byts += v.Bytes
 	}
 
-	sort.Slice(flows, func(i, j int) bool { return flows[i].Value.Packets > flows[j].Value.Packets })
+	sort.Slice(flows, func(i, j int) bool {
+		return flows[i].Value.Packets > flows[j].Value.Packets
+	})
 	if len(flows) > topK {
 		flows = flows[:topK]
 	}
 
 	st.mu.Lock()
-	st.active = len(entries)
-	st.totalPkts = pkts
-	st.totalByts = byts
-	st.lastPoll = time.Now().Unix()
+	st.activeFlows = len(flows)
+	st.totalPackets = totalPkts
+	st.totalBytes = totalBytes
+	st.lastPollUnix = time.Now().Unix()
 	st.topFlows = flows
 	st.mu.Unlock()
+
 	return nil
 }
 
-func parseFlowKey(xs []string) (flowID, error) {
-	b, err := hexBytes(xs)
-	if err != nil || len(b) < 16 {
-		return flowID{}, fmt.Errorf("bad key")
-	}
-	return flowID{
-		SrcIP:   binary.LittleEndian.Uint32(b[0:4]),
-		DstIP:   binary.LittleEndian.Uint32(b[4:8]),
-		SrcPort: binary.LittleEndian.Uint16(b[8:10]),
-		DstPort: binary.LittleEndian.Uint16(b[10:12]),
-		Proto:   b[12],
-	}, nil
-}
-
-func parseFlowValue(xs []string) (flowMetrics, error) {
-	b, err := hexBytes(xs)
-	if err != nil || len(b) < 24 {
-		return flowMetrics{}, fmt.Errorf("bad value")
-	}
-	return flowMetrics{
-		Packets:    binary.LittleEndian.Uint64(b[0:8]),
-		Bytes:      binary.LittleEndian.Uint64(b[8:16]),
-		LastSeenNS: binary.LittleEndian.Uint64(b[16:24]),
-	}, nil
-}
-
-func parseFlowValues(e mapEntry) (flowMetrics, error) {
-	if len(e.Value) > 0 {
-		return parseFlowValue(e.Value)
-	}
-
-	if len(e.Values) == 0 {
-		return flowMetrics{}, fmt.Errorf("missing value")
-	}
-
+func aggregatePerCPUValue(raw []byte) flowMetrics {
+	const oneCPUSize = 32
 	var out flowMetrics
-	for _, v := range e.Values {
-		m, err := parseFlowValue(v.Value)
-		if err != nil {
-			return flowMetrics{}, err
+	for off := 0; off+oneCPUSize <= len(raw); off += oneCPUSize {
+		chunk := raw[off : off+oneCPUSize]
+		out.Packets += binary.LittleEndian.Uint64(chunk[0:8])
+		out.Bytes += binary.LittleEndian.Uint64(chunk[8:16])
+		last := binary.LittleEndian.Uint64(chunk[16:24])
+		if last > out.LastSeenNS {
+			out.LastSeenNS = last
 		}
-		out.Packets += m.Packets
-		out.Bytes += m.Bytes
-		if m.LastSeenNS > out.LastSeenNS {
-			out.LastSeenNS = m.LastSeenNS
+		first := binary.LittleEndian.Uint64(chunk[24:32])
+		if out.FirstSeen == 0 || (first > 0 && first < out.FirstSeen) {
+			out.FirstSeen = first
 		}
 	}
-
-	return out, nil
+	return out
 }
 
-func hexBytes(xs []string) ([]byte, error) {
-	b := make([]byte, 0, len(xs))
-	for _, x := range xs {
-		x = strings.TrimPrefix(x, "0x")
-		v, err := strconv.ParseUint(x, 16, 8)
-		if err != nil {
-			return nil, err
+func decodeFlowKey(raw []byte) flowKey {
+	return flowKey{
+		SrcIP:   binary.LittleEndian.Uint32(raw[0:4]),
+		DstIP:   binary.LittleEndian.Uint32(raw[4:8]),
+		SrcPort: binary.LittleEndian.Uint16(raw[8:10]),
+		DstPort: binary.LittleEndian.Uint16(raw[10:12]),
+		Proto:   raw[12],
+	}
+}
+
+func serveMetrics(addr string, st *collectorState) {
+	http.HandleFunc("/metrics", func(w http.ResponseWriter, _ *http.Request) {
+		st.mu.RLock()
+		defer st.mu.RUnlock()
+
+		var b strings.Builder
+		b.WriteString("# TYPE xdp_netflow_active_flows gauge\n")
+		b.WriteString(fmt.Sprintf("xdp_netflow_active_flows %d\n", st.activeFlows))
+		b.WriteString("# TYPE xdp_netflow_packets_total_snapshot gauge\n")
+		b.WriteString(fmt.Sprintf("xdp_netflow_packets_total_snapshot %d\n", st.totalPackets))
+		b.WriteString("# TYPE xdp_netflow_bytes_total_snapshot gauge\n")
+		b.WriteString(fmt.Sprintf("xdp_netflow_bytes_total_snapshot %d\n", st.totalBytes))
+		b.WriteString("# TYPE xdp_netflow_last_poll_unix_seconds gauge\n")
+		b.WriteString(fmt.Sprintf("xdp_netflow_last_poll_unix_seconds %d\n", st.lastPollUnix))
+		b.WriteString("# TYPE xdp_netflow_flow_packets gauge\n")
+		b.WriteString("# TYPE xdp_netflow_flow_bytes gauge\n")
+
+		for _, f := range st.topFlows {
+			labels := fmt.Sprintf("src=\"%s\",dst=\"%s\",proto=\"%d\",sport=\"%d\",dport=\"%d\"",
+				ipString(f.Key.SrcIP), ipString(f.Key.DstIP), f.Key.Proto, ntohs(f.Key.SrcPort), ntohs(f.Key.DstPort))
+			b.WriteString(fmt.Sprintf("xdp_netflow_flow_packets{%s} %d\n", labels, f.Value.Packets))
+			b.WriteString(fmt.Sprintf("xdp_netflow_flow_bytes{%s} %d\n", labels, f.Value.Bytes))
 		}
-		b = append(b, byte(v))
+
+		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
+		_, _ = w.Write([]byte(b.String()))
+	})
+
+	log.Printf("metrics endpoint listening at %s", addr)
+	if err := http.ListenAndServe(addr, nil); err != nil {
+		log.Fatalf("metrics server error: %v", err)
 	}
-	return b, nil
 }
 
-func serveMetrics(w http.ResponseWriter, st *state) {
-	st.mu.RLock()
-	defer st.mu.RUnlock()
-
-	var b strings.Builder
-	b.WriteString("# HELP xdp_netflow_active_flows Current number of active flow entries in flow_map\n")
-	b.WriteString("# TYPE xdp_netflow_active_flows gauge\n")
-	b.WriteString(fmt.Sprintf("xdp_netflow_active_flows %d\n", st.active))
-	b.WriteString("# HELP xdp_netflow_packets_total_snapshot Snapshot sum of packets across tracked flows\n")
-	b.WriteString("# TYPE xdp_netflow_packets_total_snapshot gauge\n")
-	b.WriteString(fmt.Sprintf("xdp_netflow_packets_total_snapshot %d\n", st.totalPkts))
-	b.WriteString("# HELP xdp_netflow_bytes_total_snapshot Snapshot sum of bytes across tracked flows\n")
-	b.WriteString("# TYPE xdp_netflow_bytes_total_snapshot gauge\n")
-	b.WriteString(fmt.Sprintf("xdp_netflow_bytes_total_snapshot %d\n", st.totalByts))
-	b.WriteString("# HELP xdp_netflow_last_poll_unix_seconds Unix timestamp of last flow_map poll\n")
-	b.WriteString("# TYPE xdp_netflow_last_poll_unix_seconds gauge\n")
-	b.WriteString(fmt.Sprintf("xdp_netflow_last_poll_unix_seconds %d\n", st.lastPoll))
-	b.WriteString("# HELP xdp_netflow_flow_packets Per-flow packet counters for top-N flows\n")
-	b.WriteString("# TYPE xdp_netflow_flow_packets gauge\n")
-	b.WriteString("# HELP xdp_netflow_flow_bytes Per-flow byte counters for top-N flows\n")
-	b.WriteString("# TYPE xdp_netflow_flow_bytes gauge\n")
-
-	for _, f := range st.topFlows {
-		lbl := fmt.Sprintf("src=\"%s\",dst=\"%s\",proto=\"%d\",sport=\"%d\",dport=\"%d\"",
-			ipString(f.Key.SrcIP), ipString(f.Key.DstIP), f.Key.Proto,
-			bits.ReverseBytes16(f.Key.SrcPort), bits.ReverseBytes16(f.Key.DstPort))
-		b.WriteString(fmt.Sprintf("xdp_netflow_flow_packets{%s} %d\n", lbl, f.Value.Packets))
-		b.WriteString(fmt.Sprintf("xdp_netflow_flow_bytes{%s} %d\n", lbl, f.Value.Bytes))
+func getenv(k, fallback string) string {
+	if v := os.Getenv(k); v != "" {
+		return v
 	}
-
-	payload := b.String()
-	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
-	w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
-	_, _ = w.Write([]byte(payload))
-}
-
-func ipString(raw uint32) string {
-	b := make([]byte, 4)
-	binary.LittleEndian.PutUint32(b, raw)
-	return net.IPv4(b[0], b[1], b[2], b[3]).String()
-}
-
-func run(name string, args ...string) error {
-	cmd := exec.Command(name, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return fallback
 }
 
 func atoiOr(v string, d int) int {
@@ -343,9 +274,10 @@ func durationOr(v string, d time.Duration) time.Duration {
 	return t
 }
 
-func getenv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
+func ipString(raw uint32) string {
+	b := make([]byte, 4)
+	binary.LittleEndian.PutUint32(b, raw)
+	return net.IPv4(b[0], b[1], b[2], b[3]).String()
 }
+
+func ntohs(x uint16) uint16 { return (x<<8)&0xff00 | x>>8 }

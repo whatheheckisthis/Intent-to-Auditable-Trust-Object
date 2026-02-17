@@ -35,8 +35,11 @@ services:
       METRICS_ADDR: 0.0.0.0:9400
       NETFLOW_POLL_INTERVAL: ${NETFLOW_POLL_INTERVAL:-10s}
       NETFLOW_TOPK: ${NETFLOW_TOPK:-50}
+      BPF_OBJECT: /opt/netflow/xdp_audit.bpf.o
     volumes:
       - /sys/kernel/btf:/sys/kernel/btf:ro
+      - /sys/fs/bpf:/sys/fs/bpf
+      - /lib/modules:/lib/modules:ro
 
   node-exporter:
     image: prom/node-exporter:v1.8.2
