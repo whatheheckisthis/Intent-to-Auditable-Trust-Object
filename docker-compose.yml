@@ -36,7 +36,7 @@ services:
     container_name: qemu-sve
     restart: unless-stopped
     network_mode: service:enclave
-    depends_on: [xdp-bridge, softhsm]
+    depends_on: [xdp-bridge, softhsm, ipfs]
     entrypoint: ["/bin/sh", "-lc"]
     command: >
       "qemu-aarch64-static
@@ -49,6 +49,10 @@ services:
       --pkcs11-pin ${PKCS11_PIN:-1234}
       --key-label ${HSM_KEY_LABEL:-ato-ed25519}
       --prometheus-bind 0.0.0.0:9600"
+    environment:
+      IPFS_API_HOST: ${IPFS_API_HOST:-127.0.0.1}
+      IPFS_API_PORT: ${IPFS_API_PORT:-5001}
+      HSM_KEY_ID: ${HSM_KEY_ID:-ato-ed25519}
     volumes:
       - /sys/fs/bpf:/sys/fs/bpf
       - ./mask_sve2.s:/opt/dispatcher/mask_sve2.s:ro
@@ -63,6 +67,32 @@ services:
       SOFTHSM2_CONF: /etc/softhsm2.conf
     volumes:
       - softhsm-tokens:/var/lib/softhsm/tokens
+
+
+  ipfs:
+    image: ipfs/kubo:v0.31.0
+    container_name: ipfs
+    restart: unless-stopped
+    network_mode: service:enclave
+    depends_on: [enclave]
+    environment:
+      IPFS_PATH: /data/ipfs
+      LIBP2P_FORCE_PNET: "1"
+      ENCLAVE_VIF_ADDR: ${ENCLAVE_VIF_ADDR:-100.96.0.10}
+      IPFS_API_PORT: ${IPFS_API_PORT:-5001}
+      IPFS_SWARM_PORT: ${IPFS_SWARM_PORT:-4001}
+    command: >
+      /bin/sh -lc '
+      if [ ! -f /data/ipfs/config ]; then ipfs init --profile=server; fi;
+      ipfs bootstrap rm --all;
+      ipfs config Addresses.API /ip4/${ENCLAVE_VIF_ADDR}/tcp/${IPFS_API_PORT};
+      ipfs config Addresses.Gateway /ip4/${ENCLAVE_VIF_ADDR}/tcp/8080;
+      ipfs config --json Addresses.Swarm ["/ip4/${ENCLAVE_VIF_ADDR}/tcp/${IPFS_SWARM_PORT}"];
+      ipfs config Routing.Type none;
+      ipfs daemon --migrate=true --agent-version-suffix=ato-enclave'
+    volumes:
+      - ipfs-data:/data/ipfs
+      - ./ipfs/swarm.key:/data/ipfs/swarm.key:ro
 
   prometheus:
     image: prom/prometheus:v2.53.1
@@ -116,6 +146,7 @@ volumes:
   enclave-profiles:
   softhsm-tokens:
   prometheus-data:
+  ipfs-data:
   mariadb-data:
 
 networks:

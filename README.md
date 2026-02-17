@@ -110,3 +110,36 @@ The OSINT IDE should route all resolver traffic through **Enclave DNS** attached
 - ISP-visible telemetry shows only encrypted tunnel egress, not per-target OSINT domains.
 
 Combined with signed CBOR evidence, this provides both **research confidentiality** and **audit integrity**.
+
+## IPFS-backed Primary Key and enclave-only swarm
+
+The post-signing dispatcher hook now wraps each record as Canonical CBOR IPLD:
+
+```json
+{ "data": <CBOR_BLOB>, "signature": <HSM_SIG>, "pubkey": <HSM_KEY_ID> }
+```
+
+It then uploads the signed IPLD blob to Kubo (`/api/v0/add?pin=true`) and writes the returned CID into the evidence log as `primary_cid=...`.
+
+- CID becomes the immutable primary key for each trust object.
+- Kubo is bound to `${ENCLAVE_VIF_ADDR}` and bootstraps are removed.
+- Private swarm mode is enforced via `swarm.key` + `LIBP2P_FORCE_PNET=1` to avoid public DHT leakage.
+
+### Pinning evidence across enclave peers
+
+```bash
+ipfs pin add <CID>
+```
+
+### Verify evidence signature from IPFS
+
+```bash
+ipfs cat <CID> > evidence.ipld.cbor
+python3 - <<'PY'
+import cbor2
+obj = cbor2.load(open("evidence.ipld.cbor", "rb"))
+open("payload.cbor", "wb").write(obj["data"])
+open("sig.bin", "wb").write(obj["signature"])
+PY
+openssl dgst -sha256 -verify hsm_pubkey.pem -signature sig.bin payload.cbor
+```
