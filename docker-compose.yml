@@ -78,6 +78,20 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
 
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: grafana
+    restart: unless-stopped
+    network_mode: "service:enclave"
+    depends_on: [prometheus]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+
   db:
     image: mariadb:11.4
     container_name: mariadb
@@ -121,6 +135,8 @@ services:
     container_name: local-nginx
     restart: unless-stopped
     depends_on: [apache]
+    ports:
+      - "8080:80"
     networks: [app_net]
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro

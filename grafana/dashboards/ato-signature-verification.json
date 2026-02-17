@@ -9,35 +9,55 @@
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}}, "overrides": []},
-      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 0},
+      "gridPos": {"h": 9, "w": 14, "x": 0, "y": 0},
       "id": 1,
-      "options": {"displayMode": "gradient", "legend": {"displayMode": "list", "placement": "right"}, "pieType": "pie", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
       "targets": [
-        {"expr": "ato_verified_flows_total", "legendFormat": "Verified", "refId": "A"},
-        {"expr": "ato_unverified_flows_total", "legendFormat": "Unverified", "refId": "B"}
+        {"expr": "rate(ato_signed_evidence_total[1m])", "legendFormat": "signed evidence / sec", "refId": "A"}
       ],
-      "title": "Verified vs Unverified Flows",
-      "type": "piechart"
+      "title": "Auditable Flow Rate",
+      "type": "timeseries"
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}}, "overrides": []},
-      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "green", "value": 0.99}
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 9, "w": 10, "x": 14, "y": 0},
       "id": 2,
-      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
       "targets": [
-        {"expr": "rate(ato_signed_evidence_total[5m])", "legendFormat": "Signed evidence/sec", "refId": "A"}
+        {"expr": "ato_signature_verification_success", "legendFormat": "success", "refId": "A"}
       ],
-      "title": "Evidence Signing Rate",
-      "type": "timeseries"
+      "title": "Signature Verification Success",
+      "type": "stat"
     }
   ],
-  "refresh": "15s",
+  "refresh": "10s",
   "schemaVersion": 39,
   "style": "dark",
   "tags": ["audit", "hsm", "xdp"],
   "templating": {"list": []},
   "time": {"from": "now-1h", "to": "now"},
-  "title": "ATO Signature Verification",
-  "version": 1
+  "title": "Auditable Trust Object Overview",
+  "version": 2
 }
