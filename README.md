@@ -79,3 +79,34 @@ docker compose up -d --build
 - Tuple fields are emitted from XDP via perf events rather than copied into long-lived userland queues.
 - Dispatcher reads perf payloads, maps fields to SVE2 lanes, masks in-register, and immediately signs digests.
 - Only signed/hashed artifacts are exported to observability, preserving Trust Object integrity for audit replay.
+
+## OSINT IDE immutable audit flow (CBOR + HSM)
+
+The dispatcher now acts as an **OSINT Sink** for messy forensic leads:
+
+1. Receive raw JSON-like lead blobs (possibly malformed ordering and ad-hoc fields).
+2. Apply `mask_v7_sve2` register-first sanitization to IPv4 identifiers and nanosecond timestamps.
+3. Call `cbor_wrap_osint_data` to emit **Canonical CBOR** map entries in deterministic key order.
+4. Sign the CBOR blob through PKCS#11 using the enclave-secured HSM key.
+5. Exfiltrate `(cbor_blob, signature)` records over the enclave SDN path to the centralized Audit Vault file (`AUDIT_VAULT_PATH`).
+
+### Verifying lead authenticity in the IDE
+
+To verify an OSINT lead packet in the IDE:
+
+- Parse the CBOR map and extract the signed byte sequence exactly as persisted.
+- Pull the signature companion payload from the Audit Vault frame.
+- Verify using the HSM's public key (or issued certificate chain) and the same signature mechanism (`CKM_EDDSA` in this stack).
+- Treat only packets with valid signature + trusted key provenance as auditable trust objects.
+
+This ensures analysts can distinguish genuine enclave-originated evidence from tampered or replayed packets.
+
+### Enclave DNS privacy posture
+
+The OSINT IDE should route all resolver traffic through **Enclave DNS** attached to the enclave SDN. This keeps target-domain lookups hidden from the analyst's ISP-facing resolver path:
+
+- DNS requests are emitted inside the enclave network namespace.
+- Upstream recursion/DoH egress is pinned to enclave policy endpoints.
+- ISP-visible telemetry shows only encrypted tunnel egress, not per-target OSINT domains.
+
+Combined with signed CBOR evidence, this provides both **research confidentiality** and **audit integrity**.
