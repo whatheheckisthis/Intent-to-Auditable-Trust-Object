@@ -5,4 +5,8 @@ __all__ = [
     "api_keys",
     "endpoints",
     "syscalls",
+    "rbac",
+    "hsm_pkcs11_wrapper",
+    "audit_middleware",
+    "network_provisioning",
 ]
