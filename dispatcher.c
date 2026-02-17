@@ -1,6 +1,5 @@
 #include <arpa/inet.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <netinet/in.h>
 #include <openssl/evp.h>
 #include <openssl/sha.h>
@@ -17,23 +16,25 @@
 #include <unistd.h>
 
 #include <bpf/bpf.h>
+#include <bpf/libbpf.h>
 
 #include "pkcs11_signer.h"
 
 typedef struct {
-    uint32_t src_ip;
-    uint32_t dst_ip;
+    uint8_t family;
+    uint8_t proto;
     uint16_t src_port;
     uint16_t dst_port;
-    uint8_t proto;
-    uint8_t pad[3];
+    uint16_t pad;
+    uint8_t src_addr[16];
+    uint8_t dst_addr[16];
 } flow_key_t;
 
 typedef struct {
     uint64_t packets;
     uint64_t bytes;
-    uint64_t last_seen_ns;
     uint64_t first_seen_ns;
+    uint64_t last_seen_ns;
 } flow_metrics_t;
 
 typedef struct {
@@ -41,6 +42,8 @@ typedef struct {
     uint64_t packets;
     uint64_t bytes;
 } aggregated_flow_t;
+
+extern void fast_mask_ip_pair(void *src16, void *dst16, uint8_t family);
 
 static volatile sig_atomic_t keep_running = 1;
 static uint64_t verified_flows_total = 0;
@@ -52,40 +55,23 @@ static void on_signal(int signo) {
     keep_running = 0;
 }
 
-static uint64_t to_be64(uint64_t v) {
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    return __builtin_bswap64(v);
-#else
-    return v;
-#endif
-}
-
-static void mask_sensitive_fields(flow_key_t *key) {
-    key->src_ip &= htonl(0xFFFFFF00);
-    key->dst_ip &= htonl(0xFFFFFF00);
-    key->src_port = 0;
-    key->dst_port = 0;
-}
-
 static int sign_evidence(const unsigned char *digest,
                          size_t digest_len,
                          unsigned char *signature,
                          size_t *signature_len) {
-    const int max_attempts = 3;
-    for (int i = 0; i < max_attempts; ++i) {
-        if (sign_log_hsm(digest, digest_len) == 0) {
-            size_t out_len = 0;
-            const unsigned char *raw_sig = pkcs11_last_signature(&out_len);
-            if (raw_sig == NULL || out_len == 0 || out_len > *signature_len) {
-                return -1;
-            }
-            memcpy(signature, raw_sig, out_len);
-            *signature_len = out_len;
-            return 0;
-        }
-        usleep(150000);
+    if (sign_log_hsm((unsigned char *)digest, digest_len) != 0) {
+        return -1;
     }
-    return -1;
+
+    size_t out_len = 0;
+    const unsigned char *raw_sig = pkcs11_last_signature(&out_len);
+    if (raw_sig == NULL || out_len == 0 || out_len > *signature_len) {
+        return -1;
+    }
+
+    memcpy(signature, raw_sig, out_len);
+    *signature_len = out_len;
+    return 0;
 }
 
 static int aggregate_flow_map(int map_fd, aggregated_flow_t *out, size_t out_cap, size_t *out_len) {
@@ -93,6 +79,7 @@ static int aggregate_flow_map(int map_fd, aggregated_flow_t *out, size_t out_cap
     flow_key_t next = {0};
     bool first = true;
     size_t count = 0;
+
     int ncpu = libbpf_num_possible_cpus();
     if (ncpu <= 0) {
         fprintf(stderr, "Unable to detect possible CPUs.\n");
@@ -166,6 +153,16 @@ static int write_log_line(const char *path, const char *line) {
 
     fclose(f);
     return 0;
+}
+
+static void format_addr(uint8_t family, const uint8_t addr[16], char *out, size_t out_len) {
+    if (family == AF_INET) {
+        inet_ntop(AF_INET, addr, out, (socklen_t)out_len);
+    } else if (family == AF_INET6) {
+        inet_ntop(AF_INET6, addr, out, (socklen_t)out_len);
+    } else {
+        snprintf(out, out_len, "unknown");
+    }
 }
 
 static int export_metrics_http(uint16_t port) {
@@ -271,19 +268,10 @@ static int run_dispatch_loop(const char *map_path, const char *log_path, unsigne
 
         for (size_t i = 0; i < len; ++i) {
             flow_key_t masked = flows[i].key;
-            mask_sensitive_fields(&masked);
-
-            uint64_t payload[6] = {
-                to_be64((uint64_t)masked.src_ip),
-                to_be64((uint64_t)masked.dst_ip),
-                to_be64((uint64_t)masked.src_port),
-                to_be64((uint64_t)masked.dst_port),
-                to_be64(flows[i].packets),
-                to_be64(flows[i].bytes),
-            };
+            fast_mask_ip_pair(masked.src_addr, masked.dst_addr, masked.family == AF_INET ? 4 : 6);
 
             unsigned char digest[SHA256_DIGEST_LENGTH];
-            SHA256((const unsigned char *)payload, sizeof(payload), digest);
+            SHA256((const unsigned char *)&masked, sizeof(masked), digest);
 
             unsigned char signature[512];
             size_t sig_len = sizeof(signature);
@@ -301,13 +289,19 @@ static int run_dispatch_loop(const char *map_path, const char *log_path, unsigne
                 strcpy(encoded, "UNSIGNED");
             }
 
-            char line[1600];
+            char src_txt[INET6_ADDRSTRLEN] = {0};
+            char dst_txt[INET6_ADDRSTRLEN] = {0};
+            format_addr(masked.family, masked.src_addr, src_txt, sizeof(src_txt));
+            format_addr(masked.family, masked.dst_addr, dst_txt, sizeof(dst_txt));
+
+            char line[1700];
             snprintf(line,
                      sizeof(line),
-                     "ts=%ld src_ip=%u dst_ip=%u proto=%u packets=%llu bytes=%llu verified=%d signature=%s",
+                     "ts=%ld family=%u src=%s dst=%s proto=%u packets=%llu bytes=%llu verified=%d signature=%s",
                      time(NULL),
-                     ntohl(masked.src_ip),
-                     ntohl(masked.dst_ip),
+                     masked.family,
+                     src_txt,
+                     dst_txt,
                      masked.proto,
                      (unsigned long long)flows[i].packets,
                      (unsigned long long)flows[i].bytes,

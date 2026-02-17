@@ -1,139 +1,92 @@
-# Intent-to-Auditable Trust Object: XDP → BPF Maps → Enclave SDN
+# Auditable Trust Object (ATO) for Drupal + MariaDB
 
-This repository now includes a complete, hardware-software co-designed monitoring stack that bridges:
+This stack delivers a local, high-throughput monitoring plane for Drupal/MariaDB with a trust chain:
 
-- **Layer 1 (XDP hook):** high-speed packet parsing + timing capture in kernel space.
-- **Layer 2 (BPF Maps):** `flow_map` in `BPF_MAP_TYPE_PERCPU_HASH` sized for **1M concurrent flows**.
-- **Layer 3 (Enclave SDN):** Prometheus, Grafana, and sidecar all bound to the Enclave service namespace.
+**NIC (hardware)** → **XDP kernel hook (L1)** → **Per-CPU eBPF maps (L2)** → **SIMD masking** → **PKCS#11/HSM signatures (L3)** → **Enclave tunnel + Prometheus metrics**.
 
----
+## Dependency discovery and configuration
 
-## 1) Components Delivered
+Install runtime/build dependencies (Ubuntu/WSL2):
 
-### XDP kernel module (`ebpf/xdp_audit.c`)
+```bash
+sudo apt update
+sudo apt install -y clang llvm libbpf-dev linux-headers-$(uname -r) \
+  gcc make nasm pkg-config libssl-dev softhsm2 opensc docker.io docker-compose-plugin
+```
 
-- Exposes XDP program section `netflow_filter`.
-- Parses Ethernet/IPv4/TCP/UDP and derives 5-tuple flow keys.
-- Tracks per-flow packet/byte counters and first/last-seen timestamps in:
-  - `flow_map` (`BPF_MAP_TYPE_PERCPU_HASH`, `max_entries=1048576`).
-- Uses `bpf_ktime_get_ns()` for nanosecond packet timing deltas.
-- Emits audit alerts through `events` (`BPF_MAP_TYPE_RINGBUF`) when:
-  - packet-rate spike thresholds are exceeded,
-  - ultra-low inter-packet timing deltas suggest potential side-channel leakage.
+Initialize a SoftHSM2 token and Ed25519 key:
 
-### Go sidecar bridge (`ebpf/netflow-sidecar/main.go`)
+```bash
+softhsm2-util --init-token --slot 0 --label ato-token --so-pin 1234 --pin 1234
+pkcs11-tool --module /usr/lib/softhsm/libsofthsm2.so --login --pin 1234 \
+  --keypairgen --key-type EC:edwards25519 --label ato-ed25519 --usage-sign
+```
 
-- Uses **libbpf via `libbpfgo`** to:
-  - load CO-RE object `/opt/netflow/xdp_audit.bpf.o`,
-  - attach `netflow_filter` to the configured NIC.
-- Aggregates per-CPU flow counters from `flow_map` into global snapshots.
-- Publishes Prometheus metrics at `/metrics` (default `:9400`).
-- Subscribes to the ring buffer (`events`) and logs audit messages as:
-  - `Trust Violation reason=...`
-
-### Enclave-wrapped compose topology (`docker-compose.yml`)
-
-- `xdp-auditor`, `prometheus`, and `grafana` run with:
-  - `network_mode: "service:enclave"`.
-- BPF sidecar runs with:
-  - `privileged: true`,
-  - `/sys/fs/bpf` mount,
-  - `/lib/modules` mount,
-  - `/sys/kernel/btf` mount.
-- App plane (`drupal`, `db`, `apache`) remains isolated on `app_net` and does not need awareness of the eBPF monitor.
-
----
-
-## 2) WSL2 Quick Start
-
-1. Copy env template:
+Create env file:
 
 ```bash
 cp .env.example .env
 ```
 
-2. Set required secrets in `.env`:
+Add/update these values in `.env`:
 
-- `ENCLAVE_ENROLMENT_KEY`
-- `DRUPAL_DB_PASSWORD`
-- `MARIADB_ROOT_PASSWORD`
-- `GRAFANA_ADMIN_PASSWORD`
-
-3. Optional XDP tuning:
-
-```bash
-XDP_INTERFACE=eth0
-XDP_MODE=drv
-NETFLOW_POLL_INTERVAL=10s
-NETFLOW_TOPK=50
+```dotenv
+ENCLAVE_ENROLMENT_KEY=...
+DRUPAL_DB_PASSWORD=...
+MARIADB_ROOT_PASSWORD=...
+PKCS11_MODULE_PATH=/usr/lib/softhsm/libsofthsm2.so
+PKCS11_PIN=1234
+HSM_KEY_LABEL=ato-ed25519
 ```
 
-4. Build and start:
+## Core files
+
+- `xdp_audit.c`: XDP NetFlow parser for IPv4/IPv6, per-CPU hash flow accounting, ring-buffer audit events.
+- `fast_mask.asm`: SIMD masking (`movdqu` + `pand`) for address privacy.
+- `dispatcher.c`: Per-CPU map aggregation, mandatory masking call per flow, PKCS#11 signing, Prometheus exposition.
+- `docker-compose.yml`: Enclave fabric + privileged dispatcher + local Drupal stack on `app_net`.
+
+## Bring up the stack
 
 ```bash
 docker compose up -d --build
 ```
 
----
+## Verify trust chain
 
-## 3) Verify the XDP-to-Enclave Pipeline
-
-### A. Confirm XDP program is attached
-
+1) **XDP loaded**
 ```bash
 docker logs xdp-auditor --tail=100
 ```
 
-Expected log includes:
-
-- `netflow_filter attached via libbpf on <iface>`
-
-### B. Confirm ringbuf trust-violation stream
-
+2) **Dispatcher producing signed evidence**
 ```bash
-docker logs -f xdp-auditor
+docker logs ato-dispatcher --tail=100
 ```
 
-Look for entries similar to:
-
-- `Trust Violation reason=1 ...`
-- `Trust Violation reason=2 ...`
-
-### C. Confirm Prometheus sees flow metrics
-
+3) **Prometheus metrics over enclave interface**
 ```bash
-docker exec enclave_agent wget -qO- http://localhost:9400/metrics | head -40
+docker exec enclave_agent wget -qO- http://localhost:9400/metrics
 ```
 
-Metrics include:
+## Verify immutable audit log signatures
 
-- `xdp_netflow_active_flows`
-- `xdp_netflow_packets_total_snapshot`
-- `xdp_netflow_flow_packets`
+Extract one evidence line's digestable payload and verify with OpenSSL (example flow):
 
-### D. Confirm dashboard endpoints via Enclave virtual IP / name
+```bash
+openssl dgst -sha256 -verify public_key.pem -signature flow.sig flow_payload.bin
+```
 
-Open in your browser:
+Expected output:
 
-- `https://grafana.enclave`
+```text
+Verified OK
+```
 
-If your Enclave setup assigns a specific virtual IP for Grafana, use:
+## WSL2 quick start
 
-- `https://<enclave-virtual-ip>:443`
-
-In Grafana, query:
-
-- `xdp_netflow_active_flows`
-- `xdp_netflow_flow_packets`
-- `xdp_netflow_flow_bytes`
-
-for real-time, line-rate flow telemetry and timing audit visibility.
-
----
-
-## 4) Delivered Files
-
-- `ebpf/xdp_audit.c`
-- `ebpf/netflow-sidecar/main.go`
-- `docker-compose.yml`
-- `README.md`
+1. Use WSL2 kernel with eBPF support (`uname -r`).
+2. Start Docker Desktop with WSL integration.
+3. Install dependencies listed above inside WSL distro.
+4. Build and run `docker compose up -d --build`.
+5. Generate traffic to Drupal and inspect `/var/log/audit/signed_evidence.log` in dispatcher container.

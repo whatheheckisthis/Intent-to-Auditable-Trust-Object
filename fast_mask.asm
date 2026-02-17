@@ -1,20 +1,40 @@
 ; fast_mask.asm
-; NASM x86_64 routine to zero sensitive buffers quickly.
-; SysV ABI: void fast_clear_buffer(void *buf, size_t len)
+; SIMD masking helper for IPv4/IPv6 address pairs.
+; SysV ABI:
+;   void fast_mask_ip_pair(void *src16, void *dst16, uint8_t family)
+; family: 4 => keep /24 of IPv4-mapped low dword, 6 => keep /64 prefix.
 
-global fast_clear_buffer
+default rel
+global fast_mask_ip_pair
+
+section .rodata align=16
+ipv4_mask: db 0xff,0xff,0xff,0x00,0,0,0,0,0,0,0,0,0,0,0,0
+ipv6_mask: db 0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0,0,0,0,0,0,0,0
+
 section .text
-
-fast_clear_buffer:
-    ; rdi = buffer pointer, rsi = length
+fast_mask_ip_pair:
     test rdi, rdi
     jz .done
     test rsi, rsi
     jz .done
 
-    xor eax, eax          ; value to store
-    mov rcx, rsi          ; byte count
-    rep stosb             ; memset(buf, 0, len)
+    cmp dl, 4
+    je .v4
+
+.v6:
+    movdqu xmm2, [rel ipv6_mask]
+    jmp .apply
+
+.v4:
+    movdqu xmm2, [rel ipv4_mask]
+
+.apply:
+    movdqu xmm0, [rdi]
+    movdqu xmm1, [rsi]
+    pand xmm0, xmm2
+    pand xmm1, xmm2
+    movdqu [rdi], xmm0
+    movdqu [rsi], xmm1
 
 .done:
     ret
