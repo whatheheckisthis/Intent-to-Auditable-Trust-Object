@@ -17,7 +17,7 @@ TARGET_POLICY ?=
 
 DISPATCHER = dispatcher
 ASM_OBJ = fast_mask.o
-C_OBJ = dispatcher.o pkcs11_signer.o
+C_OBJ = dispatcher.o pkcs11_signer.o osint_audit_log.o mask_v7_sve2.o tinycbor.o
 RESULT_JSON = result.json
 XDP_SRC = formal/ebpf/osint_dispatcher_xdp_firewall.c
 XDP_OBJ = formal/ebpf/osint_dispatcher_xdp_firewall.o
@@ -31,10 +31,20 @@ all: $(DISPATCHER)
 $(ASM_OBJ): fast_mask.asm
 	$(NASM) -f elf64 -o $@ $<
 
-dispatcher.o: dispatcher.c pkcs11_signer.h
+dispatcher.o: dispatcher.c pkcs11_signer.h osint_audit_log.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+
 pkcs11_signer.o: pkcs11_signer.c pkcs11_signer.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+osint_audit_log.o: osint_audit_log.c osint_audit_log.h tinycbor.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+mask_v7_sve2.o: mask_v7_sve2.c osint_audit_log.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+tinycbor.o: tinycbor.c tinycbor.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(DISPATCHER): $(ASM_OBJ) $(C_OBJ)
@@ -73,4 +83,4 @@ verify-ebpf: $(XDP_SRC)
 	fi
 
 clean:
-	rm -f $(DISPATCHER) $(ASM_OBJ) dispatcher.o pkcs11_signer.o $(RESULT_JSON) $(XDP_OBJ) $(SNARK_XDP_OBJ)
+	rm -f $(DISPATCHER) $(ASM_OBJ) dispatcher.o pkcs11_signer.o osint_audit_log.o mask_v7_sve2.o tinycbor.o $(RESULT_JSON) $(XDP_OBJ) $(SNARK_XDP_OBJ)

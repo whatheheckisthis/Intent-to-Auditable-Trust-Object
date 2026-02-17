@@ -19,6 +19,7 @@
 #include <bpf/libbpf.h>
 
 #include "pkcs11_signer.h"
+#include "osint_audit_log.h"
 
 #define FLOW_CAP 4096U
 #define SIGN_BATCH_SIZE 1000U
@@ -66,6 +67,27 @@ static volatile sig_atomic_t keep_running = 1;
 static uint64_t verified_flows_total = 0;
 static uint64_t unverified_flows_total = 0;
 static uint64_t signed_evidence_total = 0;
+
+static int exfiltrate_to_audit_vault(const char *vault_path,
+                                     const uint8_t *signed_blob,
+                                     size_t signed_blob_len,
+                                     const uint8_t *signature,
+                                     size_t signature_len) {
+    FILE *vault = fopen(vault_path, "ab");
+    if (vault == NULL) {
+        return -1;
+    }
+
+    uint32_t cbor_len = (uint32_t)signed_blob_len;
+    uint16_t sig_len = (uint16_t)signature_len;
+    int ok = fwrite(&cbor_len, sizeof(cbor_len), 1, vault) == 1 &&
+             fwrite(&sig_len, sizeof(sig_len), 1, vault) == 1 &&
+             fwrite(signed_blob, signed_blob_len, 1, vault) == 1 &&
+             fwrite(signature, signature_len, 1, vault) == 1;
+
+    fclose(vault);
+    return ok ? 0 : -1;
+}
 
 static void on_signal(int signo) {
     (void)signo;
@@ -284,6 +306,11 @@ static int run_dispatch_loop(const char *map_path, const char *log_path, unsigne
         return -1;
     }
 
+    const char *vault_path = getenv("AUDIT_VAULT_PATH");
+    if (vault_path == NULL) {
+        vault_path = "/var/log/audit/audit_vault.cbor";
+    }
+
     while (keep_running) {
         size_t len = 0;
         uint64_t map_checksum = 0;
@@ -331,6 +358,38 @@ static int run_dispatch_loop(const char *map_path, const char *log_path, unsigne
 
             for (size_t i = 0; i < chunk; ++i) {
                 int verified = batch_ok ? 1 : 0;
+
+                osint_sanitized_payload_t osint_packet = {
+                    .masked_first_seen_ns = batch[i].first_seen_ns,
+                    .masked_last_seen_ns = batch[i].last_seen_ns,
+                };
+                memcpy(osint_packet.source_digest, batch[i].sha256, SHA256_DIGEST_LENGTH);
+                memcpy(&osint_packet.masked_src_ipv4, batch[i].masked_key.src_addr, sizeof(uint32_t));
+                memcpy(&osint_packet.masked_dst_ipv4, batch[i].masked_key.dst_addr, sizeof(uint32_t));
+                osint_packet.masked_src_ipv4 = ntohl(osint_packet.masked_src_ipv4);
+                osint_packet.masked_dst_ipv4 = ntohl(osint_packet.masked_dst_ipv4);
+                (void)mask_v7_sve2(&osint_packet);
+
+                char messy_json_like[512];
+                snprintf(messy_json_like,
+                         sizeof(messy_json_like),
+                         "{'lead_family':%u,'proto':%u,'packets':%llu,'bytes':%llu,'notes':'messy-forensic-input'}",
+                         batch[i].masked_key.family,
+                         batch[i].masked_key.proto,
+                         (unsigned long long)batch[i].packets,
+                         (unsigned long long)batch[i].bytes);
+
+                uint8_t *cbor_blob = NULL;
+                size_t cbor_blob_len = 0;
+                if (cbor_wrap_osint_data(messy_json_like, &osint_packet, &cbor_blob, &cbor_blob_len) == 0 && verified) {
+                    (void)exfiltrate_to_audit_vault(vault_path,
+                                                    cbor_blob,
+                                                    cbor_blob_len,
+                                                    batch_sigs + (i * MAX_SIGNATURE_LEN),
+                                                    batch_sig_lens[i]);
+                }
+                free(cbor_blob);
+
                 if (verified) {
                     verified_flows_total += 1;
                 } else {
