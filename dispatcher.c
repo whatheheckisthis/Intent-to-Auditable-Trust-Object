@@ -20,6 +20,10 @@
 
 #include "pkcs11_signer.h"
 
+#define FLOW_CAP 4096U
+#define SIGN_BATCH_SIZE 1000U
+#define MAX_SIGNATURE_LEN 128U
+
 typedef struct {
     uint8_t family;
     uint8_t proto;
@@ -47,6 +51,7 @@ typedef struct {
 
 typedef struct {
     uint64_t unix_ts;
+    uint64_t bpf_map_checksum;
     flow_key_t masked_key;
     uint64_t packets;
     uint64_t bytes;
@@ -67,39 +72,29 @@ static void on_signal(int signo) {
     keep_running = 0;
 }
 
-static int sign_evidence(const evidence_t *evidence,
-                         unsigned char *signature,
-                         size_t *signature_len) {
-    if (sign_log_hsm((unsigned char *)evidence->sha256, SHA256_DIGEST_LENGTH) != 0) {
-        return -1;
+static uint64_t fold_checksum64(uint64_t seed, const void *buf, size_t len) {
+    const uint8_t *p = (const uint8_t *)buf;
+    for (size_t i = 0; i < len; ++i) {
+        seed ^= (uint64_t)p[i];
+        seed *= 1099511628211ULL;
     }
-
-    size_t out_len = 0;
-    const unsigned char *raw_sig = pkcs11_last_signature(&out_len);
-    if (raw_sig == NULL || out_len == 0 || out_len > *signature_len) {
-        return -1;
-    }
-
-    memcpy(signature, raw_sig, out_len);
-    *signature_len = out_len;
-    return 0;
+    return seed;
 }
 
-static int aggregate_flow_map(int map_fd, aggregated_flow_t *out, size_t out_cap, size_t *out_len) {
+static int aggregate_flow_map(int map_fd, aggregated_flow_t *out, size_t out_cap, size_t *out_len, uint64_t *map_checksum) {
     flow_key_t prev = {0};
     flow_key_t next = {0};
     bool first = true;
     size_t count = 0;
+    uint64_t checksum = 1469598103934665603ULL;
 
     int ncpu = libbpf_num_possible_cpus();
     if (ncpu <= 0) {
-        fprintf(stderr, "Unable to detect possible CPUs.\n");
         return -1;
     }
 
     flow_metrics_t *percpu = calloc((size_t)ncpu, sizeof(flow_metrics_t));
     if (percpu == NULL) {
-        fprintf(stderr, "Out of memory allocating per-cpu read buffer.\n");
         return -1;
     }
 
@@ -109,14 +104,12 @@ static int aggregate_flow_map(int map_fd, aggregated_flow_t *out, size_t out_cap
             if (errno == ENOENT) {
                 break;
             }
-            perror("bpf_map_get_next_key");
             free(percpu);
             return -1;
         }
 
         memset(percpu, 0, sizeof(flow_metrics_t) * (size_t)ncpu);
         if (bpf_map_lookup_elem(map_fd, &next, percpu) != 0) {
-            perror("bpf_map_lookup_elem");
             prev = next;
             first = false;
             continue;
@@ -142,13 +135,16 @@ static int aggregate_flow_map(int map_fd, aggregated_flow_t *out, size_t out_cap
         out[count].bytes = bytes;
         out[count].first_seen_ns = first_seen_ns;
         out[count].last_seen_ns = last_seen_ns;
-        count++;
 
+        checksum = fold_checksum64(checksum, &out[count], sizeof(out[count]));
+
+        count++;
         prev = next;
         first = false;
     }
 
     free(percpu);
+    *map_checksum = checksum;
     *out_len = count;
     return 0;
 }
@@ -156,18 +152,15 @@ static int aggregate_flow_map(int map_fd, aggregated_flow_t *out, size_t out_cap
 static int write_log_line(const char *path, const char *line) {
     FILE *f = fopen(path, "a");
     if (f == NULL) {
-        perror("fopen");
         return -1;
     }
 
     if (fputs(line, f) == EOF || fputc('\n', f) == EOF) {
-        perror("fputs");
         fclose(f);
         return -1;
     }
 
     if (fflush(f) != 0 || fsync(fileno(f)) != 0) {
-        perror("flush/fsync");
         fclose(f);
         return -1;
     }
@@ -189,7 +182,6 @@ static void format_addr(uint8_t family, const uint8_t addr[16], char *out, size_
 static int export_metrics_http(uint16_t port) {
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0) {
-        perror("socket");
         return -1;
     }
 
@@ -202,13 +194,11 @@ static int export_metrics_http(uint16_t port) {
     addr.sin_port = htons(port);
 
     if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
-        perror("bind");
         close(server_fd);
         return -1;
     }
 
     if (listen(server_fd, 16) != 0) {
-        perror("listen");
         close(server_fd);
         return -1;
     }
@@ -219,7 +209,6 @@ static int export_metrics_http(uint16_t port) {
             if (errno == EINTR) {
                 continue;
             }
-            perror("accept");
             break;
         }
 
@@ -273,7 +262,6 @@ static int export_metrics_http(uint16_t port) {
 static int run_dispatch_loop(const char *map_path, const char *log_path, unsigned interval_s) {
     int map_fd = bpf_obj_get(map_path);
     if (map_fd < 0) {
-        perror("bpf_obj_get flow_map");
         return -1;
     }
 
@@ -282,9 +270,15 @@ static int run_dispatch_loop(const char *map_path, const char *log_path, unsigne
         return -1;
     }
 
-    const size_t cap = 4096;
-    aggregated_flow_t *flows = calloc(cap, sizeof(*flows));
-    if (flows == NULL) {
+    aggregated_flow_t *flows = calloc(FLOW_CAP, sizeof(*flows));
+    evidence_t *batch = calloc(SIGN_BATCH_SIZE, sizeof(*batch));
+    unsigned char *batch_sigs = calloc(SIGN_BATCH_SIZE, MAX_SIGNATURE_LEN);
+    size_t *batch_sig_lens = calloc(SIGN_BATCH_SIZE, sizeof(size_t));
+    if (flows == NULL || batch == NULL || batch_sigs == NULL || batch_sig_lens == NULL) {
+        free(flows);
+        free(batch);
+        free(batch_sigs);
+        free(batch_sig_lens);
         close(map_fd);
         pkcs11_cleanup();
         return -1;
@@ -292,81 +286,109 @@ static int run_dispatch_loop(const char *map_path, const char *log_path, unsigne
 
     while (keep_running) {
         size_t len = 0;
-        if (aggregate_flow_map(map_fd, flows, cap, &len) != 0) {
+        uint64_t map_checksum = 0;
+        if (aggregate_flow_map(map_fd, flows, FLOW_CAP, &len, &map_checksum) != 0) {
             sleep(interval_s);
             continue;
         }
 
-        for (size_t i = 0; i < len; ++i) {
-            evidence_t evidence = {
-                .unix_ts = (uint64_t)time(NULL),
-                .masked_key = flows[i].key,
-                .packets = flows[i].packets,
-                .bytes = flows[i].bytes,
-                .first_seen_ns = flows[i].first_seen_ns,
-                .last_seen_ns = flows[i].last_seen_ns,
-            };
-
-            fast_mask_ip_pair(evidence.masked_key.src_addr,
-                              evidence.masked_key.dst_addr,
-                              evidence.masked_key.family == AF_INET ? 4 : 6);
-
-            SHA256((const unsigned char *)&evidence,
-                   sizeof(evidence) - SHA256_DIGEST_LENGTH,
-                   evidence.sha256);
-
-            unsigned char signature[512];
-            size_t sig_len = sizeof(signature);
-            int verified = sign_evidence(&evidence, signature, &sig_len) == 0;
-            if (verified) {
-                verified_flows_total += 1;
-            } else {
-                unverified_flows_total += 1;
+        for (size_t cursor = 0; cursor < len;) {
+            size_t chunk = len - cursor;
+            if (chunk > SIGN_BATCH_SIZE) {
+                chunk = SIGN_BATCH_SIZE;
             }
 
-            char encoded[1024] = {0};
-            if (verified) {
-                EVP_EncodeBlock((unsigned char *)encoded, signature, (int)sig_len);
-            } else {
-                strcpy(encoded, "UNSIGNED");
+            unsigned char digest_buf[SIGN_BATCH_SIZE * SHA256_DIGEST_LENGTH];
+            memset(digest_buf, 0, sizeof(digest_buf));
+
+            for (size_t i = 0; i < chunk; ++i) {
+                batch[i] = (evidence_t){
+                    .unix_ts = (uint64_t)time(NULL),
+                    .bpf_map_checksum = map_checksum,
+                    .masked_key = flows[cursor + i].key,
+                    .packets = flows[cursor + i].packets,
+                    .bytes = flows[cursor + i].bytes,
+                    .first_seen_ns = flows[cursor + i].first_seen_ns,
+                    .last_seen_ns = flows[cursor + i].last_seen_ns,
+                };
+
+                fast_mask_ip_pair(batch[i].masked_key.src_addr,
+                                  batch[i].masked_key.dst_addr,
+                                  batch[i].masked_key.family == AF_INET ? 4 : 6);
+
+                SHA256((const unsigned char *)&batch[i],
+                       sizeof(batch[i]) - SHA256_DIGEST_LENGTH,
+                       batch[i].sha256);
+                memcpy(digest_buf + (i * SHA256_DIGEST_LENGTH), batch[i].sha256, SHA256_DIGEST_LENGTH);
             }
 
-            char digest_hex[SHA256_DIGEST_LENGTH * 2 + 1] = {0};
-            for (size_t j = 0; j < SHA256_DIGEST_LENGTH; ++j) {
-                snprintf(digest_hex + (j * 2), 3, "%02x", evidence.sha256[j]);
+            int batch_ok = sign_log_hsm_batch(digest_buf,
+                                              SHA256_DIGEST_LENGTH,
+                                              chunk,
+                                              batch_sigs,
+                                              batch_sig_lens,
+                                              MAX_SIGNATURE_LEN) == 0;
+
+            for (size_t i = 0; i < chunk; ++i) {
+                int verified = batch_ok ? 1 : 0;
+                if (verified) {
+                    verified_flows_total += 1;
+                } else {
+                    unverified_flows_total += 1;
+                }
+
+                char encoded[512] = {0};
+                if (verified) {
+                    EVP_EncodeBlock((unsigned char *)encoded,
+                                    batch_sigs + (i * MAX_SIGNATURE_LEN),
+                                    (int)batch_sig_lens[i]);
+                } else {
+                    strcpy(encoded, "UNSIGNED");
+                }
+
+                char digest_hex[SHA256_DIGEST_LENGTH * 2 + 1] = {0};
+                for (size_t j = 0; j < SHA256_DIGEST_LENGTH; ++j) {
+                    snprintf(digest_hex + (j * 2), 3, "%02x", batch[i].sha256[j]);
+                }
+
+                char src_txt[INET6_ADDRSTRLEN] = {0};
+                char dst_txt[INET6_ADDRSTRLEN] = {0};
+                format_addr(batch[i].masked_key.family, batch[i].masked_key.src_addr, src_txt, sizeof(src_txt));
+                format_addr(batch[i].masked_key.family, batch[i].masked_key.dst_addr, dst_txt, sizeof(dst_txt));
+
+                char line[2200];
+                snprintf(line,
+                         sizeof(line),
+                         "ts=%llu family=%u src=%s dst=%s proto=%u packets=%llu bytes=%llu first_seen_ns=%llu last_seen_ns=%llu bpf_map_checksum=%llu digest_sha256=%s verified=%d signature=%s",
+                         (unsigned long long)batch[i].unix_ts,
+                         batch[i].masked_key.family,
+                         src_txt,
+                         dst_txt,
+                         batch[i].masked_key.proto,
+                         (unsigned long long)batch[i].packets,
+                         (unsigned long long)batch[i].bytes,
+                         (unsigned long long)batch[i].first_seen_ns,
+                         (unsigned long long)batch[i].last_seen_ns,
+                         (unsigned long long)batch[i].bpf_map_checksum,
+                         digest_hex,
+                         verified,
+                         encoded);
+
+                if (write_log_line(log_path, line) == 0) {
+                    signed_evidence_total += 1;
+                }
             }
 
-            char src_txt[INET6_ADDRSTRLEN] = {0};
-            char dst_txt[INET6_ADDRSTRLEN] = {0};
-            format_addr(evidence.masked_key.family, evidence.masked_key.src_addr, src_txt, sizeof(src_txt));
-            format_addr(evidence.masked_key.family, evidence.masked_key.dst_addr, dst_txt, sizeof(dst_txt));
-
-            char line[2200];
-            snprintf(line,
-                     sizeof(line),
-                     "ts=%llu family=%u src=%s dst=%s proto=%u packets=%llu bytes=%llu first_seen_ns=%llu last_seen_ns=%llu digest_sha256=%s verified=%d signature=%s",
-                     (unsigned long long)evidence.unix_ts,
-                     evidence.masked_key.family,
-                     src_txt,
-                     dst_txt,
-                     evidence.masked_key.proto,
-                     (unsigned long long)evidence.packets,
-                     (unsigned long long)evidence.bytes,
-                     (unsigned long long)evidence.first_seen_ns,
-                     (unsigned long long)evidence.last_seen_ns,
-                     digest_hex,
-                     verified,
-                     encoded);
-
-            if (write_log_line(log_path, line) == 0) {
-                signed_evidence_total += 1;
-            }
+            cursor += chunk;
         }
 
         sleep(interval_s);
     }
 
     free(flows);
+    free(batch);
+    free(batch_sigs);
+    free(batch_sig_lens);
     close(map_fd);
     pkcs11_cleanup();
     return 0;
@@ -397,7 +419,6 @@ int main(void) {
 
     pid_t pid = fork();
     if (pid < 0) {
-        perror("fork");
         return 1;
     }
 

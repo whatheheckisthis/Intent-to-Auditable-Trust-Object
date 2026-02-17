@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Minimal PKCS#11 type set needed for C_Initialize/C_Sign with CKM_EDDSA. */
 typedef unsigned char CK_BYTE;
 typedef unsigned char CK_BBOOL;
 typedef unsigned long CK_ULONG;
@@ -142,8 +141,7 @@ int pkcs11_initialize_from_env(void) {
         load_symbol((void **)&g_pkcs11.C_FindObjectsFinal, "C_FindObjectsFinal") != 0 ||
         load_symbol((void **)&g_pkcs11.C_SignInit, "C_SignInit") != 0 ||
         load_symbol((void **)&g_pkcs11.C_Sign, "C_Sign") != 0) {
-        dlclose(g_pkcs11.module);
-        memset(&g_pkcs11, 0, sizeof(g_pkcs11));
+        pkcs11_cleanup();
         return -1;
     }
 
@@ -164,14 +162,12 @@ int pkcs11_initialize_from_env(void) {
 
     CK_SLOT_ID *slots = calloc(slot_count, sizeof(CK_SLOT_ID));
     if (slots == NULL) {
-        fprintf(stderr, "Out of memory loading slot list.\n");
         pkcs11_cleanup();
         return -1;
     }
 
     rv = g_pkcs11.C_GetSlotList(1, slots, &slot_count);
     if (rv != CKR_OK) {
-        fprintf(stderr, "C_GetSlotList(list) failed: 0x%lx\n", rv);
         free(slots);
         pkcs11_cleanup();
         return -1;
@@ -203,7 +199,6 @@ int pkcs11_initialize_from_env(void) {
     size_t id_len = sizeof(id_bytes);
     if (id_hex != NULL) {
         if (hex_to_bytes(id_hex, id_bytes, &id_len) != 0) {
-            fprintf(stderr, "Invalid HSM_KEY_ID_HEX value.\n");
             pkcs11_cleanup();
             return -1;
         }
@@ -214,7 +209,6 @@ int pkcs11_initialize_from_env(void) {
 
     rv = g_pkcs11.C_FindObjectsInit(g_pkcs11.session, attrs, attr_count);
     if (rv != CKR_OK) {
-        fprintf(stderr, "C_FindObjectsInit failed: 0x%lx\n", rv);
         pkcs11_cleanup();
         return -1;
     }
@@ -223,7 +217,6 @@ int pkcs11_initialize_from_env(void) {
     rv = g_pkcs11.C_FindObjects(g_pkcs11.session, &g_pkcs11.key, 1, &found);
     g_pkcs11.C_FindObjectsFinal(g_pkcs11.session);
     if (rv != CKR_OK || found == 0) {
-        fprintf(stderr, "No key handle found in token (rv=0x%lx found=%lu).\n", rv, found);
         pkcs11_cleanup();
         return -1;
     }
@@ -235,26 +228,22 @@ int sign_log_hsm(unsigned char *data, size_t len) {
     CK_MECHANISM mech = {CKM_EDDSA, NULL, 0};
     CK_RV rv = g_pkcs11.C_SignInit(g_pkcs11.session, &mech, g_pkcs11.key);
     if (rv != CKR_OK) {
-        fprintf(stderr, "C_SignInit failed: 0x%lx\n", rv);
         return -1;
     }
 
     CK_ULONG sig_len = 0;
     rv = g_pkcs11.C_Sign(g_pkcs11.session, data, (CK_ULONG)len, NULL, &sig_len);
     if (rv != CKR_OK || sig_len == 0) {
-        fprintf(stderr, "C_Sign(length) failed: 0x%lx\n", rv);
         return -1;
     }
 
     unsigned char *sig = calloc(sig_len, 1);
     if (sig == NULL) {
-        fprintf(stderr, "Out of memory allocating signature buffer.\n");
         return -1;
     }
 
     rv = g_pkcs11.C_Sign(g_pkcs11.session, data, (CK_ULONG)len, sig, &sig_len);
     if (rv != CKR_OK) {
-        fprintf(stderr, "C_Sign failed: 0x%lx\n", rv);
         free(sig);
         return -1;
     }
@@ -262,6 +251,34 @@ int sign_log_hsm(unsigned char *data, size_t len) {
     free(g_pkcs11.last_signature);
     g_pkcs11.last_signature = sig;
     g_pkcs11.last_signature_len = sig_len;
+    return 0;
+}
+
+int sign_log_hsm_batch(const unsigned char *digests,
+                       size_t digest_len,
+                       size_t batch_size,
+                       unsigned char *signatures,
+                       size_t *signature_lens,
+                       size_t signature_stride) {
+    if (digests == NULL || signatures == NULL || signature_lens == NULL || digest_len == 0 || signature_stride == 0) {
+        return -1;
+    }
+
+    for (size_t i = 0; i < batch_size; ++i) {
+        if (sign_log_hsm((unsigned char *)(digests + (i * digest_len)), digest_len) != 0) {
+            return -1;
+        }
+
+        size_t sig_len = 0;
+        const unsigned char *sig = pkcs11_last_signature(&sig_len);
+        if (sig == NULL || sig_len == 0 || sig_len > signature_stride) {
+            return -1;
+        }
+
+        memcpy(signatures + (i * signature_stride), sig, sig_len);
+        signature_lens[i] = sig_len;
+    }
+
     return 0;
 }
 
