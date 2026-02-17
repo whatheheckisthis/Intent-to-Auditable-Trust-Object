@@ -1,102 +1,85 @@
 services:
   enclave:
     image: enclavenetworks/enclave:latest
-    container_name: enclave_agent
+    container_name: enclave
     restart: unless-stopped
     cap_add: ["NET_ADMIN"]
     devices:
       - /dev/net/tun:/dev/net/tun
-    env_file: [.env]
     environment:
       ENCLAVE_ENROLMENT_KEY: ${ENCLAVE_ENROLMENT_KEY:?set in .env}
     volumes:
       - enclave-profiles:/etc/enclave/profiles
     networks: [enclave_net]
-    ports:
-      - "443:443"
 
-  xdp-auditor:
+  xdp-bridge:
     build:
       context: ./ebpf
       dockerfile: netflow-sidecar/Dockerfile
-    container_name: xdp-auditor
+    container_name: xdp-bridge
     restart: unless-stopped
-    network_mode: "service:enclave"
     privileged: true
+    network_mode: service:enclave
     depends_on: [enclave]
     environment:
       XDP_INTERFACE: ${XDP_INTERFACE:-eth0}
       XDP_MODE: ${XDP_MODE:-drv}
-      METRICS_ADDR: 0.0.0.0:9500
-      NETFLOW_POLL_INTERVAL: ${NETFLOW_POLL_INTERVAL:-5s}
-      BPF_OBJECT: /opt/netflow/xdp_audit.bpf.o
+      PERF_EVENT_MAP: /sys/fs/bpf/v7_perf_events
+      PERF_OUTPUT_SYMBOL: bpf_perf_event_output
     volumes:
       - /sys/kernel/btf:/sys/kernel/btf:ro
       - /sys/fs/bpf:/sys/fs/bpf
       - /lib/modules:/lib/modules:ro
 
+  qemu-sve:
+    image: multiarch/qemu-user-static:latest
+    container_name: qemu-sve
+    restart: unless-stopped
+    network_mode: service:enclave
+    depends_on: [xdp-bridge, softhsm]
+    entrypoint: ["/bin/sh", "-lc"]
+    command: >
+      "qemu-aarch64-static
+      -cpu neoverse-v2,sve=on,sve2=on
+      -L /usr/aarch64-linux-gnu
+      /opt/dispatcher/dispatcher_aarch64
+      --perf-map /sys/fs/bpf/v7_perf_events
+      --mask-routine /opt/dispatcher/mask_sve2.s
+      --pkcs11-module ${PKCS11_MODULE_PATH:-/usr/lib/softhsm/libsofthsm2.so}
+      --pkcs11-pin ${PKCS11_PIN:-1234}
+      --key-label ${HSM_KEY_LABEL:-ato-ed25519}
+      --prometheus-bind 0.0.0.0:9600"
+    volumes:
+      - /sys/fs/bpf:/sys/fs/bpf
+      - ./mask_sve2.s:/opt/dispatcher/mask_sve2.s:ro
+      - ./dispatcher.c:/opt/dispatcher/dispatcher.c:ro
+      - ./bin/dispatcher_aarch64:/opt/dispatcher/dispatcher_aarch64:ro
+
   softhsm:
     image: ghcr.io/softhsm/softhsm2:latest
-    container_name: softhsm2
+    container_name: softhsm
     restart: unless-stopped
     environment:
       SOFTHSM2_CONF: /etc/softhsm2.conf
     volumes:
       - softhsm-tokens:/var/lib/softhsm/tokens
 
-  dispatcher:
-    build:
-      context: .
-      dockerfile: docker/dispatcher/Dockerfile
-    container_name: ato-dispatcher
-    restart: unless-stopped
-    network_mode: "service:enclave"
-    privileged: true
-    depends_on: [enclave, xdp-auditor, softhsm]
-    environment:
-      FLOW_MAP_PATH: /sys/fs/bpf/flow_map
-      SIGNED_EVIDENCE_LOG: /var/log/audit/signed_evidence.log
-      DISPATCH_INTERVAL_S: ${DISPATCH_INTERVAL_S:-5}
-      PKCS11_MODULE_PATH: ${PKCS11_MODULE_PATH:-/usr/lib/softhsm/libsofthsm2.so}
-      PKCS11_PIN: ${PKCS11_PIN:-1234}
-      HSM_KEY_LABEL: ${HSM_KEY_LABEL:-ato-ed25519}
-    volumes:
-      - /sys/fs/bpf:/sys/fs/bpf
-      - /proc:/host/proc:ro
-      - signed-audit-log:/var/log/audit
-
   prometheus:
     image: prom/prometheus:v2.53.1
     container_name: prometheus
     restart: unless-stopped
-    network_mode: "service:enclave"
-    depends_on: [xdp-auditor, dispatcher]
+    network_mode: service:enclave
+    depends_on: [qemu-sve]
     command:
       - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.path=/prometheus
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
-
-  grafana:
-    image: grafana/grafana:11.1.0
-    container_name: grafana
-    restart: unless-stopped
-    network_mode: "service:enclave"
-    depends_on: [prometheus]
-    environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
-    volumes:
-      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
-      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
 
   db:
     image: mariadb:11.4
     container_name: mariadb
     restart: unless-stopped
-    env_file: [.env]
     environment:
       MARIADB_DATABASE: ${DRUPAL_DB_NAME:-drupal}
       MARIADB_USER: ${DRUPAL_DB_USER:-drupal}
@@ -107,34 +90,22 @@ services:
       - mariadb-data:/var/lib/mysql
 
   drupal:
-    build:
-      context: .
-      dockerfile: docker/drupal/Dockerfile
+    image: drupal:10-apache
     container_name: drupal
     restart: unless-stopped
-    env_file: [.env]
+    depends_on: [db]
     environment:
       DRUPAL_DB_HOST: db
       DRUPAL_DB_NAME: ${DRUPAL_DB_NAME:-drupal}
       DRUPAL_DB_USER: ${DRUPAL_DB_USER:-drupal}
       DRUPAL_DB_PASSWORD: ${DRUPAL_DB_PASSWORD:?set in .env}
-    depends_on: [db]
-    networks: [app_net]
-
-  apache:
-    build:
-      context: .
-      dockerfile: docker/apache/Dockerfile
-    container_name: apache
-    restart: unless-stopped
-    depends_on: [drupal]
     networks: [app_net]
 
   nginx:
     image: nginx:1.27-alpine
-    container_name: local-nginx
+    container_name: app-gateway
     restart: unless-stopped
-    depends_on: [apache]
+    depends_on: [drupal]
     ports:
       - "8080:80"
     networks: [app_net]
@@ -142,15 +113,14 @@ services:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
 
 volumes:
-  mariadb-data:
-  prometheus-data:
   enclave-profiles:
-  signed-audit-log:
   softhsm-tokens:
+  prometheus-data:
+  mariadb-data:
 
 networks:
+  enclave_net:
+    driver: bridge
   app_net:
     driver: bridge
     internal: true
-  enclave_net:
-    driver: bridge

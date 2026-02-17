@@ -1,48 +1,50 @@
-# Auditable Trust Object (ATO)
+# Virtualised Zero-DRAM Auditable Trust Stack
 
-This repository implements a full-stack **Auditable Trust Object** that binds together hardware parsing, eBPF enforcement, SIMD privacy controls, and HSM-backed signatures.
+This repository now ships a **QEMU SVE2 + Enclave SDN** reference stack that keeps sensitive flow material in vector registers as long as possible before signing.
 
-## Source layers delivered
+## Architecture
 
-- **Hardware (`hardware/netflow_parser.v`)**
-  - 512-bit AXI-stream parser for 100Gbps pipelines.
-  - Extracts V7 tuple fields (src/dst IP, src/dst port, protocol, ToS, TCP flags).
-  - Carries NIC hardware timestamp metadata for downstream attestation.
-- **Kernel (`xdp_audit.c`)**
-  - XDP L1 filter parses IPv4/IPv6 TCP/UDP flows.
-  - L2 accounting map uses `BPF_MAP_TYPE_PERCPU_HASH` and emits ring-buffer alerts.
-- **Evidence (`dispatcher.c`, `fast_mask.asm`, `pkcs11_signer.c`)**
-  - SIMD assembly masking (`/24` IPv4, `/64` IPv6) before hashing.
-  - Batch signing path (`1000 flows/call`) to amortize HSM round-trip overhead.
-  - PKCS#11 signing via SoftHSM2 or physical HSM.
-- **Infrastructure (`docker-compose.yml`)**
-  - Enclave secure fabric and privileged dispatcher with `/sys/fs/bpf` mounted.
-  - SoftHSM2 + observability (Prometheus/Grafana).
-  - Isolated local stack (`Drupal + MariaDB + Apache + Nginx`) on `app_net`.
+1. **Virtual hardware (QEMU/SVE2)**
+   - `qemu-aarch64-static` emulates an **Arm Neoverse V2** profile (`-cpu neoverse-v2,sve=on,sve2=on`).
+   - `mask_sve2.s` performs PII reduction in SVE2 `Z` registers (`z0-z4`) without copying tuples into application heap buffers.
+2. **Kernel bridge (XDP -> register path)**
+   - XDP parser extracts V7 tuples at line-rate.
+   - `bpf_perf_event_output` publishes tuples into perf events consumed by the dispatcher process running in the QEMU guest context.
+3. **Evidence signing (PKCS#11)**
+   - Dispatcher ingests tuple lanes, applies `mask_v7_tuple_sve2`, hashes evidence, and signs via SoftHSM2 PKCS#11.
+   - Signed counters and verification metrics are exported on the enclave-facing Prometheus endpoint.
+4. **Isolated services**
+   - `qemu-sve` and `xdp-bridge` run on `network_mode: service:enclave`.
+   - Drupal/MariaDB remain isolated on `app_net`.
 
-## Full trust chain
+## Delivered files
 
-Evidence is generated and linked in the following chain:
+- `mask_sve2.s` – SVE2 tuple masking routine.
+- `docker-compose.yml` – Enclave, XDP bridge, QEMU-SVE dispatcher, SoftHSM2, Prometheus, Drupal, MariaDB.
+- `README.md` – WSL2 + runbook instructions.
 
-`[NIC Hardware Timestamp] -> [XDP Flow Hash Context] -> [BPF Map Checksum] -> [HSM Signature]`
+## WSL2 quick start
 
-1. Hardware parser emits tuple + NIC timestamp metadata.
-2. XDP parser records per-flow counters in pinned per-CPU maps.
-3. Dispatcher folds map contents into `bpf_map_checksum` and builds evidence digest.
-4. Batch PKCS#11 signer produces token-backed signatures over SHA-256 evidence digests.
-
-## WSL2 deployment
-
-### 1) Install required packages
+### 1) Install prerequisites (including QEMU user emulation)
 
 ```bash
 sudo apt update
-sudo apt install -y clang llvm gcc make nasm pkg-config \
-  libbpf-dev libelf-dev libssl-dev softhsm2 opensc \
-  docker.io docker-compose-plugin linux-headers-$(uname -r)
+sudo apt install -y \
+  qemu-user-static \
+  binfmt-support \
+  clang llvm gcc make pkg-config \
+  libbpf-dev libelf-dev libssl-dev \
+  softhsm2 opensc docker.io docker-compose-plugin
 ```
 
-### 2) Configure environment
+### 2) Enable and verify `binfmt_misc`
+
+```bash
+sudo update-binfmts --enable qemu-aarch64
+update-binfmts --display qemu-aarch64
+```
+
+### 3) Prepare `.env`
 
 ```bash
 cat > .env <<'ENV'
@@ -52,39 +54,28 @@ MARIADB_ROOT_PASSWORD=rootpw
 PKCS11_MODULE_PATH=/usr/lib/softhsm/libsofthsm2.so
 PKCS11_PIN=1234
 HSM_KEY_LABEL=ato-ed25519
-GRAFANA_ADMIN_USER=admin
-GRAFANA_ADMIN_PASSWORD=admin
 ENV
 ```
 
-### 3) Initialize SoftHSM2 token
+### 4) Initialize SoftHSM2 token
 
 ```bash
 softhsm2-util --init-token --slot 0 --label ato-token --so-pin 1234 --pin 1234
 pkcs11-tool --module /usr/lib/softhsm/libsofthsm2.so \
   --login --pin 1234 \
-  --keypairgen --key-type EC:edwards25519 --label ato-ed25519 --usage-sign
+  --keypairgen --key-type EC:prime256v1 --label ato-ed25519 --usage-sign
 ```
 
-### 4) Build and run
+### 5) Launch stack
 
 ```bash
 docker compose up -d --build
 ```
 
-### 5) Optional local binary build
+## Register-to-sign path (Zero-DRAM objective)
 
-```bash
-make dispatcher LDFLAGS="-lbpf"
-```
+`NIC/XDP parser -> bpf_perf_event_output -> QEMU SVE2 dispatcher -> Z-register masking -> PKCS#11 signing -> Prometheus over Enclave vNET`
 
-## Runtime verification
-
-Signed records are appended to `/var/log/audit/signed_evidence.log` and include:
-
-- `bpf_map_checksum`
-- `digest_sha256`
-- `verified`
-- `signature` (base64)
-
-To verify digest/signature pairs, export the HSM public key and use `openssl pkeyutl -verify` on the digest bytes.
+- Tuple fields are emitted from XDP via perf events rather than copied into long-lived userland queues.
+- Dispatcher reads perf payloads, maps fields to SVE2 lanes, masks in-register, and immediately signs digests.
+- Only signed/hashed artifacts are exported to observability, preserving Trust Object integrity for audit replay.
