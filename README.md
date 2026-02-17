@@ -1,42 +1,71 @@
-# Auditable Trust Object: Enclave-Secured Local Stack
+# Auditable Trust Object: Enclave + eBPF/XDP Monitoring Stack
 
-This repository now includes a complete Docker Compose environment that couples a private Drupal app stack with an Enclave-secured monitoring plane.
+This repository ships a secure and auditable monitoring architecture that combines:
 
-## Architecture Overview
+- **Line-rate kernel telemetry** from an XDP/eBPF audit hook (`xdp_audit.c`),
+- **An enclave-secured userspace sidecar** that exports Prometheus metrics,
+- **A private overlay network backbone** for observability and dashboard access,
+- **An isolated app plane** (`Nginx -> Drupal -> MariaDB`) on `app_net`.
 
-- **Enclave Core** (`enclave_agent`) provides overlay connectivity and secure naming (for example `grafana.enclave` and `drupal.enclave`).
-- **Host-visibility sidecar** (`node-exporter`) runs in the Enclave network namespace and reads host `/proc` and `/sys` for auditable host metrics.
-- **Monitoring plane** (`prometheus` + `grafana`) runs behind Enclave networking and scrapes `localhost:9100` from Node Exporter.
-- **Gateway plane** (`nginx`) terminates TLS on port `443` and routes:
-  - `https://grafana.enclave` → Grafana (`grafana:3000`)
-  - `https://drupal.enclave` → Drupal via Apache (`apache:8080`)
-- **Private app stack** (`drupal`, `apache`, `mariadb`) is isolated on `app_net` and not directly exposed to the host.
+## 1) Architecture
 
-## Files Included
+### Software-Verilog Layer (Kernel/NIC path)
 
+- `ebpf/xdp_audit.c` attaches at the XDP hook and is intended for **`XDP_DRV`** (driver mode) and optionally **`XDP_HW`** where NIC offload is supported.
+- The program performs a packet-timing audit and emits events through a `BPF_MAP_TYPE_PERF_EVENT_ARRAY` map named `audit_events`.
+- The TVLA-inspired logic computes an online timing baseline (mean + variance via Welford updates) and flags packets where the absolute timing deviation yields a high t-score (`|t| >= 4`) after minimum samples are collected.
+
+### Bridge Layer (Userspace sidecar)
+
+- `ebpf/agent.py` dynamically loads and attaches the XDP program.
+- The sidecar consumes perf events from the eBPF map and exposes `/metrics` on port `9400`.
+- Container runs with:
+  - `network_mode: "service:enclave"`
+  - `privileged: true`
+  - host mounts for `/sys/kernel/debug`, `/lib/modules`, `/usr/src`.
+
+### Hybrid Compose Topology
+
+- **Enclave service** provides the secure networking backbone and `.enclave` name resolution.
+- **Prometheus + Grafana** run in the enclave network namespace and scrape the XDP sidecar privately.
+- **App stack** (`drupal`, `apache`, `db`) remains isolated on `app_net`.
+- **Gateway Nginx** is attached to the enclave namespace and exposes TLS on host port `443`.
+
+## 2) Key Files
+
+- `ebpf/xdp_audit.c`
+- `ebpf/agent.py`
+- `ebpf/Dockerfile`
 - `docker-compose.yml`
 - `prometheus.yml`
-- `nginx.conf`
 
-## Quick Start (WSL2)
+## 3) WSL2 Quick Start
 
 1. **Prerequisites**
-   - Docker Desktop with WSL2 integration enabled.
-   - A valid Enclave enrolment key.
 
-2. **Prepare environment file**
+   - Docker Desktop with WSL2 backend enabled.
+   - Linux kernel with eBPF/XDP support in your WSL distro.
+   - Enclave enrolment key.
+
+2. **Prepare environment**
 
    ```bash
    cp .env.example .env
    ```
 
-   Edit `.env` and set:
+   Set at minimum:
+
    - `ENCLAVE_ENROLMENT_KEY`
    - `DRUPAL_DB_PASSWORD`
    - `MARIADB_ROOT_PASSWORD`
    - `GRAFANA_ADMIN_PASSWORD`
 
-3. **Create TLS certificate for the Enclave Gateway**
+   Optional XDP tuning:
+
+   - `XDP_INTERFACE=eth0`
+   - `XDP_MODE=drv` (`drv`, `hw`, or `skb`)
+
+3. **Create TLS certificate**
 
    ```bash
    mkdir -p certs
@@ -46,54 +75,52 @@ This repository now includes a complete Docker Compose environment that couples 
      -subj "/CN=grafana.enclave"
    ```
 
-4. **Start the full stack**
+4. **Launch stack**
 
    ```bash
    docker compose up -d --build
    ```
 
-## Verification Steps
+## 4) Verification
 
-### 1) Verify Enclave enrolment
+### A. Verify XDP hook attachment
 
 ```bash
-docker logs enclave_agent
+docker exec enclave_agent ip link show
 ```
 
-Look for successful enrolment and overlay connectivity messages.
+```bash
+docker logs xdp-auditor --tail=50
+```
 
-### 2) Verify monitoring endpoints inside Enclave namespace
+You should see startup output similar to:
+
+- `XDP audit hook attached on eth0 with mode=drv`
+
+### B. Verify Prometheus metrics path
 
 ```bash
-docker exec enclave_agent wget -qO- http://localhost:9100/metrics | head
+docker exec enclave_agent wget -qO- http://localhost:9400/metrics | head
 ```
 
 ```bash
 docker exec enclave_agent wget -qO- http://localhost:9090/-/ready
 ```
 
-### 3) Verify browser access through Enclave DNS
+### C. Verify enclave dashboard access (Trust Object)
 
-Open:
+Open these URLs from your browser:
 
 - `https://grafana.enclave`
+- `https://drupal.enclave`
 
-(accept the self-signed certificate warning unless you provision a trusted cert).
+Login to Grafana and validate scrape health + XDP series:
 
-### 4) Verify the Trust Object using Node Exporter dashboard
+- `xdp_audit_events_total`
+- `xdp_audit_leak_flags_total`
+- `xdp_audit_last_tscore`
 
-On first Grafana login:
-
-1. Sign in with `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD`.
-2. Confirm the **Prometheus** datasource is already provisioned at `http://localhost:9090`.
-3. Open the pre-provisioned **Node Exporter Full** dashboard.
-4. Confirm host-level panels (CPU, memory, filesystem, load) are populated.
-
-If panels populate immediately after startup, your auditable host telemetry path is active:
-
-**Host kernel metrics → Node Exporter sidecar → Prometheus scrape → Grafana dashboard (Trust Object evidence surface).**
-
-## Stop and cleanup
+## 5) Teardown
 
 ```bash
 docker compose down -v
