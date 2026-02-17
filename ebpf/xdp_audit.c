@@ -48,6 +48,7 @@ struct audit_event {
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_HASH);
     __uint(max_entries, MAX_FLOWS);
+    __uint(pinning, LIBBPF_PIN_BY_NAME);
     __type(key, struct flow_key);
     __type(value, struct flow_metrics);
 } flow_map SEC(".maps");
