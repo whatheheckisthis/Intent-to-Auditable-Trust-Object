@@ -50,7 +50,12 @@ type state struct {
 }
 
 type mapEntry struct {
-	Key   []string `json:"key"`
+	Key    []string         `json:"key"`
+	Value  []string         `json:"value"`
+	Values []perCPUMapValue `json:"values"`
+}
+
+type perCPUMapValue struct {
 	Value []string `json:"value"`
 }
 
@@ -185,7 +190,7 @@ func pollFlowMap(mapID, topK int, st *state) error {
 		if err != nil {
 			continue
 		}
-		v, err := parseFlowValue(e.Value)
+		v, err := parseFlowValues(e)
 		if err != nil {
 			continue
 		}
@@ -233,6 +238,31 @@ func parseFlowValue(xs []string) (flowMetrics, error) {
 		Bytes:      binary.LittleEndian.Uint64(b[8:16]),
 		LastSeenNS: binary.LittleEndian.Uint64(b[16:24]),
 	}, nil
+}
+
+func parseFlowValues(e mapEntry) (flowMetrics, error) {
+	if len(e.Value) > 0 {
+		return parseFlowValue(e.Value)
+	}
+
+	if len(e.Values) == 0 {
+		return flowMetrics{}, fmt.Errorf("missing value")
+	}
+
+	var out flowMetrics
+	for _, v := range e.Values {
+		m, err := parseFlowValue(v.Value)
+		if err != nil {
+			return flowMetrics{}, err
+		}
+		out.Packets += m.Packets
+		out.Bytes += m.Bytes
+		if m.LastSeenNS > out.LastSeenNS {
+			out.LastSeenNS = m.LastSeenNS
+		}
+	}
+
+	return out, nil
 }
 
 func hexBytes(xs []string) ([]byte, error) {

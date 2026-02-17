@@ -3,7 +3,7 @@
 This repository ships a secure and auditable monitoring architecture that combines:
 
 - **Line-rate kernel telemetry** from a CO-RE XDP/eBPF netflow filter (`ebpf/netflow_filter.bpf.c`),
-- **A Go-based enclave sidecar** that reads an eBPF LRU flow map and exports Prometheus metrics,
+- **A Go-based enclave sidecar** that reads an eBPF per-CPU flow map and exports Prometheus metrics,
 - **A private overlay network backbone** for observability and dashboard access,
 - **An isolated app plane** (`Nginx -> Drupal -> MariaDB`) on `app_net`.
 
@@ -13,7 +13,7 @@ This repository ships a secure and auditable monitoring architecture that combin
 
 - `ebpf/netflow_filter.bpf.c` attaches at the XDP hook and is intended for **`XDP_DRV`** (driver mode) and optionally **`XDP_HW`** where NIC offload is supported.
 - The program parses IPv4 TCP/UDP headers and implements `netflow_filter` by aggregating packet + byte counters per 5-tuple flow.
-- Flow state is stored in `flow_map` using `BPF_MAP_TYPE_LRU_HASH` so stale entries can be evicted under high-volume traffic rather than exhausting map capacity.
+- Flow state is stored in `flow_map` using `BPF_MAP_TYPE_PERCPU_HASH` so each CPU updates local counters without cross-core lock contention.
 - The BPF object is built with BTF/CO-RE (`vmlinux.h` generated from `/sys/kernel/btf/vmlinux`) for portability across compatible kernels.
 
 ### Bridge Layer (Userspace sidecar)
