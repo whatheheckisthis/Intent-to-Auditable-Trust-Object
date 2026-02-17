@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 #include <errno.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <openssl/evp.h>
 #include <openssl/sha.h>
@@ -20,6 +21,7 @@
 
 #include "pkcs11_signer.h"
 #include "osint_audit_log.h"
+#include "tinycbor.h"
 
 #define FLOW_CAP 4096U
 #define SIGN_BATCH_SIZE 1000U
@@ -87,6 +89,154 @@ static int exfiltrate_to_audit_vault(const char *vault_path,
 
     fclose(vault);
     return ok ? 0 : -1;
+}
+
+static int cbor_wrap_ipld_record(const uint8_t *data,
+                                size_t data_len,
+                                const uint8_t *signature,
+                                size_t signature_len,
+                                const char *pubkey,
+                                uint8_t **out,
+                                size_t *out_len) {
+    if (data == NULL || signature == NULL || pubkey == NULL || out == NULL || out_len == NULL) {
+        return -1;
+    }
+
+    uint8_t *buf = calloc(1, data_len + signature_len + strlen(pubkey) + 256U);
+    if (buf == NULL) {
+        return -1;
+    }
+
+    CborEncoder enc;
+    CborEncoder map;
+    cbor_encoder_init(&enc, buf, data_len + signature_len + strlen(pubkey) + 256U, 0);
+    if (cbor_encoder_create_map(&enc, &map, 3) != CborNoError) {
+        free(buf);
+        return -1;
+    }
+
+    /* Canonical map key order: data, pubkey, signature */
+    if (cbor_encode_text_stringz(&map, "data") != CborNoError ||
+        cbor_encode_byte_string(&map, data, data_len) != CborNoError ||
+        cbor_encode_text_stringz(&map, "pubkey") != CborNoError ||
+        cbor_encode_text_stringz(&map, pubkey) != CborNoError ||
+        cbor_encode_text_stringz(&map, "signature") != CborNoError ||
+        cbor_encode_byte_string(&map, signature, signature_len) != CborNoError ||
+        cbor_encoder_close_container(&enc, &map) != CborNoError) {
+        free(buf);
+        return -1;
+    }
+
+    *out_len = cbor_encoder_get_buffer_size(&enc, buf);
+    *out = buf;
+    return 0;
+}
+
+static int extract_ipfs_hash(const char *response, char *cid, size_t cid_len) {
+    const char *tag = "\"Hash\":\"";
+    const char *start = strstr(response, tag);
+    if (start == NULL) {
+        return -1;
+    }
+
+    start += strlen(tag);
+    const char *end = strchr(start, '"');
+    if (end == NULL) {
+        return -1;
+    }
+
+    size_t n = (size_t)(end - start);
+    if (n == 0 || n >= cid_len) {
+        return -1;
+    }
+
+    memcpy(cid, start, n);
+    cid[n] = '\0';
+    return 0;
+}
+
+static int upload_blob_to_ipfs(const char *host,
+                               const char *port,
+                               const uint8_t *blob,
+                               size_t blob_len,
+                               char *cid,
+                               size_t cid_len) {
+    if (host == NULL || port == NULL || blob == NULL || cid == NULL) {
+        return -1;
+    }
+
+    const char *boundary = "------------------------ato-ipfs-boundary";
+    char header[512];
+    int header_len = snprintf(header,
+                              sizeof(header),
+                              "--%s\r\n"
+                              "Content-Disposition: form-data; name=\"file\"; filename=\"evidence.cbor\"\r\n"
+                              "Content-Type: application/cbor\r\n\r\n",
+                              boundary);
+    if (header_len <= 0 || (size_t)header_len >= sizeof(header)) {
+        return -1;
+    }
+
+    char trailer[128];
+    int trailer_len = snprintf(trailer, sizeof(trailer), "\r\n--%s--\r\n", boundary);
+    if (trailer_len <= 0 || (size_t)trailer_len >= sizeof(trailer)) {
+        return -1;
+    }
+
+    size_t body_len = (size_t)header_len + blob_len + (size_t)trailer_len;
+
+    char request_head[1024];
+    int request_head_len = snprintf(request_head,
+                                    sizeof(request_head),
+                                    "POST /api/v0/add?pin=true HTTP/1.1\r\n"
+                                    "Host: %s:%s\r\n"
+                                    "Content-Type: multipart/form-data; boundary=%s\r\n"
+                                    "Content-Length: %zu\r\n"
+                                    "Connection: close\r\n\r\n",
+                                    host,
+                                    port,
+                                    boundary,
+                                    body_len);
+    if (request_head_len <= 0 || (size_t)request_head_len >= sizeof(request_head)) {
+        return -1;
+    }
+
+    struct addrinfo hints = {0};
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    struct addrinfo *res = NULL;
+    if (getaddrinfo(host, port, &hints, &res) != 0) {
+        return -1;
+    }
+
+    int sock = -1;
+    for (struct addrinfo *rp = res; rp != NULL; rp = rp->ai_next) {
+        sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (sock < 0) continue;
+        if (connect(sock, rp->ai_addr, rp->ai_addrlen) == 0) break;
+        close(sock);
+        sock = -1;
+    }
+    freeaddrinfo(res);
+
+    if (sock < 0) {
+        return -1;
+    }
+
+    int ok = write(sock, request_head, (size_t)request_head_len) == request_head_len &&
+             write(sock, header, (size_t)header_len) == header_len &&
+             write(sock, blob, blob_len) == (ssize_t)blob_len &&
+             write(sock, trailer, (size_t)trailer_len) == trailer_len;
+
+    char response[4096] = {0};
+    ssize_t nread = read(sock, response, sizeof(response) - 1);
+    close(sock);
+    if (!ok || nread <= 0) {
+        return -1;
+    }
+
+    response[nread] = '\0';
+    return extract_ipfs_hash(response, cid, cid_len);
 }
 
 static void on_signal(int signo) {
@@ -311,6 +461,14 @@ static int run_dispatch_loop(const char *map_path, const char *log_path, unsigne
         vault_path = "/var/log/audit/audit_vault.cbor";
     }
 
+    const char *ipfs_host = getenv("IPFS_API_HOST");
+    if (ipfs_host == NULL) ipfs_host = "127.0.0.1";
+    const char *ipfs_port = getenv("IPFS_API_PORT");
+    if (ipfs_port == NULL) ipfs_port = "5001";
+    const char *hsm_key_id = getenv("HSM_KEY_ID");
+    if (hsm_key_id == NULL) hsm_key_id = getenv("HSM_KEY_LABEL");
+    if (hsm_key_id == NULL) hsm_key_id = "unknown-hsm-key";
+
     while (keep_running) {
         size_t len = 0;
         uint64_t map_checksum = 0;
@@ -381,12 +539,32 @@ static int run_dispatch_loop(const char *map_path, const char *log_path, unsigne
 
                 uint8_t *cbor_blob = NULL;
                 size_t cbor_blob_len = 0;
+                char primary_cid[128] = "UNPUBLISHED";
                 if (cbor_wrap_osint_data(messy_json_like, &osint_packet, &cbor_blob, &cbor_blob_len) == 0 && verified) {
-                    (void)exfiltrate_to_audit_vault(vault_path,
-                                                    cbor_blob,
-                                                    cbor_blob_len,
-                                                    batch_sigs + (i * MAX_SIGNATURE_LEN),
-                                                    batch_sig_lens[i]);
+                    uint8_t *ipld_blob = NULL;
+                    size_t ipld_blob_len = 0;
+                    if (cbor_wrap_ipld_record(cbor_blob,
+                                              cbor_blob_len,
+                                              batch_sigs + (i * MAX_SIGNATURE_LEN),
+                                              batch_sig_lens[i],
+                                              hsm_key_id,
+                                              &ipld_blob,
+                                              &ipld_blob_len) == 0) {
+                        (void)exfiltrate_to_audit_vault(vault_path,
+                                                        ipld_blob,
+                                                        ipld_blob_len,
+                                                        batch_sigs + (i * MAX_SIGNATURE_LEN),
+                                                        batch_sig_lens[i]);
+                        if (upload_blob_to_ipfs(ipfs_host,
+                                                ipfs_port,
+                                                ipld_blob,
+                                                ipld_blob_len,
+                                                primary_cid,
+                                                sizeof(primary_cid)) != 0) {
+                            strcpy(primary_cid, "IPFS_UPLOAD_FAILED");
+                        }
+                    }
+                    free(ipld_blob);
                 }
                 free(cbor_blob);
 
@@ -418,7 +596,8 @@ static int run_dispatch_loop(const char *map_path, const char *log_path, unsigne
                 char line[2200];
                 snprintf(line,
                          sizeof(line),
-                         "ts=%llu family=%u src=%s dst=%s proto=%u packets=%llu bytes=%llu first_seen_ns=%llu last_seen_ns=%llu bpf_map_checksum=%llu digest_sha256=%s verified=%d signature=%s",
+                         "primary_cid=%s ts=%llu family=%u src=%s dst=%s proto=%u packets=%llu bytes=%llu first_seen_ns=%llu last_seen_ns=%llu bpf_map_checksum=%llu digest_sha256=%s verified=%d signature=%s",
+                         primary_cid,
                          (unsigned long long)batch[i].unix_ts,
                          batch[i].masked_key.family,
                          src_txt,

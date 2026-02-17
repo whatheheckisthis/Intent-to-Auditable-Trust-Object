@@ -14,16 +14,6 @@ static int encode_osint_map(CborEncoder *map,
                             const osint_sanitized_payload_t *sanitized) {
     CborError err = CborNoError;
 
-    err = cbor_encode_text_stringz(map, "masked_first_seen_ns");
-    if (err != CborNoError) return -1;
-    err = cbor_encode_uint(map, sanitized->masked_first_seen_ns);
-    if (err != CborNoError) return -1;
-
-    err = cbor_encode_text_stringz(map, "masked_last_seen_ns");
-    if (err != CborNoError) return -1;
-    err = cbor_encode_uint(map, sanitized->masked_last_seen_ns);
-    if (err != CborNoError) return -1;
-
     char src_txt[INET_ADDRSTRLEN] = {0};
     char dst_txt[INET_ADDRSTRLEN] = {0};
     uint32_t src_be = htonl(sanitized->masked_src_ipv4);
@@ -31,9 +21,10 @@ static int encode_osint_map(CborEncoder *map,
     inet_ntop(AF_INET, &src_be, src_txt, sizeof(src_txt));
     inet_ntop(AF_INET, &dst_be, dst_txt, sizeof(dst_txt));
 
-    err = cbor_encode_text_stringz(map, "masked_src_ipv4");
+    /* Canonical CBOR key order (length, then lexical). */
+    err = cbor_encode_text_stringz(map, "messy_payload");
     if (err != CborNoError) return -1;
-    err = cbor_encode_text_stringz(map, src_txt);
+    err = cbor_encode_text_stringz(map, messy_json_like);
     if (err != CborNoError) return -1;
 
     err = cbor_encode_text_stringz(map, "masked_dst_ipv4");
@@ -41,9 +32,19 @@ static int encode_osint_map(CborEncoder *map,
     err = cbor_encode_text_stringz(map, dst_txt);
     if (err != CborNoError) return -1;
 
-    err = cbor_encode_text_stringz(map, "messy_payload");
+    err = cbor_encode_text_stringz(map, "masked_src_ipv4");
     if (err != CborNoError) return -1;
-    err = cbor_encode_text_stringz(map, messy_json_like);
+    err = cbor_encode_text_stringz(map, src_txt);
+    if (err != CborNoError) return -1;
+
+    err = cbor_encode_text_stringz(map, "masked_last_seen_ns");
+    if (err != CborNoError) return -1;
+    err = cbor_encode_uint(map, sanitized->masked_last_seen_ns);
+    if (err != CborNoError) return -1;
+
+    err = cbor_encode_text_stringz(map, "masked_first_seen_ns");
+    if (err != CborNoError) return -1;
+    err = cbor_encode_uint(map, sanitized->masked_first_seen_ns);
     if (err != CborNoError) return -1;
 
     err = cbor_encode_text_stringz(map, "source_digest_sha256");
