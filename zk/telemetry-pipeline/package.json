@@ -6,9 +6,14 @@
   "scripts": {
     "compile": "node scripts/compile.js",
     "setup": "node scripts/setup.js",
-    "witness": "node scripts/witness_generator.js data/sample_telemetry.json data/witness_input.json",
+    "witness": "node scripts/witness_generator.js",
     "prove": "node scripts/prove.js data/witness_input.json",
-    "verify": "node scripts/verify.js"
+    "verify": "node scripts/verify.js",
+    "merkle": "node scripts/merkle_helper.js",
+    "snark:compile": "node scripts/snark/compile.js",
+    "snark:setup": "node scripts/snark/setup.js",
+    "snark:prove": "node scripts/snark/prove.js data/witnesses/witness_batch_1.json",
+    "snark:verify": "node scripts/snark/verify.js"
   },
   "dependencies": {
     "ethers": "^6.13.2",

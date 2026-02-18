@@ -2,8 +2,10 @@ pragma circom 2.1.6;
 
 include "circomlib/circuits/comparators.circom";
 include "circomlib/circuits/poseidon.circom";
+include "circomlib/circuits/bitify.circom";
 
 // Folded telemetry verifier circuit.
+// - witness: 16-element folded telemetry vector (mod 3329) per micro-batch.
 // - witnessBits: 512-bit folded witness emitted by SVE2/FPGA accumulator.
 // - midpoint: Gaussian-seeded expected midpoint for integer divergence checks.
 // - allowedDivergence: tolerated divergence around midpoint.
@@ -11,7 +13,8 @@ include "circomlib/circuits/poseidon.circom";
 // - claimedCombinedRoot: public commitment used on-chain and in off-chain logs.
 //
 // The circuit exposes `valid` as a public output flag (1=true, 0=false).
-template TelemetryFolding(batchCount) {
+template TelemetryFolding(batchCount, witnessWidth) {
+    signal input witness[witnessWidth];
     signal input witnessBits[512];
     signal input midpoint;
     signal input allowedDivergence;
@@ -22,8 +25,24 @@ template TelemetryFolding(batchCount) {
     signal output foldedWeight;
     signal output combinedRoot;
 
-    // Constrain each witness element to a bit and fold into Hamming weight.
+    // Constrain witness coefficients for micro-batch usage:
+    // - each coefficient is represented in <= 12 bits
+    // - each coefficient is < 3329
+    // - each coefficient parity is linked to witnessBits[i]
     var i;
+    for (i = 0; i < witnessWidth; i++) {
+        component coeffBits = Num2Bits(12);
+        coeffBits.in <== witness[i];
+
+        component coeffLtMod = LessThan(13);
+        coeffLtMod.in[0] <== witness[i];
+        coeffLtMod.in[1] <== 3329;
+        coeffLtMod.out === 1;
+
+        witnessBits[i] === coeffBits.out[0];
+    }
+
+    // Constrain each witness bit and fold into Hamming weight.
     signal runningWeight[513];
     runningWeight[0] <== 0;
 
@@ -69,4 +88,4 @@ template TelemetryFolding(batchCount) {
     valid <== leq.out * rootEq.out;
 }
 
-component main = TelemetryFolding(2);
+component main = TelemetryFolding(2, 16);
