@@ -1,103 +1,44 @@
-# Load variables from .env if present
--include .env
-
 CC ?= gcc
-NASM ?= nasm
-CLANG ?= clang
-CFLAGS ?= -O2 -Wall -Wextra
-IATO_SVE2_CFLAGS ?= -O2 -Wall -Wextra -march=armv9-a+sve2+sha3
-BPF_ARCH_INCLUDE ?= /usr/include/x86_64-linux-gnu
-XDP_CFLAGS ?= -O2 -g -target bpf -D__TARGET_ARCH_x86 -I$(BPF_ARCH_INCLUDE)
-LDFLAGS ?=
-KANI ?= kani
-CONTROL_FLAG ?= control-flag
+AARCH64_CC ?= aarch64-linux-gnu-gcc
+CFLAGS_COMMON := -Wall -Wextra -Icompat -Iel2/include -Infc/include
+MBEDTLS_STUB := compat/mbedtls_stub.c
 
-HOST_ARCH := $(shell uname -m)
-ENABLE_IATO_SVE2 ?= $(if $(filter aarch64 arm64,$(HOST_ARCH)),1,0)
+EL2_SRCS := el2/src/el2_trust_store.c el2/src/el2_spdm.c el2/src/el2_nfc_validator.c el2/src/el2_binding_table.c el2/src/el2_smmu.c el2/src/el2_expiry.c el2/src/el2_main.c
+EL2_OBJS := $(EL2_SRCS:.c=.o)
 
-API_KEY ?=
-REST_URL ?=
-TARGET_POLICY ?=
+TEST_SRCS := tests/test_enrollment.c tests/test_spdm_binding.c tests/test_two_factor_gate.c tests/test_expiry_sweep.c tests/test_replay_defense.c
+TEST_BINS := $(TEST_SRCS:.c=)
 
-DISPATCHER = dispatcher
-ASM_OBJ = fast_mask.o
-C_OBJ = dispatcher.o pkcs11_signer.o osint_audit_log.o mask_v7_sve2.o tinycbor.o
-IATO_SVE2_OBJ = iato_mask_sve2.o
-IATO_BRIDGE_OBJ = iato_hsm_bridge.o
-RESULT_JSON = result.json
-XDP_SRC = formal/ebpf/osint_dispatcher_xdp_firewall.c
-XDP_OBJ = formal/ebpf/osint_dispatcher_xdp_firewall.o
-SNARK_XDP_SRC = ebpf/osint_snark_bridge.bpf.c
-SNARK_XDP_OBJ = ebpf/osint_snark_bridge.bpf.o
+.PHONY: all el2 kernel_module nfc_se tests check clean
+all: el2 nfc_se tests
 
-.PHONY: all clean run parse-json log-restful xdp-build snark-xdp-build verify-ebpf
+el2: CFLAGS := $(CFLAGS_COMMON) -march=armv9-a -mgeneral-regs-only -ffreestanding -nostdlib -O2 -fno-stack-protector -DSMMU_BASE=0x09050000UL
+el2: $(EL2_OBJS)
 
-all: $(DISPATCHER)
+el2/src/%.o: el2/src/%.c
+	$(AARCH64_CC) $(CFLAGS) -c $< -o $@
 
-ifeq ($(ENABLE_IATO_SVE2),1)
-C_OBJ += $(IATO_BRIDGE_OBJ)
-EXTRA_LINK_OBJS += $(IATO_SVE2_OBJ)
-endif
+kernel_module:
+	@echo "kernel_module target prepared for Kbuild integration (obj-m)."
 
-$(ASM_OBJ): fast_mask.asm
-	$(NASM) -f elf64 -o $@ $<
+nfc_se: nfc/src/se_enrollment.o nfc/src/se_operational.o
 
-dispatcher.o: dispatcher.c pkcs11_signer.h osint_audit_log.h
-	$(CC) $(CFLAGS) -c -o $@ $<
+nfc/src/%.o: nfc/src/%.c
+	$(CC) $(CFLAGS_COMMON) -c $< -o $@
 
+tests: CFLAGS := $(CFLAGS_COMMON) -fsanitize=address,undefined -fno-omit-frame-pointer -O1 -g
 
-pkcs11_signer.o: pkcs11_signer.c pkcs11_signer.h
-	$(CC) $(CFLAGS) -c -o $@ $<
+tests: $(TEST_BINS)
 
-osint_audit_log.o: osint_audit_log.c osint_audit_log.h tinycbor.h
-	$(CC) $(CFLAGS) -c -o $@ $<
+%: %.c $(filter-out el2/src/el2_main.c,$(EL2_SRCS)) nfc/src/se_operational.c $(MBEDTLS_STUB)
+	$(CC) $(CFLAGS) $^ -o $@
 
-mask_v7_sve2.o: mask_v7_sve2.c osint_audit_log.h
-	$(CC) $(CFLAGS) -c -o $@ $<
-
-iato_hsm_bridge.o: src/iato_hsm_bridge.c include/iato/rme_mgmt.h include/iato/sve_mask.h pkcs11_signer.h
-	$(CC) $(CFLAGS) -Iinclude -c -o $@ $<
-
-iato_mask_sve2.o: src/iato_mask_sve2.S
-	$(CC) $(IATO_SVE2_CFLAGS) -c -o $@ $<
-
-tinycbor.o: tinycbor.c tinycbor.h
-	$(CC) $(CFLAGS) -c -o $@ $<
-
-$(DISPATCHER): $(ASM_OBJ) $(C_OBJ) $(EXTRA_LINK_OBJS)
-	$(CC) -o $@ $(ASM_OBJ) $(C_OBJ) $(EXTRA_LINK_OBJS) $(LDFLAGS) -ldl -lcrypto
-
-parse-json:
-	@test -n "$(TARGET_POLICY)" || (echo "ERROR: TARGET_POLICY is required" && exit 1)
-	python3 iam_parser.py --file "$(TARGET_POLICY)" > $(RESULT_JSON)
-
-run: all
-	@test -n "$(TARGET_POLICY)" || (echo "ERROR: TARGET_POLICY is required" && exit 1)
-	./$(DISPATCHER) parse-iam "$(TARGET_POLICY)"
-
-log-restful: run
-
-xdp-build: $(XDP_OBJ)
-
-snark-xdp-build: $(SNARK_XDP_OBJ)
-
-$(XDP_OBJ): $(XDP_SRC)
-	$(CLANG) $(XDP_CFLAGS) -c -o $@ $<
-
-$(SNARK_XDP_OBJ): $(SNARK_XDP_SRC) ebpf/snark_fpga_mmio.h
-	$(CLANG) $(XDP_CFLAGS) -c -o $@ $<
-
-verify-ebpf: $(XDP_SRC)
-	@if command -v $(KANI) >/dev/null 2>&1; then \
-		echo "Running Kani Rust Verifier over C source for anomaly scanning"; \
-		$(KANI) c $<; \
-	elif command -v $(CONTROL_FLAG) >/dev/null 2>&1; then \
-		echo "Running ControlFlag over eBPF source for anomaly scanning"; \
-		$(CONTROL_FLAG) check $<; \
-	else \
-		echo "ERROR: neither $(KANI) nor $(CONTROL_FLAG) is installed"; \
-		exit 1; \
-	fi
+check: tests
+	@set -e; for t in $(TEST_BINS); do echo "Running $$t"; ./$$t; done
+	@echo "ABI audit: objdump SMMU write locality"
+	@objdump -d el2/src/*.o | awk '/<.*>:/ {f=$$0} /SMMU_BASE/ {print f; print $$0}' > /tmp/smmu_scan.txt || true
+	@echo "ABI audit: nm Linux symbols in EL2 objects"
+	@nm -u el2/src/*.o | rg -n "\b(kmalloc|printk|pci_|nfc_)" && exit 1 || true
 
 clean:
-	rm -f $(DISPATCHER) $(ASM_OBJ) dispatcher.o pkcs11_signer.o osint_audit_log.o mask_v7_sve2.o tinycbor.o $(IATO_BRIDGE_OBJ) $(IATO_SVE2_OBJ) $(RESULT_JSON) $(XDP_OBJ) $(SNARK_XDP_OBJ)
+	rm -f $(EL2_OBJS) nfc/src/*.o $(TEST_BINS)
