@@ -1,0 +1,17 @@
+{
+  "name": "telemetry-folding-snark-pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reproducible telemetry folding + SNARK + Ethereum audit pipeline",
+  "scripts": {
+    "compile": "node scripts/compile.js",
+    "setup": "node scripts/setup.js",
+    "witness": "node scripts/witness_generator.js data/sample_telemetry.json data/witness_input.json",
+    "prove": "node scripts/prove.js data/witness_input.json",
+    "verify": "node scripts/verify.js"
+  },
+  "dependencies": {
+    "ethers": "^6.13.2",
+    "snarkjs": "^0.7.4"
+  }
+}
