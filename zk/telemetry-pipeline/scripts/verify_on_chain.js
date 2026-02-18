@@ -16,7 +16,15 @@ async function main() {
 
   const seqNo = Number(process.argv[2] || process.env.SEQ_NO || 0);
   const status = await contract.results(seqNo);
-  console.log(`Sequence ${seqNo} verification result: ${status}`);
+  const record = await contract.records(seqNo);
+
+  console.log(JSON.stringify({
+    sequenceNo: seqNo,
+    verified: status,
+    witnessHash: record.witnessHash,
+    epochId: Number(record.epochId),
+    timestamp: Number(record.timestamp),
+  }, null, 2));
 }
 
 main().catch((e) => {

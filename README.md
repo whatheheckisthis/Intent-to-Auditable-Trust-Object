@@ -143,3 +143,25 @@ open("sig.bin", "wb").write(obj["signature"])
 PY
 openssl dgst -sha256 -verify hsm_pubkey.pem -signature sig.bin payload.cbor
 ```
+
+## Minimal telemetry folding SNARK example
+
+A runnable micro-batch example is provided in `zk/telemetry-pipeline` with:
+
+- `data/sample_telemetry/batch_1` + `batch_2` containing 32 telemetry packet files,
+- witness generation into `data/witnesses/witness_batch_1.json` and `_2.json`,
+- Groth16 proving/verification scripts compatible with those witness files,
+- optional on-chain commitment using either witness hash or Merkle root.
+
+Run:
+
+```bash
+cd zk/telemetry-pipeline
+npm install
+npm run witness
+npm run merkle
+npm run snark:compile
+npm run snark:setup
+node scripts/snark/prove.js data/witnesses/witness_batch_1.json
+node scripts/snark/verify.js artifacts/proofs/public_batch_1.json artifacts/proofs/proof_batch_1.json
+```
