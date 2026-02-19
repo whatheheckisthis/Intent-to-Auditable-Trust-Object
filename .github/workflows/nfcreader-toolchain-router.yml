@@ -1,0 +1,118 @@
+name: NfcReader Secure Build Router
+
+on:
+  push:
+    paths:
+      - 'src/NfcReader/**'
+      - 'scripts/ci/**'
+      - '.github/workflows/nfcreader-toolchain-router.yml'
+      - 'docs/ci/toolchain-routing.md'
+  pull_request:
+    paths:
+      - 'src/NfcReader/**'
+      - 'scripts/ci/**'
+      - '.github/workflows/nfcreader-toolchain-router.yml'
+      - 'docs/ci/toolchain-routing.md'
+
+jobs:
+  detect-toolchain:
+    name: Detect .NET toolchain on hardened worker
+    runs-on:
+      - self-hosted
+      - linux
+      - hardened-primary
+    outputs:
+      route_to_toolchain: ${{ steps.detect.outputs.route_to_toolchain }}
+      detect_exit_code: ${{ steps.detect.outputs.exit_code }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: detect
+        name: Detect dotnet availability and compute route
+        run: |
+          set +e
+          ./scripts/ci/detect-dotnet-and-route.sh
+          rc=$?
+          set -e
+
+          echo "exit_code=${rc}" >> "$GITHUB_OUTPUT"
+          if [[ "${rc}" -eq 127 ]]; then
+            echo "route_to_toolchain=true" >> "$GITHUB_OUTPUT"
+            echo "[router] dotnet unavailable on hardened worker (exit 127); routing to secondary toolchain worker"
+            exit 0
+          fi
+
+          if [[ "${rc}" -ne 0 ]]; then
+            echo "route_to_toolchain=false" >> "$GITHUB_OUTPUT"
+            echo "[router][error] detection failed unexpectedly with exit ${rc}; failing fast"
+            exit "${rc}"
+          fi
+
+          echo "route_to_toolchain=false" >> "$GITHUB_OUTPUT"
+          echo "[router] dotnet available on hardened worker; no routing required"
+
+  build-on-primary:
+    name: Build directly on hardened worker
+    needs: detect-toolchain
+    if: needs.detect-toolchain.outputs.route_to_toolchain == 'false'
+    runs-on:
+      - self-hosted
+      - linux
+      - hardened-primary
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build in secure worker when SDK is present
+        run: |
+          dotnet build src/NfcReader/NfcReader.sln --no-restore -p:RestorePackages=false -p:EnableEL2Runtime=false
+
+  build-on-toolchain-worker:
+    name: Routed build on toolchain worker
+    needs: detect-toolchain
+    if: needs.detect-toolchain.outputs.route_to_toolchain == 'true'
+    runs-on:
+      - self-hosted
+      - linux
+      - toolchain-dotnet
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build, publish, and package in toolchain worker
+        run: ./scripts/ci/build-on-toolchain-worker.sh
+
+      - name: Upload routed build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nfcreader-toolchain-artifacts
+          path: artifacts/toolchain-output/
+
+  secure-pipeline-continue:
+    name: Resume secure pipeline with returned artifacts
+    needs:
+      - detect-toolchain
+      - build-on-primary
+      - build-on-toolchain-worker
+    if: always() && needs.detect-toolchain.result == 'success' && (needs.build-on-primary.result == 'success' || needs.build-on-toolchain-worker.result == 'success')
+    runs-on:
+      - self-hosted
+      - linux
+      - hardened-primary
+    steps:
+      - name: Download routed artifacts when present
+        if: needs.build-on-toolchain-worker.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: nfcreader-toolchain-artifacts
+          path: artifacts/from-toolchain
+
+      - name: Validate artifact bundle before trust elevation
+        if: needs.build-on-toolchain-worker.result == 'success'
+        run: |
+          test -f artifacts/from-toolchain/package.tar.gz
+          tar -tzf artifacts/from-toolchain/package.tar.gz >/dev/null
+          echo "[secure-pipeline] artifact integrity pre-check passed"
+
+      - name: Continue secure stages (signing/attestation/EL2 validation)
+        run: |
+          echo "[secure-pipeline] build artifacts remain untrusted until signature and attestation checks complete"
+          echo "[secure-pipeline] EL2 runtime validation must execute in separate privileged stages"
