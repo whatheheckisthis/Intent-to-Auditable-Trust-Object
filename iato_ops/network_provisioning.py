@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import base64
-import importlib
+from importlib import import_module, util
 import types
 from dataclasses import dataclass
 
-_requests_spec = importlib.util.find_spec("requests")
-requests = importlib.import_module("requests") if _requests_spec else types.SimpleNamespace(put=None, Response=object)
+try:
+    _requests_spec = util.find_spec("requests")
+except ValueError:
+    _requests_spec = None
+
+requests = import_module("requests") if _requests_spec else types.SimpleNamespace(put=None, Response=object)
 
 from iato_ops.audit_middleware import AuditRecord, HashChainedAuditLogger
 from iato_ops.hsm_pkcs11_wrapper import PKCS11Wrapper
@@ -68,6 +72,11 @@ class SDNProvisioningWorkflow:
                 "public-key": base64.b64encode(public_key_pem.encode()).decode(),
             }
         }
+        if requests.put is None:
+            raise RuntimeError(
+                "requests dependency is unavailable; install project dependencies before provisioning"
+            )
+
         response = requests.put(
             url,
             auth=(target.username, target.password),

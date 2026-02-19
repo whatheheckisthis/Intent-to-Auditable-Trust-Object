@@ -18,6 +18,12 @@ dependencies = [
   "policyuniverse>=1.5"
 ]
 
+
+[project.optional-dependencies]
+test = [
+  "pytest==9.0.2"
+]
+
 [project.scripts]
 iam-policy-parser = "iato_ops.iam_policy_parser:main"
 
@@ -34,7 +40,5 @@ platforms = ["linux-64", "osx-64"]
 
 [tool.conda-lock.dependencies]
 python = "3.11"
-pip = "*"
-
 [tool.conda-lock.dependencies.pip]
 iato-ops = {path = ".", editable = true}
