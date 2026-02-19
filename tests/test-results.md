@@ -1,42 +1,59 @@
-# Test Run Results
+# Offline Bootstrap + Build Staging Results
 
-Date (UTC): 2026-02-16T02:10:47Z
+Date (UTC): 2026-02-19T20:47:44Z
 
-## Commands Executed
+## Stage 0 — Fail-Fast SDK Bootstrap
 
-### 1) `dotnet test src/NfcReader/NfcReader.sln`
+### `scripts/ensure-dotnet.sh; echo EXIT_ENSURE:$?`
+- **Exit code:** `42`
+- **Result:** Correct fail-fast behavior when no staged SDK archive is available.
+- **Output:**
+
+```text
+[ensure-dotnet] dotnet not found on PATH; invoking offline recovery
+[dotnet-recover] detected architecture: linux-x64
+[dotnet-recover][error] no staged SDK archive found for arch=linux-x64; searched: /opt/bootstrap, /root/bootstrap, /workspace/bootstrap
+[ensure-dotnet][error] offline recovery failed: no staged SDK archive available.
+[ensure-dotnet][error] searched: /opt/bootstrap, /root/bootstrap, /workspace/bootstrap
+EXIT_ENSURE:42
+```
+
+## Stage 1 — Toolchain Presence Check
+
+### `dotnet --version; echo EXIT_DOTNET:$?`
 - **Exit code:** `127`
-- **Result:** Failed due to missing .NET SDK/CLI in this environment.
 - **Output:**
 
 ```text
 bash: command not found: dotnet
+EXIT_DOTNET:127
 ```
 
-### 2) `pytest`
-- **Exit code:** `4`
-- **Result:** Failed before running tests because `pyproject.toml` parsing errored.
+## Stage 3 — Build Attempt (No Restore / No Runtime)
+
+### `dotnet build src/NfcReader/NfcReader.sln --no-restore -p:RestorePackages=false; echo EXIT_BUILD:$?`
+- **Exit code:** `127`
 - **Output:**
 
 ```text
-ERROR: /workspace/Intent-to-Auditable-Trust-Object/pyproject.toml: Cannot overwrite a value (at line 39, column 34)
+bash: command not found: dotnet
+EXIT_BUILD:127
 ```
 
-### 3) `python -m unittest discover`
-- **Exit code:** `0`
-- **Result:** Succeeded, but no tests were discovered.
-- **Output:**
+## Deterministic Workflow Assets
+- `scripts/ensure-dotnet.sh`: CI guard with fail-fast exit code `42` for missing staged archive.
+- `scripts/recover-dotnet-from-archive.sh`: architecture-aware offline recovery (`linux-x64` / `linux-arm64`) from:
+  - `/opt/bootstrap`
+  - `$HOME/bootstrap`
+  - `/workspace/bootstrap`
+- `scripts/activate-dotnet-offline.sh`: SDK-only environment activation (`DOTNET_ROOT`, `PATH`, telemetry disabled).
+- `scripts/build-nfcreader-offline.sh`: compile-only build staging (`--no-restore`, no runtime execution).
 
-```text
-----------------------------------------------------------------------
-Ran 0 tests in 0.000s
+## EL2 Isolation Notes
+- Build staging performs compile-time validation only.
+- No runtime entrypoints are executed during this flow.
+- No device MMIO or hypervisor calls are triggered by the staging scripts.
 
-OK
-```
-
-## Summary
-- No application tests were executed successfully in this environment.
-- Primary blockers:
-  - `.NET CLI` is not installed (`dotnet` missing).
-  - `pytest` is blocked by a `pyproject.toml` parse error.
-- The standard library unittest discovery ran but found `0` tests.
+## Final Status
+- Worker remains **Not Tangible** for .NET build until a staged SDK archive is provided.
+- Failure mode is deterministic and actionable with clear diagnostics.

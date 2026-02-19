@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# CI guard entrypoint for deterministic offline dotnet recovery.
+set -euo pipefail
+
+EXIT_NO_ARCHIVE=42
+
+log() { printf '[ensure-dotnet] %s\n' "$*"; }
+fail() { printf '[ensure-dotnet][error] %s\n' "$*" >&2; exit 1; }
+
+ensure_dotnet() {
+  if command -v dotnet >/dev/null 2>&1; then
+    if dotnet --info >/dev/null 2>&1; then
+      log "dotnet already available: $(dotnet --version)"
+      return 0
+    fi
+    log "dotnet is present on PATH but unusable; invoking offline recovery"
+  else
+    log "dotnet not found on PATH; invoking offline recovery"
+  fi
+
+  set +e
+  "$(dirname "$0")/recover-dotnet-from-archive.sh"
+  local rc=$?
+  set -e
+
+  if [[ ${rc} -eq 0 ]]; then
+    command -v dotnet >/dev/null 2>&1 || fail "recovery completed but dotnet is still not on PATH"
+    dotnet --info >/dev/null 2>&1 || fail "recovery completed but dotnet --info failed"
+    log "dotnet ready: $(dotnet --version)"
+    return 0
+  fi
+
+  if [[ ${rc} -eq ${EXIT_NO_ARCHIVE} ]]; then
+    printf '[ensure-dotnet][error] offline recovery failed: no staged SDK archive available.\n' >&2
+    printf '[ensure-dotnet][error] searched: /opt/bootstrap, %s/bootstrap, /workspace/bootstrap\n' "$HOME" >&2
+    return ${EXIT_NO_ARCHIVE}
+  fi
+
+  printf '[ensure-dotnet][error] offline recovery failed with exit code %s\n' "${rc}" >&2
+  return "${rc}"
+}
+
+ensure_dotnet "$@"
