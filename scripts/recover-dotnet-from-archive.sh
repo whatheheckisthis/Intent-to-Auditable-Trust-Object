@@ -5,6 +5,10 @@ set -euo pipefail
 EXIT_NO_ARCHIVE=42
 EXIT_UNSUPPORTED_ARCH=43
 EXIT_RECOVERY_FAILED=44
+SEGMENT_MS="${TME_SEGMENT_RECOVER_DOTNET_MS:-5200}"
+
+# shellcheck disable=SC1091
+source "$(dirname "$0")/timing_mitigation_engine.sh"
 
 log() { printf '[dotnet-recover] %s\n' "$*"; }
 fail() {
@@ -127,4 +131,4 @@ main() {
   log "recovery complete; dotnet version: $(dotnet --version)"
 }
 
-main "$@"
+tme_run_segment "recover-dotnet-from-archive" "${SEGMENT_MS}" -- main "$@"

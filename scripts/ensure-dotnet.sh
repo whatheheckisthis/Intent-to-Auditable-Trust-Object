@@ -3,6 +3,10 @@
 set -euo pipefail
 
 EXIT_NO_ARCHIVE=42
+SEGMENT_MS="${TME_SEGMENT_ENSURE_DOTNET_MS:-1800}"
+
+# shellcheck disable=SC1091
+source "$(dirname "$0")/timing_mitigation_engine.sh"
 
 log() { printf '[ensure-dotnet] %s\n' "$*"; }
 fail() { printf '[ensure-dotnet][error] %s\n' "$*" >&2; exit 1; }
@@ -40,4 +44,4 @@ ensure_dotnet() {
   return "${rc}"
 }
 
-ensure_dotnet "$@"
+tme_run_segment "ensure-dotnet" "${SEGMENT_MS}" -- ensure_dotnet "$@"
