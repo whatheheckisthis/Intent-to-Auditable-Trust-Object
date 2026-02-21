@@ -17,6 +17,15 @@ fail() {
   exit "${code}"
 }
 
+read_global_json_value() {
+  local key="$1"
+  local global_json="src/NfcReader/global.json"
+
+  [[ -f "${global_json}" ]] || fail "${EXIT_NO_ARCHIVE}" "required file not found: ${global_json}"
+
+  awk -F'"' -v key="${key}" '$2 == key { print $4; exit }' "${global_json}"
+}
+
 # Resolve architecture naming used by staged archive file names.
 detect_arch() {
   local m
@@ -42,10 +51,18 @@ find_archive() {
     return
   fi
 
-  local roots=("/opt/bootstrap" "${HOME}/bootstrap" "/workspace/bootstrap")
+  local roots=(
+    "/opt/bootstrap"
+    "${HOME}/bootstrap"
+    "/workspace/bootstrap"
+    "${DOTNET_INSTALL_DIR:-}"
+    "${HOME}/.dotnet"
+    "/usr/local/dotnet"
+    "/usr/share/dotnet"
+  )
   local candidate
   for root in "${roots[@]}"; do
-    [[ -d "${root}" ]] || continue
+    [[ -n "${root}" && -d "${root}" ]] || continue
     while IFS= read -r -d '' candidate; do
       echo "${candidate}"
       return
@@ -101,12 +118,25 @@ ensure_runtime_visible() {
 }
 
 main() {
-  local arch archive target_root
+  local arch archive target_root version rid
   arch="$(detect_arch)"
   log "detected architecture: ${arch}"
 
   if ! archive="$(find_archive "${arch}")"; then
-    fail "${EXIT_NO_ARCHIVE}" "no staged SDK archive found for arch=${arch}; searched: /opt/bootstrap, ${HOME}/bootstrap, /workspace/bootstrap"
+    version="$(read_global_json_value "version")"
+    rid="$(read_global_json_value "rid")"
+    printf '[dotnet-recover][error] no staged SDK archive found for arch=%s\n' "${arch}" >&2
+    printf '[dotnet-recover][error] to fix: download dotnet-sdk-%s-%s.tar.gz from https://dotnet.microsoft.com/download/dotnet and place it in any of the following paths:\n' "${version}" "${rid}" >&2
+    printf '[dotnet-recover][error]   %s\n' "/opt/bootstrap" >&2
+    printf '[dotnet-recover][error]   %s\n' "${HOME}/bootstrap" >&2
+    printf '[dotnet-recover][error]   %s\n' "/workspace/bootstrap" >&2
+    if [[ -n "${DOTNET_INSTALL_DIR:-}" ]]; then
+      printf '[dotnet-recover][error]   %s\n' "${DOTNET_INSTALL_DIR}" >&2
+    fi
+    printf '[dotnet-recover][error]   %s\n' "${HOME}/.dotnet" >&2
+    printf '[dotnet-recover][error]   %s\n' "/usr/local/dotnet" >&2
+    printf '[dotnet-recover][error]   %s\n' "/usr/share/dotnet" >&2
+    exit "${EXIT_NO_ARCHIVE}"
   fi
   log "using archive: ${archive}"
 

@@ -28,8 +28,8 @@ ensure_dotnet() {
   set -e
 
   if [[ ${rc} -eq 0 ]]; then
-    command -v dotnet >/dev/null 2>&1 || fail "recovery completed but dotnet is still not on PATH"
-    dotnet --info >/dev/null 2>&1 || fail "recovery completed but dotnet --info failed"
+    # shellcheck disable=SC1091
+    source "$(dirname "$0")/activate-dotnet-offline.sh"
     log "dotnet ready: $(dotnet --version)"
     return 0
   fi
