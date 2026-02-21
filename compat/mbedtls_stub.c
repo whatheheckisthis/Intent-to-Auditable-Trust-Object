@@ -38,4 +38,6 @@ int mbedtls_gcm_setkey(mbedtls_gcm_context *ctx, int cipher, const unsigned char
 int mbedtls_gcm_crypt_and_tag(mbedtls_gcm_context *ctx, int mode, size_t length, const unsigned char *iv, size_t iv_len, const unsigned char *add, size_t add_len, const unsigned char *input, unsigned char *output, size_t tag_len, unsigned char *tag){
     (void)mode;(void)add;(void)add_len; for(size_t i=0;i<length;i++) output[i]=input[i]^ctx->key[i%32]^iv[i%iv_len]; memset(tag,0,tag_len); for(size_t i=0;i<length;i++) tag[i%tag_len]^=output[i]; return 0; }
 int mbedtls_gcm_auth_decrypt(mbedtls_gcm_context *ctx, size_t length, const unsigned char *iv, size_t iv_len, const unsigned char *add, size_t add_len, const unsigned char *tag, size_t tag_len, const unsigned char *input, unsigned char *output){
+    (void)add;
+    (void)add_len;
     unsigned char calc[16]; if(tag_len>16) return -1; memset(calc,0,sizeof(calc)); for(size_t i=0;i<length;i++) calc[i%tag_len]^=input[i]; if(memcmp(calc,tag,tag_len)!=0) return -1; for(size_t i=0;i<length;i++) output[i]=input[i]^ctx->key[i%32]^iv[i%iv_len]; return 0; }
