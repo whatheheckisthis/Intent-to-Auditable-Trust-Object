@@ -3,6 +3,13 @@ AARCH64_CC ?= $(shell command -v aarch64-linux-gnu-gcc 2>/dev/null || command -v
 CFLAGS_COMMON := -Wall -Wextra -Icompat -Iel2/include -Infc/include
 MBEDTLS_STUB := compat/mbedtls_stub.c
 
+EL2_CC      ?= aarch64-none-elf-gcc
+EL2_CFLAGS  = -O2 -ffreestanding -Wall -Werror -march=armv8-a \
+              -mgeneral-regs-only -nostdlib -fno-stack-protector
+
+HOST_CC     ?= gcc
+HOST_CFLAGS = -O0 -g -Wall -DIATO_HOST_TEST
+
 EL2_SRCS := el2/src/el2_trust_store.c el2/src/el2_spdm.c el2/src/el2_nfc_validator.c el2/src/el2_binding_table.c el2/src/el2_smmu.c el2/src/el2_expiry.c el2/src/el2_main.c
 EL2_OBJS := $(EL2_SRCS:.c=.o)
 
@@ -148,3 +155,39 @@ clean:
 inspect-journal:
 	@if [ -z "$(JOURNAL)" ]; then echo "Usage: make inspect-journal JOURNAL=build/hw-journal/<file>.ndjson [ARGS="..."]"; exit 1; fi
 	python3 scripts/hw-journal-inspect.py $(ARGS) $(JOURNAL)
+
+
+.PHONY: build-el2-smmu test-el2-smmu build-el2-smc test-el2-smc build-el2-cnthp test-el2-cnthp build-el2 test-el2
+
+build-el2-smmu:
+	@mkdir -p build/el2
+	$(EL2_CC) $(EL2_CFLAGS) -c el2/smmu_init.c -o build/el2/smmu_init.o
+
+test-el2-smmu:
+	@mkdir -p build
+	$(HOST_CC) $(HOST_CFLAGS) -DIATO_MOCK_MMIO el2/smmu_init.c el2/smmu_init_test.c -o build/test-el2-smmu
+	./build/test-el2-smmu
+
+build-el2-smc: build-el2-smmu
+	$(EL2_CC) $(EL2_CFLAGS) -c el2/smc_handler.c -o build/el2/smc_handler.o
+
+test-el2-smc:
+	@mkdir -p build
+	$(HOST_CC) $(HOST_CFLAGS) -DIATO_MOCK_MMIO -DIATO_MOCK_VALIDATOR -DIATO_MOCK_CNTVCT el2/smmu_init.c el2/smc_handler.c el2/smc_handler_test.c -o build/test-el2-smc
+	./build/test-el2-smc
+
+build-el2-cnthp: build-el2-smc
+	$(EL2_CC) $(EL2_CFLAGS) -c el2/cnthp_driver.c -o build/el2/cnthp_driver.o
+	$(EL2_CC) $(EL2_CFLAGS) -c el2/cnthp_ioctl.c -o build/el2/cnthp_ioctl.o
+	$(EL2_CC) $(EL2_CFLAGS) -c el2/expiry_sweep.c -o build/el2/expiry_sweep.o
+
+test-el2-cnthp:
+	@mkdir -p build
+	$(HOST_CC) $(HOST_CFLAGS) -DIATO_MOCK_MMIO -DIATO_MOCK_CNTVCT -DIATO_MOCK_SMMU el2/smmu_init.c el2/cnthp_driver.c el2/expiry_sweep.c el2/cnthp_driver_test.c -o build/test-el2-cnthp
+	./build/test-el2-cnthp
+
+build-el2: build-el2-smmu build-el2-smc build-el2-cnthp
+	$(EL2_CC) $(EL2_CFLAGS) build/el2/smmu_init.o build/el2/smc_handler.o build/el2/cnthp_driver.o build/el2/cnthp_ioctl.o build/el2/expiry_sweep.o -T el2/iato-el2.ld -o build/el2/iato-el2.bin
+
+test-el2: test-el2-smmu test-el2-smc test-el2-cnthp
+	@echo "[test-el2] all EL2 unit tests passed"
