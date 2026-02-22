@@ -26,7 +26,7 @@ EL2_AUDIT_MARKERS := \
 	"el2/src/el2_nfc_validator.c:expiry_ns" \
 	"el2/src/el2_trust_store.c:el2_tpm2_pcr_extend7"
 
-.PHONY: all el2 kernel_module nfc_se tests check check-el2 check-nfc check-spdm check-infra check-hardening check-all check-env check-native check-dotnet check-report check-report-commit clean
+.PHONY: all el2 kernel_module nfc_se tests check check-el2 check-nfc check-spdm check-infra check-hardening check-all check-env check-native check-dotnet check-report check-report-commit fetch-wheels build-guest-image qemu-harness hw-test check-full clean
 all: el2 nfc_se tests
 
 el2: CFLAGS := $(CFLAGS_COMMON) $(EL2_ARCH_FLAGS) -O2 $(EL2_ARM_FLAGS)
@@ -115,6 +115,25 @@ check-report-commit:
 	@mkdir -p tests
 	@set +e; ts=$$(date -u +%Y-%m-%dT%H:%M:%SZ); sha=$$(git rev-parse HEAD 2>/dev/null || echo unknown); branch=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown); operator="$${USER:-unknown}@$${HOSTNAME:-unknown}"; seed=20260220; ensure_exit=$$(rg -o 'EXIT_ENSURE:[0-9]+' build/check-dotnet.log -N 2>/dev/null | tail -n1 | sed 's/EXIT_ENSURE://'); [ -n "$$ensure_exit" ] || ensure_exit=1; dotnet_exit=$$(rg -o 'EXIT_DOTNET:[0-9]+' build/check-dotnet.log -N 2>/dev/null | tail -n1 | sed 's/EXIT_DOTNET://'); [ -n "$$dotnet_exit" ] || dotnet_exit=1; build_exit=$$(rg -o 'EXIT_BUILD:[0-9]+' build/check-dotnet.log -N 2>/dev/null | tail -n1 | sed 's/EXIT_BUILD://'); [ -n "$$build_exit" ] || build_exit=1; native_status=$$(cat build/.check-native.status 2>/dev/null || echo FAIL); if [ "$$native_status" = PASS ]; then native_exit=0; else native_exit=1; fi; if rg -n 'warning|WARN|AddressSanitizer|UndefinedBehaviorSanitizer' build/check-native.log >/dev/null 2>&1; then notes='warnings present in build/check-native.log'; else notes='none'; fi; dotnet_status=$$(cat build/.check-dotnet.status 2>/dev/null || echo SKIPPED); if [ "$$dotnet_status" = SKIPPED ]; then verdict=UNPROVISIONED; elif [ "$$dotnet_status" = PASS ] && [ "$$native_status" = PASS ]; then verdict=PASS; else verdict=FAIL; fi; : > tests/test-results.md; echo '# Offline Bootstrap + Build Staging Results' >> tests/test-results.md; echo "Date (UTC): $$ts" >> tests/test-results.md; echo '' >> tests/test-results.md; echo '## Stage 0 — Fail-Fast SDK Bootstrap' >> tests/test-results.md; echo '### `scripts/ensure-dotnet.sh; echo EXIT_ENSURE:$$?`' >> tests/test-results.md; echo "- **Exit code:** `$$ensure_exit`" >> tests/test-results.md; echo "- **Result:** $$( [ "$$ensure_exit" = 0 ] && echo PASS || echo FAIL )" >> tests/test-results.md; echo '- **Output:**' >> tests/test-results.md; echo '```text' >> tests/test-results.md; cat build/check-dotnet.log 2>/dev/null >> tests/test-results.md; echo '```' >> tests/test-results.md; echo '' >> tests/test-results.md; echo '## Stage 1 — Toolchain Presence Check' >> tests/test-results.md; echo '### `dotnet --version; echo EXIT_DOTNET:$$?`' >> tests/test-results.md; echo "- **Exit code:** `$$dotnet_exit`" >> tests/test-results.md; echo '- **Output:**' >> tests/test-results.md; echo '```text' >> tests/test-results.md; cat build/check-dotnet.log 2>/dev/null >> tests/test-results.md; echo '```' >> tests/test-results.md; echo '' >> tests/test-results.md; echo '## Stage 3 — Build Attempt (No Restore / No Runtime)' >> tests/test-results.md; echo '### `dotnet build src/NfcReader/NfcReader.sln --no-restore -p:RestorePackages=false; echo EXIT_BUILD:$$?`' >> tests/test-results.md; echo "- **Exit code:** `$$build_exit`" >> tests/test-results.md; echo '- **Output:**' >> tests/test-results.md; echo '```text' >> tests/test-results.md; cat build/check-dotnet.log 2>/dev/null >> tests/test-results.md; echo '```' >> tests/test-results.md; echo '' >> tests/test-results.md; echo '## Stage 4 — Native EL2/NFC Validation Checks' >> tests/test-results.md; echo '### `make check`' >> tests/test-results.md; echo "- **Exit code:** `$$native_exit`" >> tests/test-results.md; echo "- **Result:** $$native_status" >> tests/test-results.md; echo "- **Notes:** $$notes" >> tests/test-results.md; echo '' >> tests/test-results.md; echo '## Deterministic Workflow Assets' >> tests/test-results.md; echo '- `scripts/ensure-dotnet.sh`: offline SDK bootstrap and recovery orchestrator.' >> tests/test-results.md; echo '- `scripts/recover-dotnet-from-archive.sh`: deterministic archive-based SDK recovery.' >> tests/test-results.md; echo '- `scripts/activate-dotnet-offline.sh`: offline dotnet environment activation.' >> tests/test-results.md; echo '- `scripts/build-nfcreader-offline.sh`: offline restore/build/test workflow with TRX summary.' >> tests/test-results.md; echo '- `run_batch_tests.py`: deterministic batch harness using base seed `20260220`.' >> tests/test-results.md; echo '' >> tests/test-results.md; echo '## EL2 Isolation Notes' >> tests/test-results.md; echo '- Build staging performs compile-time validation only.' >> tests/test-results.md; echo '- No runtime entrypoints are executed during this flow.' >> tests/test-results.md; echo '- No device MMIO or hypervisor calls are triggered by the staging scripts.' >> tests/test-results.md; echo '' >> tests/test-results.md; echo '## Final Status' >> tests/test-results.md; echo "- **Verdict:** $$verdict" >> tests/test-results.md; echo "- **Commit:** $$sha" >> tests/test-results.md; echo "- **Branch:** $$branch" >> tests/test-results.md; echo "- **Operator:** $$operator" >> tests/test-results.md; echo "- **PRNG seed:** $$seed" >> tests/test-results.md; echo '- Failure mode is deterministic and actionable with clear diagnostics.' >> tests/test-results.md
 	@printf '[check-all] test-results.md written\n' >&2
+
+fetch-wheels:
+	bash scripts/fetch-wheels.sh
+
+build-guest-image: fetch-wheels
+	bash scripts/build-guest-image.sh
+
+qemu-harness:
+	bash scripts/qemu-harness.sh
+
+hw-test: qemu-harness
+
+check-full: check-all
+	@if [ -f build/guest/guest.img ]; then \
+		$(MAKE) hw-test; \
+	else \
+		echo "[check-full] guest image not built; skipping hw-test"; \
+		echo "[check-full] run: make build-guest-image"; \
+	fi
 
 check: el2 tests check-el2 check-nfc check-spdm check-hardening check-infra
 	@echo "ABI audit: objdump SMMU write locality"
