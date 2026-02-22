@@ -143,3 +143,8 @@ check: el2 tests check-el2 check-nfc check-spdm check-hardening check-infra
 
 clean:
 	rm -f $(EL2_OBJS) nfc/src/*.o $(TEST_BINS)
+
+
+inspect-journal:
+	@if [ -z "$(JOURNAL)" ]; then echo "Usage: make inspect-journal JOURNAL=build/hw-journal/<file>.ndjson [ARGS="..."]"; exit 1; fi
+	python3 scripts/hw-journal-inspect.py $(ARGS) $(JOURNAL)

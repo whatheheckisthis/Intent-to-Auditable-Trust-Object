@@ -5,6 +5,7 @@ import time
 
 from src.cnthp_sweep import CnthpSweep
 from src.el2_timer import CnthpTimerBackend
+from src.hw_journal import get_hw_journal
 from src.key_ceremony import KeyCeremony
 from src.smmu_controller import SmmuController, SteCredential
 from src.spdm_session_factory import make_spdm_session
@@ -42,9 +43,12 @@ class ProvisioningOrchestrator:
         return cls(tpm, ceremony, spdm, smmu, timer, sweep, binding_table)
 
     def provision(self, stream_id, raw_credential) -> str:
+        journal = get_hw_journal()
+        journal.record("orchestrator", "provision_start", stream_id=stream_id, data={"stream_id": stream_id})
         cred = SteCredential(stream_id=stream_id, pa_range_base=raw_credential["pa_base"], pa_range_limit=raw_credential["pa_limit"], permissions=raw_credential["permissions"])
         self.smmu.write_ste(cred)
         self.binding_table[stream_id] = {"expires_at": time.time() + raw_credential.get("ttl", 30)}
+        journal.record("orchestrator", "provision_complete", stream_id=stream_id, data={"stream_id": stream_id, "result": "OK"})
         return "OK"
 
     def start_sweep(self) -> None:
@@ -54,7 +58,11 @@ class ProvisioningOrchestrator:
         self.sweep.stop()
 
     def shutdown(self) -> None:
+        permitted = [stream_id for stream_id, rec in self.smmu._table.items() if rec.get("state") == "PERMITTED"]
+        journal = get_hw_journal()
+        journal.record("orchestrator", "shutdown_start", data={"permitted_streams": permitted})
         for stream_id, rec in list(self.smmu._table.items()):
             if rec.get("state") == "PERMITTED":
                 self.smmu.fault_everything(stream_id)
         self.stop_sweep()
+        journal.record("orchestrator", "shutdown_complete", data={})

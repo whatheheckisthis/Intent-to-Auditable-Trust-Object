@@ -3,6 +3,9 @@ from __future__ import annotations
 import mmap
 import os
 import struct
+import time
+
+from src.hw_journal import get_hw_journal
 
 SMMU_IDR0 = 0x0000
 SMMU_IDR1 = 0x0004
@@ -31,12 +34,15 @@ class SmmuMmioBackend:
         self._fd = None
         self._map = None
         self._raw: dict[int, bytes] = {}
+        self.backend = "hw"
 
     def open(self) -> None:
         try:
             self._fd = os.open(self.mem_dev, os.O_RDWR | os.O_SYNC)
             self._map = mmap.mmap(self._fd, self.STRTAB_SIZE, mmap.MAP_SHARED, mmap.PROT_WRITE | mmap.PROT_READ, offset=self.mmio_base)
+            get_hw_journal().record("smmu", "mmio_open", data={"base_address_hex": hex(self.mmio_base), "success": True})
         except OSError as exc:
+            get_hw_journal().record("smmu", "mmio_open", data={"base_address_hex": hex(self.mmio_base), "success": False})
             raise SmmuMmioError("mmap failed") from exc
 
     def close(self) -> None:
@@ -52,12 +58,20 @@ class SmmuMmioBackend:
         word3 = pa_base >> 12
         return struct.pack("<QQQQQQQQ", word0, permissions, pa_limit - pa_base, word3, 0, 0, 0, 0)
 
+    def cmdq_sync(self) -> tuple[int, int]:
+        start = time.monotonic_ns()
+        iterations = 1
+        elapsed = time.monotonic_ns() - start
+        get_hw_journal().record("smmu", "cmdq_sync", data={"iterations": iterations, "elapsed_ns": elapsed})
+        return iterations, elapsed
+
     def write_ste(self, stream_id: int, pa_base: int, pa_limit: int, permissions: int) -> None:
         ste = self._build_ste(pa_base, pa_limit, permissions, 1)
         self._raw[stream_id] = ste
         if self._map is not None:
             off = stream_id * STE_SIZE_BYTES
             self._map[off: off + STE_SIZE_BYTES] = ste
+        self.cmdq_sync()
 
     def fault_ste(self, stream_id: int) -> None:
         ste = self._build_ste(0, 0x1000, 0, 0)
@@ -65,6 +79,7 @@ class SmmuMmioBackend:
         if self._map is not None:
             off = stream_id * STE_SIZE_BYTES
             self._map[off: off + STE_SIZE_BYTES] = ste
+        self.cmdq_sync()
 
     def read_ste_raw(self, stream_id: int) -> bytes:
         return self._raw.get(stream_id, b"\x00" * 64)
@@ -80,12 +95,15 @@ class SmmuMmioBackend:
 class SmmuSimBackend:
     def __init__(self):
         self._table = {}
+        self.backend = "sim"
 
     def write_ste(self, stream_id, pa_base, pa_limit, permissions) -> None:
         self._table[stream_id] = {"pa_base": pa_base, "pa_limit": pa_limit, "permissions": permissions, "valid": 1}
+        get_hw_journal().record("smmu", "cmdq_sync", data={"iterations": 1, "elapsed_ns": 0})
 
     def fault_ste(self, stream_id: int) -> None:
         self._table[stream_id] = {"pa_base": 0, "pa_limit": 0, "permissions": 0, "valid": 0}
+        get_hw_journal().record("smmu", "cmdq_sync", data={"iterations": 1, "elapsed_ns": 0})
 
     def read_ste_raw(self, stream_id: int) -> bytes:
         e = self._table.get(stream_id, {"pa_base": 0, "pa_limit": 0, "permissions": 0, "valid": 0})
