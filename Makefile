@@ -10,6 +10,10 @@ EL2_CFLAGS  = -O2 -ffreestanding -Wall -Werror -march=armv8-a \
 HOST_CC     ?= gcc
 HOST_CFLAGS = -O0 -g -Wall -DIATO_HOST_TEST
 
+
+PYTHON_CFLAGS  = $(shell python3-config --cflags)
+PYTHON_LDFLAGS = $(shell python3-config --ldflags --embed)
+
 EL2_SRCS := el2/src/el2_trust_store.c el2/src/el2_spdm.c el2/src/el2_nfc_validator.c el2/src/el2_binding_table.c el2/src/el2_smmu.c el2/src/el2_expiry.c el2/src/el2_main.c
 EL2_OBJS := $(EL2_SRCS:.c=.o)
 
@@ -157,7 +161,7 @@ inspect-journal:
 	python3 scripts/hw-journal-inspect.py $(ARGS) $(JOURNAL)
 
 
-.PHONY: build-el2-smmu test-el2-smmu build-el2-smc test-el2-smc build-el2-cnthp test-el2-cnthp build-el2 test-el2
+.PHONY: build-el2-smmu test-el2-smmu build-el2-smc test-el2-smc build-el2-cnthp test-el2-cnthp build-el2-boot test-el2-boot build-el2-pyembed test-el2-pyembed build-el2 test-el2 test-e2e test-e2e-hw check-e2e
 
 build-el2-smmu:
 	@mkdir -p build/el2
@@ -186,8 +190,38 @@ test-el2-cnthp:
 	$(HOST_CC) $(HOST_CFLAGS) -DIATO_MOCK_MMIO -DIATO_MOCK_CNTVCT -DIATO_MOCK_SMMU el2/smmu_init.c el2/cnthp_driver.c el2/expiry_sweep.c el2/cnthp_driver_test.c -o build/test-el2-cnthp
 	./build/test-el2-cnthp
 
-build-el2: build-el2-smmu build-el2-smc build-el2-cnthp
-	$(EL2_CC) $(EL2_CFLAGS) build/el2/smmu_init.o build/el2/smc_handler.o build/el2/cnthp_driver.o build/el2/cnthp_ioctl.o build/el2/expiry_sweep.o -T el2/iato-el2.ld -o build/el2/iato-el2.bin
+build-el2: build-el2-boot build-el2-smmu build-el2-smc build-el2-cnthp build-el2-pyembed
+	$(EL2_CC) $(EL2_CFLAGS) build/el2/boot.o build/el2/main.o build/el2/uart.o build/el2/smmu_init.o build/el2/smc_handler.o build/el2/cnthp_driver.o build/el2/cnthp_ioctl.o build/el2/expiry_sweep.o build/el2/py_embed.o -T el2/iato-el2.ld -o build/el2/iato-el2.bin
 
-test-el2: test-el2-smmu test-el2-smc test-el2-cnthp
+test-el2: test-el2-boot test-el2-smmu test-el2-smc test-el2-cnthp test-el2-pyembed
 	@echo "[test-el2] all EL2 unit tests passed"
+
+
+build-el2-boot:
+	@mkdir -p build/el2
+	$(EL2_CC) $(EL2_CFLAGS) -c el2/boot.S -o build/el2/boot.o
+	$(EL2_CC) $(EL2_CFLAGS) -c el2/main.c -o build/el2/main.o
+	$(EL2_CC) $(EL2_CFLAGS) -c el2/uart.c -o build/el2/uart.o
+
+test-el2-boot:
+	@mkdir -p build
+	$(HOST_CC) $(HOST_CFLAGS) -DIATO_MOCK_ALL -DIATO_MOCK_UART -DIATO_MOCK_VALIDATOR -DIATO_MOCK_CNTVCT 		el2/main.c el2/uart.c el2/boot_test.c -o build/test-el2-boot
+	./build/test-el2-boot
+
+build-el2-pyembed:
+	@mkdir -p build/el2
+	$(HOST_CC) $(HOST_CFLAGS) $(PYTHON_CFLAGS) -c el2/py_embed.c -o build/el2/py_embed.o
+
+test-el2-pyembed:
+	@mkdir -p build
+	$(HOST_CC) $(HOST_CFLAGS) $(PYTHON_CFLAGS) -DIATO_MOCK_UART el2/py_embed.c el2/uart.c el2/py_embed_test.c $(PYTHON_LDFLAGS) -o build/test-el2-pyembed
+	PYTHONPATH=$(PWD) ./build/test-el2-pyembed
+
+test-e2e:
+	IATO_HW_MODE=0 IATO_TPM_SIM=1 IATO_MANA_SIM_MMIO=1 pytest tests/integration/test_e2e_smc_to_smmu.py -v --tb=short -m "not hw"
+
+test-e2e-hw:
+	IATO_HW_MODE=1 IATO_TPM_SIM=0 IATO_MANA_SIM_MMIO=0 pytest tests/integration/test_e2e_smc_to_smmu.py -v --tb=short -m hw --junitxml=/tmp/hw-e2e-pytest.xml
+
+check-e2e:
+	$(MAKE) test-e2e

@@ -36,3 +36,47 @@ def pytest_configure(config):
     module = sys.modules.get("requests")
     if module is not None and getattr(module, "__spec__", None) is None:
         module.__spec__ = importlib.machinery.ModuleSpec("requests", loader=None)
+
+
+import os
+import pytest
+
+
+@pytest.fixture(scope="session")
+def hw_mode() -> bool:
+    return os.environ.get("IATO_HW_MODE", "0") == "1"
+
+
+class _SimSmcInterface:
+    def __init__(self):
+        from src.el2_validator import El2CredentialValidator
+        self.validator = El2CredentialValidator()
+        self.ste = {}
+
+    def provision(self, stream_id, raw_credential):
+        try:
+            cred = self.validator.validate(raw=raw_credential, stream_id=stream_id)
+        except Exception:
+            return 1
+        self.ste[stream_id] = 1 | ((cred.permissions & 0x3) << 6)
+        return 0
+
+
+class _SimSmmuReader:
+    def __init__(self, smc):
+        self.smc = smc
+
+    def read_ste_word0(self, stream_id):
+        return self.smc.ste.get(stream_id, 0)
+
+
+@pytest.fixture(scope="session")
+def smc_interface(hw_mode):
+    _ = hw_mode
+    return _SimSmcInterface()
+
+
+@pytest.fixture(scope="session")
+def smmu_reader(hw_mode, smc_interface):
+    _ = hw_mode
+    return _SimSmmuReader(smc_interface)
