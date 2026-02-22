@@ -6,6 +6,7 @@ import time
 from typing import Callable
 
 from src.el2_timer import CnthpTimerBackend, El2TimerBackend, ThreadingTimerBackend
+from src.hw_journal import get_hw_journal
 
 
 def _select_timer_backend() -> El2TimerBackend:
@@ -28,10 +29,16 @@ class CnthpSweep:
         self._thread: threading.Thread | None = None
 
     def _sweep_once(self) -> None:
+        start = time.monotonic_ns()
         now = self._clock()
+        journal = get_hw_journal()
+        journal.record("cnthp", "sweep_start", data={"active_streams": len(self._binding_table)})
+        swept: list[int] = []
         for sid, rec in list(self._binding_table.items()):
             if rec.get("expires_at", now + 1) <= now:
                 self._smmu.fault_everything(sid)
+                swept.append(sid)
+        journal.record("cnthp", "sweep_complete", data={"swept": swept, "duration_ns": time.monotonic_ns() - start})
 
     def _run(self) -> None:
         while not self._stop_event.is_set():

@@ -7,6 +7,8 @@ import importlib.machinery
 import sys
 from pathlib import Path
 
+pytest_plugins = ["src.hw_journal_pytest_plugin"]
+
 # Ensure the repository root is importable during pytest collection.
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:

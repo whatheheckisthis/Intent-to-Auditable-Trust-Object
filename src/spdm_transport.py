@@ -6,6 +6,8 @@ import time
 from collections import deque
 from typing import Protocol
 
+from src.hw_journal import get_hw_journal
+
 
 class SpdmTransportError(RuntimeError):
     pass
@@ -27,7 +29,9 @@ class SpdmQemuTransport:
         self._sock.settimeout(self.CONNECT_TIMEOUT_S)
         try:
             self._sock.connect(socket_path)
+            get_hw_journal().record("spdm", "transport_connect", data={"socket_path": socket_path, "success": True, "error": None})
         except OSError as exc:
+            get_hw_journal().record("spdm", "transport_connect", data={"socket_path": socket_path, "success": False, "error": str(exc)})
             self._sock.close()
             raise SpdmTransportError("SPDM connect timeout/failure") from exc
         self._sock.settimeout(self.RECV_TIMEOUT_S)

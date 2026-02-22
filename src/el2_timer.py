@@ -6,6 +6,8 @@ import threading
 import time
 from typing import Protocol
 
+from src.hw_journal import get_hw_journal
+
 
 class El2TimerBackend(Protocol):
     def arm(self, interval_ns: int) -> None: ...
@@ -21,13 +23,17 @@ class ThreadingTimerBackend:
     def arm(self, interval_ns: int) -> None:
         self._deadline = time.monotonic() + (interval_ns / 1_000_000_000)
         self._event.clear()
+        get_hw_journal().record("cnthp", "timer_armed", data={"interval_ns": interval_ns, "backend": "threading"})
 
     def disarm(self) -> None:
         self._event.set()
+        get_hw_journal().record("cnthp", "timer_disarmed", data={})
 
     def wait_for_expiry(self) -> None:
+        start = time.monotonic_ns()
         timeout = max(0, self._deadline - time.monotonic())
         self._event.wait(timeout)
+        get_hw_journal().record("cnthp", "timer_fired", data={"elapsed_ns": time.monotonic_ns() - start, "backend": "threading"})
 
 
 class CnthpTimerBackend:
@@ -41,15 +47,21 @@ class CnthpTimerBackend:
         self._owner = threading.current_thread().ident
 
     def arm(self, interval_ns: int) -> None:
-        fcntl.ioctl(self._fd, self.IOCTL_TIMER_ARM, int(interval_ns).to_bytes(8, "little"))
+        rc = fcntl.ioctl(self._fd, self.IOCTL_TIMER_ARM, int(interval_ns).to_bytes(8, "little"))
+        get_hw_journal().record("cnthp", "ioctl_arm", data={"interval_ns": interval_ns, "rc": int(0 if rc is None else rc)})
+        get_hw_journal().record("cnthp", "timer_armed", data={"interval_ns": interval_ns, "backend": "hw"})
 
     def disarm(self) -> None:
-        fcntl.ioctl(self._fd, self.IOCTL_TIMER_DISARM)
+        rc = fcntl.ioctl(self._fd, self.IOCTL_TIMER_DISARM)
+        get_hw_journal().record("cnthp", "ioctl_disarm", data={"rc": int(0 if rc is None else rc)})
+        get_hw_journal().record("cnthp", "timer_disarmed", data={})
 
     def wait_for_expiry(self) -> None:
         if threading.current_thread().ident != self._owner:
             raise RuntimeError("wait_for_expiry must be called from owning thread")
+        start = time.monotonic_ns()
         os.read(self._fd, 8)
+        get_hw_journal().record("cnthp", "timer_fired", data={"elapsed_ns": time.monotonic_ns() - start, "backend": "hw"})
 
     def close(self) -> None:
         os.close(self._fd)
