@@ -42,3 +42,10 @@ platforms = ["linux-64", "osx-64"]
 python = "3.11"
 [tool.conda-lock.dependencies.pip]
 iato-ops = {path = ".", editable = true}
+
+
+[tool.pytest.ini_options]
+addopts = '-m "not hw"'
+markers = [
+  "hw: hardware-mode tests requiring provisioned QEMU environment",
+]
