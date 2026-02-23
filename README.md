@@ -1,167 +1,116 @@
-# Virtualised Zero-DRAM Auditable Trust Stack
+# IĀTŌ-V7 — Intent-to-Auditable-Trust-Object
 
-This repository now ships a **QEMU SVE2 + Enclave SDN** reference stack that keeps sensitive flow material in vector registers as long as possible before signing.
+A hardware-binding trust enforcement system for EL2-isolated environments.
 
-## Architecture
+> A device can perform DMA to a physical memory range if and only if a valid, unexpired, non-replayed, SPDM-attested credential for that device's StreamID has been validated by the EL2 hypervisor and the corresponding StreamTableEntry has been written to the SMMU by EL2 C code — not by any guest kernel or userspace process.
 
-1. **Virtual hardware (QEMU/SVE2)**
-   - `qemu-aarch64-static` emulates an **Arm Neoverse V2** profile (`-cpu neoverse-v2,sve=on,sve2=on`).
-   - `mask_sve2.s` performs PII reduction in SVE2 `Z` registers (`z0-z4`) without copying tuples into application heap buffers.
-2. **Kernel bridge (XDP -> register path)**
-   - XDP parser extracts V7 tuples at line-rate.
-   - `bpf_perf_event_output` publishes tuples into perf events consumed by the dispatcher process running in the QEMU guest context.
-3. **Evidence signing (PKCS#11)**
-   - Dispatcher ingests tuple lanes, applies `mask_v7_tuple_sve2`, hashes evidence, and signs via SoftHSM2 PKCS#11.
-   - Signed counters and verification metrics are exported on the enclave-facing Prometheus endpoint.
-4. **Isolated services**
-   - `qemu-sve` and `xdp-bridge` run on `network_mode: service:enclave`.
-   - Drupal/MariaDB remain isolated on `app_net`.
+Targets QEMU virt with emulated SMMUv3, swtpm TPM 2.0, and libspdm, backed by a custom EL2 hypervisor in C with CPython embedded at EL2.
 
-## Delivered files
+---
 
-- `mask_sve2.s` – SVE2 tuple masking routine.
-- `docker-compose.yml` – Enclave, XDP bridge, QEMU-SVE dispatcher, SoftHSM2, Prometheus, Drupal, MariaDB.
-- `README.md` – WSL2 + runbook instructions.
+## Repository structure
 
-## WSL2 quick start
+**`el2/`** — EL2 hypervisor
+- `boot.S` — reset vector, exception vector table
+- `iato-el2.ld` — linker script (load address `0x40000000`)
+- `main.c` — C entry point, exception dispatch
+- `smmu_init.h/c` — SMMUv3 STRTAB initialisation and STE writes
+- `smc_handler.h/c` — SMC trap handler, rate limiter, credential copy
+- `py_embed.h/c` — CPython embedding, `iato_py_validate_credential()`
 
-### 1) Install prerequisites (including QEMU user emulation)
+**`src/`** — Python validation layer
+- `el2_validator.py` — ECDSA P-256 credential validator (149-byte wire format)
+- `spdm_state_machine.py` — DMTF DSP0274 state machine
+- `tpm_enrollment.py` — TPM PCR extend and seal (swtpm / sim)
+- `hw_journal.py` — append-only hardware event journal (NDJSON)
+
+**`scripts/`** — CI and bootstrap
+- `timing-engine.sh` — constant-time execution engine
+- `qemu-harness.sh` — full QEMU stack orchestrator
+- `batch_runner.py` — 4×100 timing side-channel verification runs
+
+---
+
+## Trust chain
+
+```
+Guest kernel (EL1)
+│  SMC #0xIATO (credential blob, stream_id)
+▼
+iato_smc_handle()                    [EL2 C]
+│  rate check (I-07) → copy from guest PA → length check
+▼
+iato_py_validate_credential()        [CPython at EL2]
+│  ECDSA P-256 verify (I-02)
+│  nonce replay check (I-03)
+│  SPDM session binding check (I-02)
+▼
+iato_smmu_write_ste()                [EL2 C]
+│  STE binary layout per ARM IHI0070
+│  CMD_CFGI_STE + CMD_SYNC + DSB SY (I-13)
+▼
+SMMU hardware                        [emulated SMMUv3]
+   enforces PA range restriction for all DMA from stream_id
+```
+
+---
+
+## Invariants
+
+| ID | Claim | Enforced in |
+|---|---|---|
+| I-01 | No STE reaches PERMITTED without validated SteCredential | C + Python |
+| I-02 | Validator verifies ECDSA P-256 AND SPDM session binding | Python |
+| I-03 | Nonce consumed only after all checks pass | Python |
+| I-07 | Rate check before validate — rejected calls never consume nonces | C + Python |
+| I-13 | MMIO write followed by DSB SY before CMD_CFGI_STE | C |
+
+Full invariant set (I-01 through I-14) is in [`docs/threat-model.md`](docs/threat-model.md).
+
+---
+
+## Timing side-channel mitigation
+
+All bootstrap and build scripts are padded to fixed wall-clock targets by `timing-engine.sh`. An external observer cannot distinguish fast paths from slow paths by timing alone.
+
+| Script | Target | Natural range |
+|---|---|---|
+| `ensure-dotnet.sh` | 45s | 0.01s – 2.5s |
+| `recover-dotnet-from-archive.sh` | 90s | 0.05s – 40s |
+| `build-nfcreader-offline.sh` | 120s | 0.01s – 60s |
+
+Verified across 400 runs (4 batches × 100 tests), 100% TE window compliance. PRNG seed `0x4941544f2d5637` ("IATO-V7") — deterministic and auditable.
+
+---
+
+## Audit trail
+
+Every trust decision is recorded in `build/hw-journal/{timestamp}.ndjson` across all four hardware concerns (TPM, SPDM, SMMU, CNTHP).
 
 ```bash
-sudo apt update
-sudo apt install -y \
-  qemu-user-static \
-  binfmt-support \
-  clang llvm gcc make pkg-config \
-  libbpf-dev libelf-dev libssl-dev \
-  softhsm2 opensc docker.io docker-compose-plugin
+python3 scripts/hw-journal-inspect.py \
+  --format timeline \
+  build/hw-journal/latest.ndjson
 ```
 
-### 2) Enable and verify `binfmt_misc`
+`tests/test-results.md` is written after every CI run. `tests/hw-results.md` is written after every QEMU harness run. Both reference git SHA, branch, operator, and PRNG seed.
 
-```bash
-sudo update-binfmts --enable qemu-aarch64
-update-binfmts --display qemu-aarch64
-```
+---
 
-### 3) Prepare `.env`
+## EL2 memory map (QEMU virt)
 
-```bash
-cat > .env <<'ENV'
-ENCLAVE_ENROLMENT_KEY=replace-me
-DRUPAL_DB_PASSWORD=drupalpw
-MARIADB_ROOT_PASSWORD=rootpw
-PKCS11_MODULE_PATH=/usr/lib/softhsm/libsofthsm2.so
-PKCS11_PIN=1234
-HSM_KEY_LABEL=ato-ed25519
-ENV
-```
+| Address | Device |
+|---|---|
+| `0x09000000` | PL011 UART (boot diagnostics) |
+| `0x09050000` | SMMUv3 MMIO (`IATO_SMMU_BASE`) |
+| `0x40000000` | EL2 hypervisor load address |
+| `/tmp/iato-spdm.sock` | libspdm responder socket |
 
-### 4) Initialize SoftHSM2 token
+---
 
-```bash
-softhsm2-util --init-token --slot 0 --label ato-token --so-pin 1234 --pin 1234
-pkcs11-tool --module /usr/lib/softhsm/libsofthsm2.so \
-  --login --pin 1234 \
-  --keypairgen --key-type EC:prime256v1 --label ato-ed25519 --usage-sign
-```
+## Non-goals
 
-### 5) Launch stack
-
-```bash
-docker compose up -d --build
-```
-
-## Register-to-sign path (Zero-DRAM objective)
-
-`NIC/XDP parser -> bpf_perf_event_output -> QEMU SVE2 dispatcher -> Z-register masking -> PKCS#11 signing -> Prometheus over Enclave vNET`
-
-- Tuple fields are emitted from XDP via perf events rather than copied into long-lived userland queues.
-- Dispatcher reads perf payloads, maps fields to SVE2 lanes, masks in-register, and immediately signs digests.
-- Only signed/hashed artifacts are exported to observability, preserving Trust Object integrity for audit replay.
-
-## OSINT IDE immutable audit flow (CBOR + HSM)
-
-The dispatcher now acts as an **OSINT Sink** for messy forensic leads:
-
-1. Receive raw JSON-like lead blobs (possibly malformed ordering and ad-hoc fields).
-2. Apply `mask_v7_sve2` register-first sanitization to IPv4 identifiers and nanosecond timestamps.
-3. Call `cbor_wrap_osint_data` to emit **Canonical CBOR** map entries in deterministic key order.
-4. Sign the CBOR blob through PKCS#11 using the enclave-secured HSM key.
-5. Exfiltrate `(cbor_blob, signature)` records over the enclave SDN path to the centralized Audit Vault file (`AUDIT_VAULT_PATH`).
-
-### Verifying lead authenticity in the IDE
-
-To verify an OSINT lead packet in the IDE:
-
-- Parse the CBOR map and extract the signed byte sequence exactly as persisted.
-- Pull the signature companion payload from the Audit Vault frame.
-- Verify using the HSM's public key (or issued certificate chain) and the same signature mechanism (`CKM_EDDSA` in this stack).
-- Treat only packets with valid signature + trusted key provenance as auditable trust objects.
-
-This ensures analysts can distinguish genuine enclave-originated evidence from tampered or replayed packets.
-
-### Enclave DNS privacy posture
-
-The OSINT IDE should route all resolver traffic through **Enclave DNS** attached to the enclave SDN. This keeps target-domain lookups hidden from the analyst's ISP-facing resolver path:
-
-- DNS requests are emitted inside the enclave network namespace.
-- Upstream recursion/DoH egress is pinned to enclave policy endpoints.
-- ISP-visible telemetry shows only encrypted tunnel egress, not per-target OSINT domains.
-
-Combined with signed CBOR evidence, this provides both **research confidentiality** and **audit integrity**.
-
-## IPFS-backed Primary Key and enclave-only swarm
-
-The post-signing dispatcher hook now wraps each record as Canonical CBOR IPLD:
-
-```json
-{ "data": <CBOR_BLOB>, "signature": <HSM_SIG>, "pubkey": <HSM_KEY_ID> }
-```
-
-It then uploads the signed IPLD blob to Kubo (`/api/v0/add?pin=true`) and writes the returned CID into the evidence log as `primary_cid=...`.
-
-- CID becomes the immutable primary key for each trust object.
-- Kubo is bound to `${ENCLAVE_VIF_ADDR}` and bootstraps are removed.
-- Private swarm mode is enforced via `swarm.key` + `LIBP2P_FORCE_PNET=1` to avoid public DHT leakage.
-
-### Pinning evidence across enclave peers
-
-```bash
-ipfs pin add <CID>
-```
-
-### Verify evidence signature from IPFS
-
-```bash
-ipfs cat <CID> > evidence.ipld.cbor
-python3 - <<'PY'
-import cbor2
-obj = cbor2.load(open("evidence.ipld.cbor", "rb"))
-open("payload.cbor", "wb").write(obj["data"])
-open("sig.bin", "wb").write(obj["signature"])
-PY
-openssl dgst -sha256 -verify hsm_pubkey.pem -signature sig.bin payload.cbor
-```
-
-## Minimal telemetry folding SNARK example
-
-A runnable micro-batch example is provided in `zk/telemetry-pipeline` with:
-
-- `data/sample_telemetry/batch_1` + `batch_2` containing 32 telemetry packet files,
-- witness generation into `data/witnesses/witness_batch_1.json` and `_2.json`,
-- Groth16 proving/verification scripts compatible with those witness files,
-- optional on-chain commitment using either witness hash or Merkle root.
-
-Run:
-
-```bash
-cd zk/telemetry-pipeline
-npm install
-npm run witness
-npm run merkle
-npm run snark:compile
-npm run snark:setup
-node scripts/snark/prove.js data/witnesses/witness_batch_1.json
-node scripts/snark/verify.js artifacts/proofs/public_batch_1.json artifacts/proofs/proof_batch_1.json
-```
+- **NG-01** Physical attacker with JTAG or direct memory access
+- **NG-02** Compromised EL3 firmware
+- **NG-03** Timing side-channel attacks on ECDSA verification
+- **NG-05** Multi-core race conditions (single-CPU assumption, `-smp 1`)
