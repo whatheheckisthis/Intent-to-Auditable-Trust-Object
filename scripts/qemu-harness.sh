@@ -10,6 +10,8 @@ IATO_GUEST_IMAGE="${IATO_GUEST_IMAGE:-${ROOT_DIR}/build/guest/guest.img}"
 IATO_EL2_BIN="${IATO_EL2_BIN:-${ROOT_DIR}/build/el2/iato-el2.bin}"
 IATO_BOOT_TIMEOUT_S="${IATO_BOOT_TIMEOUT_S:-120}"
 IATO_TEST_TIMEOUT_S="${IATO_TEST_TIMEOUT_S:-300}"
+IATO_OPERATOR="${IATO_OPERATOR:-${USER:-unknown}}"
+IATO_PRNG_SEED="${IATO_PRNG_SEED:-0x4941544f2d5637}"
 
 SWTPM_DIR="/tmp/iato-swtpm"
 SWTPM_SOCK="${SWTPM_DIR}/swtpm.sock"
@@ -97,34 +99,16 @@ PY
 [[ -f "${IATO_GUEST_IMAGE}" ]] || preflight_fail "guest image not found: ${IATO_GUEST_IMAGE}"
 [[ -f "${IATO_EL2_BIN}" ]] || preflight_fail "EL2 binary not found: ${IATO_EL2_BIN}"
 
-mkdir -p "${SWTPM_DIR}"
-swtpm socket \
-  --tpmstate dir="${SWTPM_DIR}" \
-  --ctrl type=unixio,path="${SWTPM_SOCK}" \
-  --tpm2 --daemon --pid "${SWTPM_PID}"
+IATO_SWTPM_DIR="${SWTPM_DIR}" \
+IATO_SWTPM_SOCK="${SWTPM_SOCK}" \
+IATO_SWTPM_PID="${SWTPM_PID}" \
+"${ROOT_DIR}/scripts/start-swtpm.sh"
 
-started=0
-for _ in $(seq 1 50); do
-  if nc -z -U "${SWTPM_SOCK}" >/dev/null 2>&1; then
-    started=1
-    break
-  fi
-  sleep 0.1
-done
-[[ "${started}" -eq 1 ]] || { err "swtpm did not start"; exit 1; }
-
-"${IATO_SPDM_RESPONDER}" --trans socket --socket-path "${SPDM_SOCK}" >>"${SPDM_LOG}" 2>&1 &
-echo $! > "${SPDM_PID}"
-
-started=0
-for _ in $(seq 1 50); do
-  if nc -z -U "${SPDM_SOCK}" >/dev/null 2>&1; then
-    started=1
-    break
-  fi
-  sleep 0.1
-done
-[[ "${started}" -eq 1 ]] || { err "spdm responder did not start"; exit 1; }
+IATO_SPDM_RESPONDER="${IATO_SPDM_RESPONDER}" \
+IATO_SPDM_SOCK="${SPDM_SOCK}" \
+IATO_SPDM_PID="${SPDM_PID}" \
+IATO_SPDM_LOG="${SPDM_LOG}" \
+"${ROOT_DIR}/scripts/start-spdm-responder.sh"
 
 qemu-system-aarch64 \
   -machine virt,iommu=smmuv3,secure=on \
@@ -289,6 +273,8 @@ import xml.etree.ElementTree as ET
 result_md = "${RESULT_MD}"
 xml_path = "${PYTEST_XML}"
 qemu_version = "${qemu_version}"
+operator = "${IATO_OPERATOR}"
+prng_seed = "${IATO_PRNG_SEED}"
 
 counts = {"total": 0, "failed": 0, "skipped": 0, "passed": 0}
 failed_tests = []
@@ -347,10 +333,14 @@ with open(result_md, "w", encoding="utf-8") as out:
     out.write(f"QEMU version: {qemu_version}\n")
     out.write(f"Guest image SHA-256: {guest_sha}\n")
     out.write(f"EL2 binary SHA-256: {el2_sha}\n")
-    out.write(f"Commit: {commit}\n")
+    out.write(f"Git SHA: {commit}\n")
     out.write(f"Branch: {branch}\n\n")
+    out.write("## Execution Metadata\n")
+    out.write(f"- Operator: {operator}\n")
+    out.write(f"- PRNG seed: {prng_seed}\n")
+    out.write("- Harness scripts (.sh): scripts/qemu-harness.sh\n\n")
     out.write("## Hardware Environment\n")
-    out.write("- TPM: swtpm unknown, PCR 16 extended: " + pcr_extended + "\n")
+    out.write("- TPM: swtpm socket: /tmp/iato-swtpm/swtpm.sock, PCR 16 extended: " + pcr_extended + "\n")
     out.write("- SPDM: libspdm responder unknown, session reached ATTESTED: " + spdm_attested + "\n")
     out.write("- SMMU: QEMU SMMUv3, MMIO base: 0x09050000, STE writes: " + str(ste_writes) + "\n")
     out.write("- EL2 timer: /dev/iato-el2-timer, intervals fired: " + str(el2_intervals) + "\n\n")
@@ -363,6 +353,8 @@ with open(result_md, "w", encoding="utf-8") as out:
     out.write("None\n\n" if not failed_tests else "\n".join(failed_tests) + "\n\n")
     out.write("## Verdict\n")
     out.write(verdict + "\n")
+    out.write("\n## Hardware pass/fail summary\n")
+    out.write(f"- Hardware pass/fail summary: {verdict}\n")
 PY
 
 exit "${HW_EXIT}"
