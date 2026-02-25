@@ -42,3 +42,38 @@ This directory provides a three-layer assurance design for the OSINT Dispatcher.
 - TLA+ safety models (x4): `formal/tla/armv9_cca/`
 - Coq non-interference proof scaffolds (x14): `formal/coq/armv9_cca/`
 - Focus: FEAT_SSBS + RME mapping, invariants, and ASL/TLA refinement obligations.
+
+
+## 7) Armv9 CCA Formal Toolchain Bootstrap
+- Script: `scripts/install-formal-verification-deps.sh`
+- Installs:
+  - TLC (`tlc`) via `tla2tools.jar`
+  - Coq compiler (`coqc`)
+- Verification:
+  - `tlc -version`
+  - `coqc --version`
+
+
+## 8) Dependency Management Engine (HTTP 403/407 fallback)
+- Script: `scripts/formal_deps_engine.py`
+- Commands:
+  - `python3 scripts/formal_deps_engine.py status`
+  - `python3 scripts/formal_deps_engine.py install`
+- Behavior:
+  - runs pre-flight checks for `tlc` and `coqc`
+  - wraps `./scripts/install-formal-verification-deps.sh` and captures STDOUT/STDERR
+  - on HTTP `403` or `407`, falls back to `LOCAL_ARTIFACT_ROOT`
+  - tracks Last Known Good / failed attempts in `deps_manifest.json`
+
+### Next steps
+- Mirror artifacts into an offline folder and set `LOCAL_ARTIFACT_ROOT`:
+  - `tla2tools.jar`
+  - either `coq/bin/coqc`, `coqc`, or `debs/*.deb`
+- Configure proxy and TLS inspection if required:
+  - `http_proxy`, `https_proxy`, `NO_PROXY`
+  - `CUSTOM_CA_BUNDLE=/path/to/ca.pem`
+- Re-run install:
+  - `python3 scripts/formal_deps_engine.py install`
+- Verify tools:
+  - `tlc -version`
+  - `coqc --version`
