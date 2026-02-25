@@ -2,13 +2,17 @@
 EXTENDS Naturals, TLC
 
 CONSTANT AddrSet
-VARIABLES ssbs, unresolvedStore, storeAddr, loadAddr, specExec
+VARIABLES ssbs, storeBeforeLoad, unresolvedStore, storeAddr, loadAddr, specExec
 
+\* Invariant 1 (Store-Load Ordering Safety):
+\* (PO(S,L) /\ Addr(S)=Addr(L) /\ unresolved(S) /\ SSBS=1) => ~SpecExec(L)
 StoreLoadOrderingSafety ==
-  (ssbs = TRUE /\ unresolvedStore = TRUE /\ storeAddr = loadAddr) => (specExec = FALSE)
+  (ssbs = TRUE /\ storeBeforeLoad = TRUE /\ unresolvedStore = TRUE /\ storeAddr = loadAddr)
+    => (specExec = FALSE)
 
 Init ==
   /\ ssbs \in BOOLEAN
+  /\ storeBeforeLoad \in BOOLEAN
   /\ unresolvedStore \in BOOLEAN
   /\ storeAddr \in AddrSet
   /\ loadAddr \in AddrSet
@@ -17,13 +21,15 @@ Init ==
 
 Next ==
   /\ ssbs' \in BOOLEAN
+  /\ storeBeforeLoad' \in BOOLEAN
   /\ unresolvedStore' \in BOOLEAN
   /\ storeAddr' \in AddrSet
   /\ loadAddr' \in AddrSet
   /\ specExec' \in BOOLEAN
-  /\ ((ssbs' = TRUE /\ unresolvedStore' = TRUE /\ storeAddr' = loadAddr') => (specExec' = FALSE))
+  /\ ((ssbs' = TRUE /\ storeBeforeLoad' = TRUE /\ unresolvedStore' = TRUE /\ storeAddr' = loadAddr')
+      => (specExec' = FALSE))
 
-Spec == Init /\ [][Next]_<<ssbs, unresolvedStore, storeAddr, loadAddr, specExec>>
+Spec == Init /\ [][Next]_<<ssbs, storeBeforeLoad, unresolvedStore, storeAddr, loadAddr, specExec>>
 
 THEOREM SSBSOrderingInvariant == Spec => []StoreLoadOrderingSafety
 ===============================================================================================
