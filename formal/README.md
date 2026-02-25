@@ -27,3 +27,18 @@ This directory provides a three-layer assurance design for the OSINT Dispatcher.
 - `Makefile` targets:
   - `make xdp-build` compiles the eBPF program.
   - `make verify-ebpf` runs Kani (preferred) or Control-Flag fallback.
+
+## 5) Branchless Dijkstra Assurance + Static Disassembly
+- Module: `formal/tla/dijkstra_branchless_assurance.tla`
+- Baseline config: `formal/tla/dijkstra_branchless_assurance.cfg`
+- Scenario pack: `formal/tla/scenarios/dijkstra_branchless_assurance_s01.cfg` ... `s60.cfg`
+  - each scenario config sets `NumScenarios = 10000`
+- Static analysis workflow: `formal/tla/STATIC_DISASSEMBLY_ANALYSIS.md`
+- Tooling script: `formal/tla/tools/static_disassembly_check.sh`
+- ARMv9 reference target: `formal/tla/tools/branchless_reduction_arm64_asm.S`
+
+## 6) Armv9-A CCA Confidential Compute Control Formalization
+- Spec document: `formal/armv9_cca_confidential_compute_control_model.md`
+- TLA+ safety models (x4): `formal/tla/armv9_cca/`
+- Coq non-interference proof scaffolds (x14): `formal/coq/armv9_cca/`
+- Focus: FEAT_SSBS + RME mapping, invariants, and ASL/TLA refinement obligations.
