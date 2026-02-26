@@ -341,3 +341,22 @@ This repository now includes:
 - **14 Coq non-interference proof files** under `formal/coq/armv9_cca/`
 
 These files provide mechanically-checkable scaffolding for the invariants and proof obligations above.
+
+---
+
+
+## 10. Manual Alignment Audit Checklist (ARM DDI 0487 cross-check)
+
+Use this checklist to verify generated models are aligned with Armv9-A CCA assumptions and not merely generic barrier semantics:
+
+| Audit Area | Required String | Expected Modeling Behavior |
+| --- | --- | --- |
+| Security State | `SCR_EL3.NSE`, `SCR_EL3.NS` | World-selection logic must switch execution world from these two bits (`Realm`, `NonRealm`, `Secure`). |
+| Speculation Control | `PSTATE.SSBS` | Predicate where `PSTATE.SSBS == 1` prevents speculative load bypass of unresolved prior stores to same address (store-to-load forwarding gate). |
+| Memory Tagging | `GPI` and `GPT` | Every `Load`/`Store` transition must check GPT status (indexed by granule/GPI metadata) before memory access is considered granted. |
+
+Threat-model alignment requirement:
+
+* The Hypervisor must be modeled as a **Non-Realm adversary** (`hypervisorTrusted = FALSE`).
+* Any model that assumes a "trusted hypervisor" is out-of-scope for Arm CCA Realm threat assumptions.
+
