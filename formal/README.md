@@ -64,6 +64,9 @@ This directory provides a three-layer assurance design for the OSINT Dispatcher.
   - wraps `./scripts/install-formal-verification-deps.sh` and captures STDOUT/STDERR
   - on HTTP `403` or `407`, falls back to `LOCAL_ARTIFACT_ROOT`
   - tracks Last Known Good / failed attempts in `deps_manifest.json`
+- Retry behavior:
+  - after an HTTP `403/407` failure, the engine records the failed `network_install` in `deps_manifest.json`
+  - on the next run, if `LOCAL_ARTIFACT_ROOT` is still unset, network retry is skipped and local fallback guidance is shown
 
 ### Next steps
 - Mirror artifacts into an offline folder and set `LOCAL_ARTIFACT_ROOT`:
