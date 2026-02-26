@@ -2,34 +2,35 @@
 EXTENDS Naturals, TLC
 
 CONSTANT AddrSet
-VARIABLES ssbs, storeBeforeLoad, unresolvedStore, storeAddr, loadAddr, specExec
+VARIABLES PSTATE_SSBS, storeBeforeLoad, unresolvedStore, storeAddr, loadAddr, speculativeLoadBypassesStore
 
-\* Invariant 1 (Store-Load Ordering Safety):
-\* (PO(S,L) /\ Addr(S)=Addr(L) /\ unresolved(S) /\ SSBS=1) => ~SpecExec(L)
+\* Speculation Control: PSTATE.SSBS specifically constrains store-to-load forwarding.
+\* If PSTATE.SSBS == 1 and a younger Load targets the same address as an older unresolved Store,
+\* the load must not bypass the store in the microarchitectural forwarding logic.
 StoreLoadOrderingSafety ==
-  (ssbs = TRUE /\ storeBeforeLoad = TRUE /\ unresolvedStore = TRUE /\ storeAddr = loadAddr)
-    => (specExec = FALSE)
+  (PSTATE_SSBS = 1 /\ storeBeforeLoad = TRUE /\ unresolvedStore = TRUE /\ storeAddr = loadAddr)
+    => (speculativeLoadBypassesStore = FALSE)
 
 Init ==
-  /\ ssbs \in BOOLEAN
+  /\ PSTATE_SSBS \in {0, 1}
   /\ storeBeforeLoad \in BOOLEAN
   /\ unresolvedStore \in BOOLEAN
   /\ storeAddr \in AddrSet
   /\ loadAddr \in AddrSet
-  /\ specExec \in BOOLEAN
+  /\ speculativeLoadBypassesStore \in BOOLEAN
   /\ StoreLoadOrderingSafety
 
 Next ==
-  /\ ssbs' \in BOOLEAN
+  /\ PSTATE_SSBS' \in {0, 1}
   /\ storeBeforeLoad' \in BOOLEAN
   /\ unresolvedStore' \in BOOLEAN
   /\ storeAddr' \in AddrSet
   /\ loadAddr' \in AddrSet
-  /\ specExec' \in BOOLEAN
-  /\ ((ssbs' = TRUE /\ storeBeforeLoad' = TRUE /\ unresolvedStore' = TRUE /\ storeAddr' = loadAddr')
-      => (specExec' = FALSE))
+  /\ speculativeLoadBypassesStore' \in BOOLEAN
+  /\ ((PSTATE_SSBS' = 1 /\ storeBeforeLoad' = TRUE /\ unresolvedStore' = TRUE /\ storeAddr' = loadAddr')
+      => (speculativeLoadBypassesStore' = FALSE))
 
-Spec == Init /\ [][Next]_<<ssbs, storeBeforeLoad, unresolvedStore, storeAddr, loadAddr, specExec>>
+Spec == Init /\ [][Next]_<<PSTATE_SSBS, storeBeforeLoad, unresolvedStore, storeAddr, loadAddr, speculativeLoadBypassesStore>>
 
 THEOREM SSBSOrderingInvariant == Spec => []StoreLoadOrderingSafety
 ===============================================================================================
