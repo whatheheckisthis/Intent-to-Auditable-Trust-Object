@@ -78,6 +78,7 @@ structure Granule where
   pa : UInt64
   pas_tag : Domain
   gpt_epoch : Nat
+  deriving DecidableEq
 
 /-- [§1.3] Finite map view of GPT state as address-to-granule bindings. -/
 abbrev GranuleTable : Type := List (UInt64 × Granule)
