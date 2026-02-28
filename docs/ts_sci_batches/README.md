@@ -13,3 +13,7 @@ Each task file includes:
 - acceptance checklist
 - suggested validation commands
 
+
+## Current Operational Procedure
+
+- `01_ts_sci_batch_lifecycle.md` — end-to-end TS/SCI batch handling workflow for IĀTŌ-V7.
