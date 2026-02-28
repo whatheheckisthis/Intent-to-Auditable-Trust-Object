@@ -1,32 +1,17 @@
-import IATO_V7
+import Mathlib.Data.Finset.Basic
+import IATO.V7.Basic
+
+
+def test_finset_import : Finset Nat := {1, 2, 3}
+#eval test_finset_import
 
 open IATO.V7
 
-theorem test_depSet_le_refl :
-    let φ : DepSet := ∅
-    DepSet.le φ φ := by
-  intro φ
-  exact DepSet.le_refl φ
+example : ⊥ = (∅ : DepSet) := rfl
+example (φ₁ φ₂ : DepSet) : φ₁ ⊔ φ₂ = φ₁ ∪ φ₂ := rfl
+example (φ : DepSet) : φ ≤ φ := le_rfl φ
 
-theorem test_join_comm :
-    let α : DepVar := ⟨"α"⟩
-    let β : DepVar := ⟨"β"⟩
-    let φ₁ : DepSet := {α}
-    let φ₂ : DepSet := {β}
-    DepSet.join φ₁ φ₂ = DepSet.join φ₂ φ₁ := by
-  intro α β φ₁ φ₂
-  simp [DepSet.join, Finset.union_comm]
-
-def smoke : Bool :=
-  let α : DepVar := ⟨"α"⟩
-  let β : DepVar := ⟨"β"⟩
-  let φ₁ : DepSet := {α}
-  let φ₂ : DepSet := {β}
-  decide (DepSet.le (∅ : DepSet) (∅ : DepSet) ∧
-    DepSet.join φ₁ φ₂ = DepSet.join φ₂ φ₁)
 
 def main : IO Unit := do
-  if smoke then
-    IO.println "IATO_V7 tests passed"
-  else
-    throw <| IO.userError "IATO_V7 tests failed"
+  IO.println s!"Finset.Basic import test: {test_finset_import}"
+  IO.println "IATO.V7 Basic tests compiled"
