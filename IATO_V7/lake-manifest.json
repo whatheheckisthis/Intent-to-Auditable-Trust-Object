@@ -1,0 +1,11 @@
+{
+  "name": "IATO_V7",
+  "version": "0.1.0",
+  "dependencies": [
+    {
+      "name": "mathlib",
+      "repo": "https://github.com/leanprover-community/mathlib4",
+      "rev": "main"
+    }
+  ]
+}
