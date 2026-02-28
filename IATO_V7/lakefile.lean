@@ -11,6 +11,9 @@ require mathlib from git
 lean_lib «IATO_V7» where
   globs := #[.submodules `IATO]
 
+lean_exe «IATO_V7» where
+  root := `Main
+
 lean_exe «test» where
   root := `Test.Basic
 
@@ -34,13 +37,3 @@ script test do
   if runOut.exitCode != 0 then
     IO.eprintln runOut.stderr
   return runOut.exitCode
-
-script aot do
-  let out ← IO.Process.output {
-    cmd := "lake"
-    args := #["build", "IATO_V7", "test", "cache"]
-  }
-  IO.print out.stdout
-  if out.exitCode != 0 then
-    IO.eprintln out.stderr
-  return out.exitCode

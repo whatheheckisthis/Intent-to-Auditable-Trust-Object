@@ -8,31 +8,28 @@ structure DepVar where
   name : String
   deriving DecidableEq
 
-abbrev DepSet : Type := Finset DepVar
+abbrev DepSet := Finset DepVar
 
-def DepSet.join (φ₁ φ₂ : DepSet) : DepSet := φ₁ ∪ φ₂
-def DepSet.le (φ₁ φ₂ : DepSet) : Prop := φ₁ ⊆ φ₂
-def DepSet.empty : DepSet := ∅
-
+-- Basic order
 instance : LE DepSet := inferInstance
-instance : LT DepSet := inferInstance
 instance : PartialOrder DepSet := inferInstance
+
+-- SemilatticeSup (join)
 instance : Sup DepSet := inferInstance
 instance : SemilatticeSup DepSet := inferInstance
+
+-- OrderBot
 instance : OrderBot DepSet := inferInstance
 
-theorem DepSet.join_eq_sup (φ₁ φ₂ : DepSet) :
-    DepSet.join φ₁ φ₂ = φ₁ ⊔ φ₂ := rfl
+def join (φ₁ φ₂ : DepSet) := φ₁ ⊔ φ₂
 
-theorem DepSet.le_iff_le (φ₁ φ₂ : DepSet) :
-    DepSet.le φ₁ φ₂ ↔ φ₁ ≤ φ₂ := Iff.rfl
-
-theorem DepSet.empty_eq_bot : DepSet.empty = ⊥ := rfl
-
-theorem DepSet.le_refl (φ : DepSet) : DepSet.le φ φ := by simp [DepSet.le]
-
-theorem DepSet.le_trans (φ₁ φ₂ φ₃ : DepSet) :
-    DepSet.le φ₁ φ₂ → DepSet.le φ₂ φ₃ → DepSet.le φ₁ φ₃ := by
-  simp [DepSet.le]; exact subset_trans
+theorem join_eq_union (φ₁ φ₂ : DepSet) : join φ₁ φ₂ = φ₁ ∪ φ₂ := rfl
 
 end IATO.V7
+
+open IATO.V7
+
+example : ⊥ = (∅ : DepSet) := rfl
+example (φ₁ φ₂ : DepSet) : φ₁ ⊔ φ₂ = φ₁ ∪ φ₂ := rfl
+example (φ : DepSet) : φ ≤ φ := le_rfl φ
+example (φ : DepSet) : φ ≤ φ := by decide
