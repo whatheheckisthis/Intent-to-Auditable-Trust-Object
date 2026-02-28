@@ -14,26 +14,42 @@ lean_lib «IATO_V7» where
 lean_exe «IATO_V7» where
   root := `Main
 
-lean_exe «test» where
+lean_exe «worker-scan» where
+  root := `Main
+
+lean_exe «test-basic» where
   root := `Test.Basic
+
+lean_exe «test-worker» where
+  root := `Test.Worker
 
 lean_exe «cache» where
   root := `Cache
 
 script test do
-  let out ← IO.Process.output {
+  let buildOut ← IO.Process.output {
     cmd := "lake"
-    args := # ["build", "test"]
+    args := # ["build", "test-basic", "test-worker"]
   }
-  IO.print out.stdout
-  if out.exitCode != 0 then
-    IO.eprintln out.stderr
-    return out.exitCode
-  let runOut ← IO.Process.output {
+  IO.print buildOut.stdout
+  if buildOut.exitCode != 0 then
+    IO.eprintln buildOut.stderr
+    return buildOut.exitCode
+
+  let runBasic ← IO.Process.output {
     cmd := "lake"
-    args := #["exe", "test"]
+    args := #["exe", "test-basic"]
   }
-  IO.print runOut.stdout
-  if runOut.exitCode != 0 then
-    IO.eprintln runOut.stderr
-  return runOut.exitCode
+  IO.print runBasic.stdout
+  if runBasic.exitCode != 0 then
+    IO.eprintln runBasic.stderr
+    return runBasic.exitCode
+
+  let runWorker ← IO.Process.output {
+    cmd := "lake"
+    args := #["exe", "test-worker"]
+  }
+  IO.print runWorker.stdout
+  if runWorker.exitCode != 0 then
+    IO.eprintln runWorker.stderr
+  return runWorker.exitCode
