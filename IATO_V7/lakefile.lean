@@ -23,13 +23,16 @@ lean_exe «test-basic» where
 lean_exe «test-worker» where
   root := `Test.Worker
 
+lean_exe «test-rme» where
+  root := `Test.RME
+
 lean_exe «cache» where
   root := `Cache
 
 script test do
   let buildOut ← IO.Process.output {
     cmd := "lake"
-    args := # ["build", "test-basic", "test-worker"]
+    args := # ["build", "test-basic", "test-worker", "test-rme"]
   }
   IO.print buildOut.stdout
   if buildOut.exitCode != 0 then
@@ -52,4 +55,13 @@ script test do
   IO.print runWorker.stdout
   if runWorker.exitCode != 0 then
     IO.eprintln runWorker.stderr
-  return runWorker.exitCode
+    return runWorker.exitCode
+
+  let runRme ← IO.Process.output {
+    cmd := "lake"
+    args := #["exe", "test-rme"]
+  }
+  IO.print runRme.stdout
+  if runRme.exitCode != 0 then
+    IO.eprintln runRme.stderr
+  return runRme.exitCode
