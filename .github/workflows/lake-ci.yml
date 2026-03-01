@@ -3,17 +3,17 @@ name: lake-ci
 on:
   push:
     paths:
-      - 'IATO_V7/**'
+      - 'lean/iato_v7/**'
   pull_request:
     paths:
-      - 'IATO_V7/**'
+      - 'lean/iato_v7/**'
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: IATO_V7
+        working-directory: lean/iato_v7
     steps:
       - uses: actions/checkout@v4
       - uses: leanprover/lean-action@v1
