@@ -16,5 +16,5 @@ Example:
 ./scripts/setup_worker.sh worker3 rme alpha|beta
 ```
 
-This creates `workers/new/<worker_id>/worker.json`.
+This creates `workers/modern/<worker_id>/worker.json`.
 
