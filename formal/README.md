@@ -31,8 +31,8 @@ This directory provides a three-layer assurance design for the OSINT Dispatcher.
 ## 5) Branchless Dijkstra Assurance + Static Disassembly
 - Module: `formal/tla/dijkstra_branchless_assurance.tla`
 - Baseline config: `formal/tla/dijkstra_branchless_assurance.cfg`
-- Scenario pack: `formal/tla/scenarios/dijkstra_branchless_assurance_s01.cfg` ... `s60.cfg`
-  - each scenario config sets `NumScenarios = 10000`
+- Scenario pack under `formal/tla/scenarios/` was purged during repository cleanup.
+  - use `formal/tla/dijkstra_branchless_assurance.cfg` as the retained baseline config.
 - Static analysis workflow: `formal/tla/STATIC_DISASSEMBLY_ANALYSIS.md`
 - Tooling script: `formal/tla/tools/static_disassembly_check.sh`
 - ARMv9 reference target: `formal/tla/tools/branchless_reduction_arm64_asm.S`

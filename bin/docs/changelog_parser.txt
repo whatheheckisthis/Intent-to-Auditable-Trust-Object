@@ -1,1 +1,0 @@
-Legacy shim. Use: bash changelog/scripts/changelog_parser.sh [CHANGELOG_FILE] [OUTPUT_FILE]
