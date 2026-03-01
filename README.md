@@ -64,7 +64,17 @@ docs/ARCHITECTURE.md
   docs/WORKER_COMPAT.md  # Audit and implementation narrative
 ```
 
-## Compliance Commands
+### Developer Environment Bootstrap
+
+```bash
+# Install/update DOTNET + Lean/Lake and emit .env.iato
+./scripts/setup-lake-dotnet-env.sh
+
+# Load environment variables for subsequent commands
+source ./.env.iato
+```
+
+# Compliance Commands
 
 ```bash
 # Essential 8 ML4 and AISEP: validate formal model and tests
