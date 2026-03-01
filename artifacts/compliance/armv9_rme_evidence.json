@@ -1,0 +1,52 @@
+{
+  "generated_at": "2026-03-01T02:21:45.196470+00:00",
+  "git_commit": "d32ecab6e5df56ca3d6f0d665d9be2616aaed544",
+  "schema_version": "1.1",
+  "evidence": [
+    {
+      "framework": "ARM CCA / RME",
+      "control_id": "RMI_DATA_CREATE_AUTHZ",
+      "requirement": "Data granules can only be created for active realms from delegated granules.",
+      "model_element": "step / RmiCall.DataCreate",
+      "proof_reference": "wf_dataCreate",
+      "source_file": "IATO_V7/IATO/V7/RMEModel.lean",
+      "status": "satisfied"
+    },
+    {
+      "framework": "ARM CCA / RME",
+      "control_id": "RMI_REALM_DESTROY_SCRUB",
+      "requirement": "Realm destroy invalidates realm-owned/data granules.",
+      "model_element": "realmDestroyGranule",
+      "proof_reference": "realmDestroy_no_data_owner",
+      "source_file": "IATO_V7/IATO/V7/RMEModel.lean",
+      "status": "satisfied"
+    },
+    {
+      "framework": "ARM CCA / RME",
+      "control_id": "RMI_TRACE_INVARIANT",
+      "requirement": "Well-formedness is preserved across arbitrary RMI traces.",
+      "model_element": "execTrace",
+      "proof_reference": "wf_execTrace",
+      "source_file": "IATO_V7/IATO/V7/RMEModel.lean",
+      "status": "satisfied"
+    },
+    {
+      "framework": "SOC2",
+      "control_id": "CC6.1",
+      "requirement": "Logical access and privilege boundaries are enforced.",
+      "model_element": "RmeState.wf",
+      "proof_reference": "wf_step",
+      "source_file": "IATO_V7/IATO/V7/RMEModel.lean",
+      "status": "satisfied"
+    },
+    {
+      "framework": "ISM",
+      "control_id": "0460",
+      "requirement": "Privileged domain separation controls are verifiable.",
+      "model_element": "GranuleState + RmiCall",
+      "proof_reference": "IATO.V7.RMEModel",
+      "source_file": "IATO_V7/IATO/V7/RMEModel.lean",
+      "status": "satisfied"
+    }
+  ]
+}
