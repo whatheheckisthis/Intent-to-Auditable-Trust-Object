@@ -73,6 +73,9 @@ cd IATO_V7 && lake test
 # SOC2 CC6.6 / PI1.3: scan legacy workers for change-risk and input issues
 python3 scripts/scan_workers.py data/legacy_workers.csv
 
+# Setup a new worker scaffold for migration planning
+./scripts/setup_worker.sh worker3 rme alpha|beta
+
 # ISM 0457-0460: run migration workflow for FEAT_RME alignment
 ./scripts/migrate.sh
 
