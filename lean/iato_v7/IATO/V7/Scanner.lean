@@ -1,3 +1,10 @@
+/-!
+`Scanner.lean` — Dependency/conflict detection.
+
+Parses legacy worker records, normalizes fields, and computes compatibility
+reports against a secure reference worker profile.
+-/
+
 import IATO.V7.Worker
 
 namespace IATO.V7

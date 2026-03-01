@@ -9,7 +9,7 @@ require mathlib from git
 
 @[default_target]
 lean_lib IATO where
-  globs := #[.submodules `IATO]
+  globs := #[.submodules `Legacy]
 
 lean_exe tests where
-  root := `Test.Basic
+  root := `Legacy.Test.Basic

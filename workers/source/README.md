@@ -1,3 +1,5 @@
-# Legacy Workers
+# workers/source
 
-Original worker artifacts and references belong here.
+Legacy worker examples and source manifests used as migration input.
+
+Place pre-IATO worker definitions here before running compatibility scans.

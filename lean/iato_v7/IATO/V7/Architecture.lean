@@ -1,3 +1,10 @@
+/-!
+`Architecture.lean` — System invariants aligned to SOC2 and ISM.
+
+Assembles reference workers and proves pairwise compatibility invariants that
+support governance, integrity, and isolation assurance goals.
+-/
+
 import IATO.V7.Scanner
 
 namespace IATO.V7

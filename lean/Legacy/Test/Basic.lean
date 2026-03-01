@@ -1,4 +1,4 @@
-import IATO.V7.Basic
+import Legacy.IATO.V7.Basic
 
 open IATO.V7
 
