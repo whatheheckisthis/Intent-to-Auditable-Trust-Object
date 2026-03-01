@@ -24,7 +24,7 @@ if [[ ! "$worker_id" =~ ^[a-zA-Z0-9._-]+$ ]]; then
 fi
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-worker_dir="$repo_root/workers/modern/$worker_id"
+worker_dir="$repo_root/workers/target/$worker_id"
 worker_file="$worker_dir/worker.json"
 
 mkdir -p "$worker_dir"
