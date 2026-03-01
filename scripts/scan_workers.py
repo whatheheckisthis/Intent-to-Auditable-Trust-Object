@@ -11,7 +11,7 @@ def main() -> int:
         return 1
 
     src = Path(sys.argv[1])
-    out = Path("workers/compatibility/scan_report.json")
+    out = Path("workers/reports/scan_report.json")
 
     rows = []
     if src.exists():

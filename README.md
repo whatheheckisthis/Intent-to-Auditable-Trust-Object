@@ -58,7 +58,9 @@ lean/iato_v7/IATO/V7/
   Scanner.lean       # Dependency/conflict detection
   Architecture.lean  # System invariants aligned to SOC2 and ISM
 
-workers/compatibility/   # Migration inputs and outputs
+workers/source/    # Legacy worker examples and source manifests
+workers/target/    # FEAT_RME-aligned generated worker manifests
+workers/reports/   # Compatibility scan reports and migration outputs
 
 docs/ARCHITECTURE.md
   docs/WORKER_COMPAT.md  # Audit and implementation narrative
@@ -91,6 +93,18 @@ SOC2:             60% (6/10 controls)
 ISM 0457-0460:   100% (4/4 controls)
 AISEP:            50% (5/10 proof objectives)
 ```
+
+## Architecture Non-Goals
+
+To keep scope explicit, the architecture defines non-goals **NG-001** through **NG-005**:
+
+- **NG-001**: Not a replacement for a full organizational SDLC/security program.
+- **NG-002**: Not a guarantee of complete runtime hardening in every environment.
+- **NG-003**: Not full formal verification of all third-party or external system behavior.
+- **NG-004**: Not an automatic compliance attestation without organization-specific controls/evidence.
+- **NG-005**: Not a claim of certification, endorsement, or affiliation with **Common Criteria**.
+
+IATO-V7 makes **no assertion of affiliation with Common Criteria**.
 
 ## Audit Readiness
 
