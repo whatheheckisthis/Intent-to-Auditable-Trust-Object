@@ -1,0 +1,2 @@
+# Auto-merge README updates by concatenating both sides to reduce false conflicts.
+README.md merge=union

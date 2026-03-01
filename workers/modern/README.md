@@ -18,3 +18,8 @@ Example:
 
 This creates `workers/modern/<worker_id>/worker.json`.
 
+## Predefined producer worker
+
+`workers/modern/readme_conflict_producer/worker.json` defines a producer worker that marks `README.md`
+changes as non-blocking by using the Git union merge policy (`README.md merge=union`).
+This worker explicitly does not require environment variables.
