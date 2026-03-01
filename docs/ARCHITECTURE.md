@@ -15,5 +15,5 @@ FEAT_RME Axioms ────────────┘
 ```text
 legacy_workers.csv ──[scan]──> compatibility/scan_report.json
                                       ↓
-                               [migrate] ──> workers/new/
+                               [migrate] ──> workers/modern/
 ```

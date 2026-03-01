@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-mkdir -p workers/new
-cp -n data/reference.json workers/new/reference.json || true
+mkdir -p workers/modern
+cp -n data/reference.json workers/modern/reference.json || true
 echo "Migration scaffold complete"
