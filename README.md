@@ -2,7 +2,7 @@
 
 Formal verification bridge from legacy workers to a compliance-ready FEAT_RME multi-world architecture.
 
-[![Build](https://img.shields.io/badge/build-passing-brightgreen)](IATO_V7/lakefile.lean)
+[![Build](https://img.shields.io/badge/build-passing-brightgreen)](lean/iato_v7/lakefile.lean)
 [![Essential%208](https://img.shields.io/badge/Essential%208-ML4-blue)](docs/cyber-risk-controls.md)
 [![SOC2](https://img.shields.io/badge/SOC2-CC6.1%20%7C%20CC6.6-orange)](docs/ARCHITECTURE.md)
 [![ISM](https://img.shields.io/badge/ISM-0457--0460-green)](docs/threat-model.md)
@@ -31,11 +31,11 @@ Core capabilities:
 
 | Capability | Compliance Mapping | Evidence Surface |
 |---|---|---|
-| Worker compatibility proofing | Essential 8 ML4; SOC2 `CC6.1`; AISEP isolation assurance | `IATO_V7/IATO/V7/Worker.lean` |
-| Legacy conflict scanning | SOC2 `CC6.6`; SOC2 `PI1.3`; Essential 8 application control | `IATO_V7/IATO/V7/Scanner.lean` and scanner outputs |
+| Worker compatibility proofing | Essential 8 ML4; SOC2 `CC6.1`; AISEP isolation assurance | `lean/iato_v7/IATO/V7/Worker.lean` |
+| Legacy conflict scanning | SOC2 `CC6.6`; SOC2 `PI1.3`; Essential 8 application control | `lean/iato_v7/IATO/V7/Scanner.lean` and scanner outputs |
 | FEAT_RME migration planning | ISM `0457`, `0458`, `0460`; SOC2 change management | `scripts/migrate.sh` and architecture documentation |
 | Privileged workflow hardening | ISM `0458`, `0459`; SOC2 `CC6.1` | Threat model and operational control procedures |
-| Architecture invariants | AISEP objectives; EAL7+ readiness support | `IATO_V7/IATO/V7/Architecture.lean` |
+| Architecture invariants | AISEP objectives; EAL7+ readiness support | `lean/iato_v7/IATO/V7/Architecture.lean` |
 
 ## Essential 8 Maturity Level 4 Focus
 
@@ -52,7 +52,7 @@ IATO-V7 automation focus:
 ## Verified Architecture
 
 ```text
-IATO_V7/IATO/V7/
+lean/iato_v7/IATO/V7/
   Basic.lean         # Lattice and security foundations
   Worker.lean        # Worker-domain non-interference
   Scanner.lean       # Dependency/conflict detection
@@ -68,7 +68,7 @@ docs/ARCHITECTURE.md
 
 ```bash
 # Essential 8 ML4 and AISEP: validate formal model and tests
-cd IATO_V7 && lake test
+cd lean/iato_v7 && lake test
 
 # SOC2 CC6.6 / PI1.3: scan legacy workers for change-risk and input issues
 python3 scripts/scan_workers.py data/legacy_workers.csv

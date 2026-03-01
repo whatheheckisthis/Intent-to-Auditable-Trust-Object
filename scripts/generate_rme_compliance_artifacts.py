@@ -66,7 +66,7 @@ def to_markdown(rows: list[ControlEvidence], generated_at: str) -> str:
             f"`{row.model_element}` | `{row.proof_reference}` | {row.status} |"
         )
     lines.append("")
-    lines.append("Evidence source: `IATO_V7/IATO/V7/RMEModel.lean`.")
+    lines.append("Evidence source: `lean/iato_v7/IATO/V7/RMEModel.lean`.")
     return "\n".join(lines)
 
 

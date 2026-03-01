@@ -9,4 +9,4 @@ Generated at: `2026-03-01T00:55:17.435149+00:00`
 | SOC2 | CC6.1 | Logical access and privilege boundaries are enforced. | `RmeState.wf` | `wf_step` | satisfied |
 | ISM | 0460 | Privileged domain separation controls are verifiable. | `GranuleState + RmiCall` | `IATO.V7.RMEModel` | satisfied |
 
-Evidence source: `IATO_V7/IATO/V7/RMEModel.lean`.
+Evidence source: `lean/iato_v7/IATO/V7/RMEModel.lean`.

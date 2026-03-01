@@ -82,8 +82,8 @@ This directory provides a three-layer assurance design for the OSINT Dispatcher.
   - `coqc --version`
 
 ## 9) Lean4/mathlib ARMv9-A RME Security Model + Compliance Artifact Generation
-- Lean model: `IATO_V7/IATO/V7/RMEModel.lean`
-- Lean tests: `IATO_V7/Test/RME.lean`
+- Lean model: `lean/iato_v7/IATO/V7/RMEModel.lean`
+- Lean tests: `lean/iato_v7/Test/RME.lean`
 - Compliance generator: `scripts/generate_rme_compliance_artifacts.py`
 - Generated artifacts:
   - `artifacts/compliance/armv9_rme_evidence.json`
