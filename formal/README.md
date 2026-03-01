@@ -56,6 +56,7 @@ This directory provides a three-layer assurance design for the OSINT Dispatcher.
 
 ## 8) Dependency Management Engine (HTTP 403/407 fallback)
 - Script: `scripts/formal_deps_engine.py`
+- PR conflict preflight helper: `scripts/pr_conflict_preflight.sh`
 - Commands:
   - `python3 scripts/formal_deps_engine.py status`
   - `python3 scripts/formal_deps_engine.py install`
