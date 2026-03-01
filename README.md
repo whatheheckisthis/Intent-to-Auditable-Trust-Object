@@ -6,7 +6,7 @@ Formal verification bridge from legacy workers to a compliance-ready FEAT_RME mu
 [![Essential%208](https://img.shields.io/badge/Essential%208-ML4-blue)](docs/cyber-risk-controls.md)
 [![SOC2](https://img.shields.io/badge/SOC2-CC6.1%20%7C%20CC6.6-orange)](docs/ARCHITECTURE.md)
 [![ISM](https://img.shields.io/badge/ISM-0457--0460-green)](docs/threat-model.md)
-[![AISEP](https://img.shields.io/badge/AISEP-Verification-purple)](formal/README.md)
+
 
 ## Executive Summary
 
@@ -25,7 +25,7 @@ Core capabilities:
 | Essential 8 (ML4) | Privilege separation, application control, patch governance | Worker isolation proofs and compatibility scanning |
 | SOC2 TSC | `CC6.1`, `CC6.6`, `A1.2`, `PI1.3` | Access/control enforcement and change evidence workflows |
 | ISM (ASD) | `0457`-`0460` privileged boundary and application control requirements | Administrative separation and migration control workflows |
-| AISEP | AI worker verification and isolation assurance | Mechanized non-interference and conflict-detection evidence |
+
 
 ## Capability to Control Mapping
 
@@ -91,12 +91,11 @@ python3 scripts/scan_workers.py data/legacy_workers.csv
 Essential 8 ML4:  80% (8/10 controls)
 SOC2:             60% (6/10 controls)
 ISM 0457-0460:   100% (4/4 controls)
-AISEP:            50% (5/10 proof objectives)
 ```
 
 ## Architecture Non-Goals
 
-To keep scope explicit, the architecture defines non-goals **NG-001** through **NG-005**:
+To keep the scope explicit, the architecture defines non-goals **NG-001** through **NG-005**:
 
 - **NG-001**: Not a replacement for a full organizational SDLC/security program.
 - **NG-002**: Not a guarantee of complete runtime hardening in every environment.
