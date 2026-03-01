@@ -1,5 +1,20 @@
 # IATO-V7 Architecture
 
+## Repository Layout (Restructured)
+
+```text
+lean/       # Lean 4 formal models and executable tests
+docs/       # architecture and notebook documentation
+workers/    # legacy/new worker implementations
+scripts/    # automation and tooling helpers
+data/       # static data manifests and reference files
+
+Key internal paths:
+  - lean/iato_v7/IATO/V7/
+  - docs/notebooks/
+  - workers/{source,target,reports}/
+```
+
 ## Formal Verification Layers
 
 ```text
@@ -18,6 +33,12 @@ legacy_workers.csv ──[scan]──> workers/reports/scan_report.json
                                [migrate] ──> workers/target/
 ```
 
+## Control Mapping (SOC 2 + ISM)
+
+- **Least privilege / segregation of duties**: domain-separated workers with explicit dependency sets.
+- **Change management**: legacy workers are scanned, normalized, and migrated with reportable outcomes.
+- **Integrity and traceability**: target manifests are deterministic artifacts suitable for audit evidence.
+- **Configuration governance**: architecture invariants in Lean enforce compositional compatibility constraints.
 
 ## Architecture Non-Goals
 

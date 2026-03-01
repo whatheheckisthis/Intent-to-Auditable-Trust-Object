@@ -1,3 +1,10 @@
+/-!
+`Worker.lean` — Worker-domain non-interference.
+
+Defines worker/domain structures and composition/compatibility relations used to
+state separation properties between execution domains.
+-/
+
 import IATO.V7.Basic
 
 namespace IATO.V7

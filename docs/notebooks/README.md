@@ -3,13 +3,13 @@
 This directory provides a three-layer assurance design for the OSINT Dispatcher.
 
 ## 1) Structural Modeling (Alloy)
-- Module: `formal/alloy/osint_dispatcher_command_mapping.als`
+- Module: `docs/notebooks/alloy/osint_dispatcher_command_mapping.als`
 - Proves:
   - Command-token to memory-address mapping is injective (no aliasing).
   - Every `Signature` has `signedBy = TEEEnclave`.
 
 ## 2) Behavioral Verification (TLA+)
-- Module: `formal/tla/osint_dispatcher_rest_logging.tla`
+- Module: `docs/notebooks/tla/osint_dispatcher_rest_logging.tla`
 - Models command execution and RESTful logging states.
 - Liveness property (`NoSilentFailure`):
   - if command executes, eventually log transmitted OR state transitions to `Error`.
@@ -17,7 +17,7 @@ This directory provides a three-layer assurance design for the OSINT Dispatcher.
   - transmitted logs are always Ed25519-signed.
 
 ## 3) Kernel Enforcement (eBPF/XDP)
-- Program: `formal/ebpf/osint_dispatcher_xdp_firewall.c`
+- Program: `docs/notebooks/ebpf/osint_dispatcher_xdp_firewall.c`
 - Enforces packet policy at XDP ingress:
   - traffic bound to `LOG_ENDPOINT_IP:LOG_ENDPOINT_PORT` must include
     `X-TEE-Security-Tag: TEE_ATTESTED` in payload.
@@ -29,18 +29,18 @@ This directory provides a three-layer assurance design for the OSINT Dispatcher.
   - `make verify-ebpf` runs Kani (preferred) or Control-Flag fallback.
 
 ## 5) Branchless Dijkstra Assurance + Static Disassembly
-- Module: `formal/tla/dijkstra_branchless_assurance.tla`
-- Baseline config: `formal/tla/dijkstra_branchless_assurance.cfg`
-- Scenario pack under `formal/tla/scenarios/` was purged during repository cleanup.
-  - use `formal/tla/dijkstra_branchless_assurance.cfg` as the retained baseline config.
-- Static analysis workflow: `formal/tla/STATIC_DISASSEMBLY_ANALYSIS.md`
-- Tooling script: `formal/tla/tools/static_disassembly_check.sh`
-- ARMv9 reference target: `formal/tla/tools/branchless_reduction_arm64_asm.S`
+- Module: `docs/notebooks/tla/dijkstra_branchless_assurance.tla`
+- Baseline config: `docs/notebooks/tla/dijkstra_branchless_assurance.cfg`
+- Scenario pack under `docs/notebooks/tla/scenarios/` was purged during repository cleanup.
+  - use `docs/notebooks/tla/dijkstra_branchless_assurance.cfg` as the retained baseline config.
+- Static analysis workflow: `docs/notebooks/tla/STATIC_DISASSEMBLY_ANALYSIS.md`
+- Tooling script: `docs/notebooks/tla/tools/static_disassembly_check.sh`
+- ARMv9 reference target: `docs/notebooks/tla/tools/branchless_reduction_arm64_asm.S`
 
 ## 6) Armv9-A CCA Confidential Compute Control Formalization
-- Spec document: `formal/armv9_cca_confidential_compute_control_model.md`
-- TLA+ safety models (x4): `formal/tla/armv9_cca/`
-- Coq non-interference proof scaffolds (x14): `formal/coq/armv9_cca/`
+- Spec document: `docs/notebooks/armv9_cca_confidential_compute_control_model.md`
+- TLA+ safety models (x4): `docs/notebooks/tla/armv9_cca/`
+- Coq non-interference proof scaffolds (x14): `docs/notebooks/coq/armv9_cca/`
 - Focus: FEAT_SSBS + RME mapping, invariants, and ASL/TLA refinement obligations.
 
 
@@ -86,7 +86,7 @@ This directory provides a three-layer assurance design for the OSINT Dispatcher.
 - Lean tests: `lean/iato_v7/Test/RME.lean`
 - Compliance generator: `scripts/generate_rme_compliance_artifacts.py`
 - Generated artifacts:
-  - `artifacts/compliance/armv9_rme_evidence.json`
-  - `artifacts/compliance/armv9_rme_evidence.md`
+  - `data/artifacts/compliance/armv9_rme_evidence.json`
+  - `data/artifacts/compliance/armv9_rme_evidence.md`
 - Run:
   - `python3 scripts/generate_rme_compliance_artifacts.py`

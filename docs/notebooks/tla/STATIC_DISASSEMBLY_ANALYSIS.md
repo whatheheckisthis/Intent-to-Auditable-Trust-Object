@@ -13,17 +13,17 @@ This document addresses risk (1) with a reproducible static disassembly workflow
 
 ## Scenario corpus (archive status)
 
-The previous 60-file scenario corpus under `formal/tla/scenarios/` was purged as part of repository cleanup. Use the retained baseline config `formal/tla/dijkstra_branchless_assurance.cfg` for reproducible checks.
+The previous 60-file scenario corpus under `docs/notebooks/tla/scenarios/` was purged as part of repository cleanup. Use the retained baseline config `docs/notebooks/tla/dijkstra_branchless_assurance.cfg` for reproducible checks.
 
 ## Disassembly procedure
 
-Use `formal/tla/tools/static_disassembly_check.sh` with a branchless target function.
+Use `docs/notebooks/tla/tools/static_disassembly_check.sh` with a branchless target function.
 
 ### Example (x86_64 host)
 
 ```bash
-formal/tla/tools/static_disassembly_check.sh \
-  formal/tla/tools/branchless_reduction_sample.c \
+docs/notebooks/tla/tools/static_disassembly_check.sh \
+  docs/notebooks/tla/tools/branchless_reduction_sample.c \
   branchless_reduce \
   x86_64 \
   cc
@@ -32,8 +32,8 @@ formal/tla/tools/static_disassembly_check.sh \
 ### Example (AArch64 cross toolchain)
 
 ```bash
-formal/tla/tools/static_disassembly_check.sh \
-  formal/tla/tools/branchless_reduction_sample.c \
+docs/notebooks/tla/tools/static_disassembly_check.sh \
+  docs/notebooks/tla/tools/branchless_reduction_sample.c \
   branchless_reduce \
   arm64 \
   aarch64-linux-gnu-gcc
@@ -78,4 +78,4 @@ path_taken = constant   →   No B.xx / CBZ / CBNZ in instruction sequence
 ```
 
 A reference AArch64 assembly target following this sequence is provided at
-`formal/tla/tools/branchless_reduction_arm64_asm.S` for downstream disassembly checks.
+`docs/notebooks/tla/tools/branchless_reduction_arm64_asm.S` for downstream disassembly checks.

@@ -1,3 +1,10 @@
+/-!
+`Basic.lean` — Lattice and security foundations.
+
+Defines dependency variables, dependency sets, and the bounded semilattice
+operations used throughout the IATO-V7 worker compatibility model.
+-/
+
 import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Finset.Lattice.Basic
 import Mathlib.Order.BoundedOrder

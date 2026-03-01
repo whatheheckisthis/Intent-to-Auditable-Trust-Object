@@ -72,7 +72,7 @@ def to_markdown(rows: list[ControlEvidence], generated_at: str) -> str:
 
 def main() -> None:
     now = datetime.now(timezone.utc).isoformat()
-    out_dir = Path("artifacts/compliance")
+    out_dir = Path("data/artifacts/compliance")
     out_dir.mkdir(parents=True, exist_ok=True)
 
     json_out = out_dir / "armv9_rme_evidence.json"

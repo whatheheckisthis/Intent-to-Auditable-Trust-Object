@@ -1,6 +1,6 @@
-# New Workers
+# workers/target
 
-IATO-V7-compatible worker outputs are written here.
+FEAT_RME-aligned generated worker manifests.
 
 ## Setup a new worker
 

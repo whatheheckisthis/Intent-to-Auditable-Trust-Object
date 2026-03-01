@@ -337,8 +337,8 @@ This establishes a hardware-enforced non-interference guarantee across speculati
 
 This repository now includes:
 
-- **4 TLA+ safety models** under `formal/tla/armv9_cca/`
-- **14 Coq non-interference proof files** under `formal/coq/armv9_cca/`
+- **4 TLA+ safety models** under `docs/notebooks/tla/armv9_cca/`
+- **14 Coq non-interference proof files** under `docs/notebooks/coq/armv9_cca/`
 
 These files provide mechanically-checkable scaffolding for the invariants and proof obligations above.
 
