@@ -1,8 +1,9 @@
 # Documentation
 
-This directory contains architecture writeups, operational docs, and formal-method notebooks.
+Lean-first documentation retained for IATO-V7:
 
-## Key sections
-- `ARCHITECTURE.md`: top-level structure overview.
-- `PAPERWORK/`: static papers/specification PDFs.
-- `notebooks/`: analysis and proof notebooks migrated from repository root.
+- `ARCHITECTURE.md` — top-level formal verification and migration structure.
+- `WORKER_COMPAT.md` — worker compatibility and migration guidance.
+- `cyber-risk-controls.md` — control mapping narrative.
+- `threat-model.md` — threat assumptions and mitigations.
+- `index.md` — quick index of retained docs.

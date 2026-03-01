@@ -11,70 +11,9 @@ The TLA+ model proves algorithm-level path determinism, but two residual risks r
 
 This document addresses risk (1) with a reproducible static disassembly workflow that inspects **hex + mnemonic** output for forbidden instructions.
 
-## Scenario corpus (60 files, each with `NumScenarios = 10000`)
+## Scenario corpus (archive status)
 
-All files are under `formal/tla/scenarios/`:
-
-- `dijkstra_branchless_assurance_s01.cfg`
-- `dijkstra_branchless_assurance_s02.cfg`
-- `dijkstra_branchless_assurance_s03.cfg`
-- `dijkstra_branchless_assurance_s04.cfg`
-- `dijkstra_branchless_assurance_s05.cfg`
-- `dijkstra_branchless_assurance_s06.cfg`
-- `dijkstra_branchless_assurance_s07.cfg`
-- `dijkstra_branchless_assurance_s08.cfg`
-- `dijkstra_branchless_assurance_s09.cfg`
-- `dijkstra_branchless_assurance_s10.cfg`
-- `dijkstra_branchless_assurance_s11.cfg`
-- `dijkstra_branchless_assurance_s12.cfg`
-- `dijkstra_branchless_assurance_s13.cfg`
-- `dijkstra_branchless_assurance_s14.cfg`
-- `dijkstra_branchless_assurance_s15.cfg`
-- `dijkstra_branchless_assurance_s16.cfg`
-- `dijkstra_branchless_assurance_s17.cfg`
-- `dijkstra_branchless_assurance_s18.cfg`
-- `dijkstra_branchless_assurance_s19.cfg`
-- `dijkstra_branchless_assurance_s20.cfg`
-- `dijkstra_branchless_assurance_s21.cfg`
-- `dijkstra_branchless_assurance_s22.cfg`
-- `dijkstra_branchless_assurance_s23.cfg`
-- `dijkstra_branchless_assurance_s24.cfg`
-- `dijkstra_branchless_assurance_s25.cfg`
-- `dijkstra_branchless_assurance_s26.cfg`
-- `dijkstra_branchless_assurance_s27.cfg`
-- `dijkstra_branchless_assurance_s28.cfg`
-- `dijkstra_branchless_assurance_s29.cfg`
-- `dijkstra_branchless_assurance_s30.cfg`
-- `dijkstra_branchless_assurance_s31.cfg`
-- `dijkstra_branchless_assurance_s32.cfg`
-- `dijkstra_branchless_assurance_s33.cfg`
-- `dijkstra_branchless_assurance_s34.cfg`
-- `dijkstra_branchless_assurance_s35.cfg`
-- `dijkstra_branchless_assurance_s36.cfg`
-- `dijkstra_branchless_assurance_s37.cfg`
-- `dijkstra_branchless_assurance_s38.cfg`
-- `dijkstra_branchless_assurance_s39.cfg`
-- `dijkstra_branchless_assurance_s40.cfg`
-- `dijkstra_branchless_assurance_s41.cfg`
-- `dijkstra_branchless_assurance_s42.cfg`
-- `dijkstra_branchless_assurance_s43.cfg`
-- `dijkstra_branchless_assurance_s44.cfg`
-- `dijkstra_branchless_assurance_s45.cfg`
-- `dijkstra_branchless_assurance_s46.cfg`
-- `dijkstra_branchless_assurance_s47.cfg`
-- `dijkstra_branchless_assurance_s48.cfg`
-- `dijkstra_branchless_assurance_s49.cfg`
-- `dijkstra_branchless_assurance_s50.cfg`
-- `dijkstra_branchless_assurance_s51.cfg`
-- `dijkstra_branchless_assurance_s52.cfg`
-- `dijkstra_branchless_assurance_s53.cfg`
-- `dijkstra_branchless_assurance_s54.cfg`
-- `dijkstra_branchless_assurance_s55.cfg`
-- `dijkstra_branchless_assurance_s56.cfg`
-- `dijkstra_branchless_assurance_s57.cfg`
-- `dijkstra_branchless_assurance_s58.cfg`
-- `dijkstra_branchless_assurance_s59.cfg`
-- `dijkstra_branchless_assurance_s60.cfg`
+The previous 60-file scenario corpus under `formal/tla/scenarios/` was purged as part of repository cleanup. Use the retained baseline config `formal/tla/dijkstra_branchless_assurance.cfg` for reproducible checks.
 
 ## Disassembly procedure
 
