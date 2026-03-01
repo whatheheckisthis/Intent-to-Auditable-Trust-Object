@@ -1,5 +1,22 @@
 # IATO-V7 Architecture
 
+## Repository Layout (Restructured)
+
+```text
+lean/iato_v7/IATO/V7/
+  Basic.lean         # Lattice and security foundations
+  Worker.lean        # Worker-domain non-interference
+  Scanner.lean       # Dependency/conflict detection
+  Architecture.lean  # System invariants aligned to SOC2 and ISM
+
+workers/source/      # Legacy worker examples and source manifests
+workers/target/      # FEAT_RME-aligned generated worker manifests
+workers/reports/     # Compatibility scan reports and migration outputs
+
+docs/ARCHITECTURE.md
+  docs/WORKER_COMPAT.md  # Audit and implementation narrative
+```
+
 ## Formal Verification Layers
 
 ```text
@@ -18,6 +35,12 @@ legacy_workers.csv ──[scan]──> workers/reports/scan_report.json
                                [migrate] ──> workers/target/
 ```
 
+## Control Mapping (SOC 2 + ISM)
+
+- **Least privilege / segregation of duties**: domain-separated workers with explicit dependency sets.
+- **Change management**: legacy workers are scanned, normalized, and migrated with reportable outcomes.
+- **Integrity and traceability**: target manifests are deterministic artifacts suitable for audit evidence.
+- **Configuration governance**: architecture invariants in Lean enforce compositional compatibility constraints.
 
 ## Architecture Non-Goals
 
