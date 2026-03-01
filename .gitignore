@@ -1,0 +1,24 @@
+# IDE
+.idea/
+.vscode/settings.json
+*.swp
+
+# Lean build
+build/
+.lake/
+.lean/
+
+# Python
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+*.tmp
+*~
