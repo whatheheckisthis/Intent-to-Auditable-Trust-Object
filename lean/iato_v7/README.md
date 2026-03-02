@@ -80,3 +80,16 @@ Important variables:
 - `PODMAN_USERNS=keep-id` to reduce host/container UID mismatch issues.
 - `PODMAN_SYSTEMD_UNIT=false` to avoid systemd unit expectations in simple sessions.
 - `COMPOSE_DOCKER_CLI_BUILD=1` for compatible compose build behavior.
+
+## Kubernetes fallback job (proxy-conflict mitigation)
+
+For environments where local container networking/proxy behavior differs from Podman,
+you can run the same build as a standard Kubernetes Job:
+
+```bash
+kubectl apply -f k8s-build-job.yaml
+kubectl logs -f job/iato-v7-lean-build
+```
+
+The job includes `HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY` fields so cluster-level
+proxy values can be managed consistently.
