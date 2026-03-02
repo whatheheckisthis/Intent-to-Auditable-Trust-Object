@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: lean-cache-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /workspace/.ci-cache
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lean-cache-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: iato-v7-ci-proxy-worker
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      hostNetwork: true
+      restartPolicy: Never
+      securityContext:
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: ci-proxy
+          image: docker.io/leanprover/lean4:stable
+          imagePullPolicy: IfNotPresent
+          workingDir: /workspace
+          env:
+            - name: HTTP_PROXY
+              value: ""
+            - name: HTTPS_PROXY
+              value: ""
+            - name: NO_PROXY
+              value: "localhost,127.0.0.1,::1,.svc,.cluster.local"
+            - name: SCAFFOLD_FILE
+              value: /config/k8s-build-job.yaml
+          command: ["/bin/sh", "-lc"]
+          args: ["/scripts/run-ci-proxy.sh"]
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+            - name: scaffold
+              mountPath: /config
+              readOnly: true
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: lean-cache
+              mountPath: /home/lean/.elan
+              subPath: elan
+            - name: lean-cache
+              mountPath: /home/lean/.lake
+              subPath: lake
+      volumes:
+        - name: workspace
+          hostPath:
+            path: /workspace
+            type: Directory
+        - name: scaffold
+          hostPath:
+            path: /workspace/lean/iato_v7
+            type: Directory
+        - name: scripts
+          hostPath:
+            path: /workspace/lean/iato_v7
+            type: Directory
+        - name: lean-cache
+          persistentVolumeClaim:
+            claimName: lean-cache-pvc
