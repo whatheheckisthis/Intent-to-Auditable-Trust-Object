@@ -3,10 +3,6 @@ name: build
 on:
   workflow_dispatch:
 
-env:
-  INSTALL_RETRIES: "3"
-  LEAN_TOOLCHAIN: stable
-
 jobs:
   package-check:
     runs-on: ubuntu-latest
@@ -16,11 +12,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Normalize CI env variables
-        run: ../scripts/normalize_ci_env.sh
+      - name: Install elan
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
-      - name: Setup Lean CI dependencies
-        run: ../scripts/setup-lean-ci-deps.sh
+      - name: Install Lake
+        run: |
+          lean install lake
+          export PATH=$HOME/.lake/bin:$PATH
+          echo "$HOME/.lake/bin" >> "$GITHUB_PATH"
 
       - name: Build Lean package
         run: lake build
