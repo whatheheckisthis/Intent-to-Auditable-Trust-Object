@@ -39,3 +39,24 @@ kubectl logs -f job/iato-v7-ci-proxy-worker
 ```
 
 The worker loads `lean/iato_v7/k8s-build-job.yaml` as read-only scaffold input, parses the scaffold `args`, and executes them in `/workspace` inside the Lean container.
+
+## Deterministic host-path audit (Nmap NSE)
+
+Run the orchestrator in dry-run mode first to verify deterministic command construction from `lakefile.toml`, this setup file, `k8s-ci-proxy-worker.yaml`, and `run-ci-proxy.sh`:
+
+```bash
+python3 lean/iato_v7/scripts/nmap_path_audit_orchestrator.py --dry-run
+```
+
+Execute the scan to generate the canonical XML artifact consumed by IĀTŌ‑V7:
+
+```bash
+python3 lean/iato_v7/scripts/nmap_path_audit_orchestrator.py \
+  --xml-out lean/iato_v7/nmap-path-state.xml
+```
+
+Execution profile:
+- Uses `nmap --noninteractive -Pn -sn` for headless execution while suppressing host discovery and network probing semantics.
+- Uses `-oX` output for stable machine-consumable XML.
+- Passes strict schema/release/script arguments to `lean/iato_v7/nse/path_audit.nse`.
+- Writes `lean/iato_v7/.nmap-path-policy.json` as a deterministic intermediate policy payload.
