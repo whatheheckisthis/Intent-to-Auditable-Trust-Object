@@ -4,11 +4,17 @@ on:
   push:
   pull_request:
 
+env:
+  INSTALL_RETRIES: "3"
+
 jobs:
   lean-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Normalize CI env variables
+        run: ./scripts/normalize_ci_env.sh
 
       - name: Install elan
         run: |

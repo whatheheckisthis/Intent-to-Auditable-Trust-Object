@@ -93,3 +93,16 @@ kubectl logs -f job/iato-v7-lean-build
 
 The job includes `HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY` fields so cluster-level
 proxy values can be managed consistently.
+
+
+## Fail-forward Defensive DevOps strategy
+
+This project intentionally prioritizes availability and execution over architectural purity:
+
+- **Normalization as a Filter**: `scripts/normalize_ci_env.sh` acts as the source of truth for CI proxy state.
+  It maps upper/lower-case proxy variables and writes deterministic values to `GITHUB_ENV` so Lean/Lake
+  and container tooling do not inherit host-specific ambiguity.
+- **Podman as the low-cost path**: `podman-compose.yml` is the first, fastest daemonless execution path
+  for terminal-centric workflows.
+- **Kubernetes as the guaranteed path**: `k8s-build-job.yaml` is the fallback when local DNS/proxy
+  interception causes Podman networking mismatches, using cluster-native service discovery and egress policy.

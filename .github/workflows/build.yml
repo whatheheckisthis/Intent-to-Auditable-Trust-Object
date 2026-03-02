@@ -3,6 +3,9 @@ name: build
 on:
   workflow_dispatch:
 
+env:
+  INSTALL_RETRIES: "3"
+
 jobs:
   package-check:
     runs-on: ubuntu-latest
@@ -11,6 +14,9 @@ jobs:
         working-directory: lean
     steps:
       - uses: actions/checkout@v4
+
+      - name: Normalize CI env variables
+        run: ../scripts/normalize_ci_env.sh
 
       - name: Install elan
         run: |
