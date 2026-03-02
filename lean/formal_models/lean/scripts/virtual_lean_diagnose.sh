@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 set -eu
 
-TARGET="formal/lean/IATO_V7_GPTMLE.lean"
-SCAFFOLD="formal/lean/IATO_V7_Scaffold.lean"
+TARGET="lean/formal_models/lean/IATO_V7_GPTMLE.lean"
+SCAFFOLD="lean/formal_models/lean/IATO_V7_Scaffold.lean"
 
 if [ ! -f "$TARGET" ]; then
   echo "ERROR: missing $TARGET"

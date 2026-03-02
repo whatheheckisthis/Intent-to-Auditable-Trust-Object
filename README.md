@@ -66,6 +66,14 @@ docs/ARCHITECTURE.md
   docs/WORKER_COMPAT.md  # Audit and implementation narrative
 ```
 
+## Repository Layout
+
+- `lean/`: Lean 4 formal models and executable tests.
+- `docs/`: Architecture and notebook documentation.
+- `workers/`: Legacy/new worker implementations.
+- `scripts/`: Automation and tooling helpers.
+- `data/`: Static data manifests and reference files.
+
 ## Compliance Commands
 
 ```bash
