@@ -23,9 +23,14 @@ jobs:
 
       - name: Install Lake
         run: |
-          lean install lake
-          export PATH=$HOME/.lake/bin:$PATH
-          echo "$HOME/.lake/bin" >> "$GITHUB_PATH"
+          elan toolchain install leanprover/lean4:stable
+          elan default leanprover/lean4:stable
+          lake update
+
+      - name: Verify Lean build script
+        run: |
+          test -x ./scripts/lake_build.sh
+          ./scripts/lake_build.sh --help >/dev/null 2>&1 || true
 
       - name: Lean build
         run: ./scripts/lake_build.sh
