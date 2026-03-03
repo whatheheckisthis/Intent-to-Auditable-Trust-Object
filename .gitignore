@@ -22,3 +22,7 @@ Thumbs.db
 # Temporary
 *.tmp
 *~
+
+# Nmap orchestration artifacts
+lean/iato_v7/.nmap-path-policy.json
+lean/iato_v7/nmap-path-state.xml
