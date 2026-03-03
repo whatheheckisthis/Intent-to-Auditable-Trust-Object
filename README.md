@@ -71,39 +71,130 @@ docs/ARCHITECTURE.md
   docs/WORKER_COMPAT.md  # Audit and implementation narrative
 ```
 
-## System Substrate Diagram
+## IĀTŌ‑V7 Orchestration Design
 
-```mermaid
-flowchart TD
-    ECP["External Control Plane<br/>Enterprise IAM / CI policy gates / audit consumers"]
+### 1) Purpose and Scope
+The IĀTŌ‑V7 orchestration layer is a deterministic execution wrapper that converts a repository `config.toml` manifest into a canonical Nmap XML audit artifact for host-path filesystem assurance. It is optimized for WSL2/Minikube environments where metadata-heavy scans can amplify 9P I/O latency.
 
-    ORCH["IATO-V7 Orchestration & Compliance Surface<br/>scripts/migrate.sh | scripts/scan_workers.py | scripts/lake_build.sh | setup/normalization scripts"]
+This section defines the target design, implementation expectations, and formal assurance behavior for the orchestration module.
 
-    FVP["Formal Verification Plane<br/>Lean 4 + mathlib models<br/>- Basic.lean (lattice)<br/>- Worker.lean (non-interference)<br/>- Scanner.lean (detectors)<br/>- Architecture.lean (invariants)"]
+### 2) Design Goals
+- **Deterministic orchestration:** equivalent manifest inputs must produce equivalent command lines, policy payloads, and XML artifact paths.
+- **Audit-only runtime posture:** no network discovery side effects.
+- **In-process validation:** integrity and policy checks are performed by NSE scripts during scan execution.
+- **Operational observability:** per-operation latency accounting is captured for forensic auditability.
+- **Schema-compliant hand-off:** generated XML is validated against the IĀTŌ‑V7 audit schema before acceptance.
 
-    LIA["Legacy Intake & Analysis<br/>CSV/manifest worker sources<br/>dependency + domain scanning<br/>normalization + risk output"]
-
-    TRG["FEAT_RME Target Boundary Construction<br/>workers/target manifests<br/>isolated world assignments<br/>migration-ready deployment descriptors"]
-
-    EVD["Evidence & Audit Artifact Layer<br/>build logs, scan reports, proof outputs,<br/>control-mapping evidence packets"]
-
-    ECP --> ORCH
-    ORCH --> FVP
-    ORCH --> LIA
-    FVP <--> |"compatibility / conflict facts"| LIA
-    FVP --> TRG
-    LIA --> TRG
-    TRG --> EVD
+### 3) High-Level Architecture
+```text
+config.toml
+   │
+   ▼
+Manifest Parser ──► Deterministic Policy Builder ──► Nmap Command Planner
+                                                      │
+                                                      ▼
+                                             Nmap + Custom NSE Scripts
+                                                      │
+                                                      ▼
+                                          Canonical XML Artifact (-oX)
+                                                      │
+                                                      ▼
+                                         Schema + Status Verification
+                                                      │
+                                                      ▼
+                                         Clean/Dirty + Process Exit Code
 ```
 
-### Substrate Notes
+#### 3.1 Module Responsibilities
+1. **Manifest Parser**
+   - Parse TOML and normalize explicit path targets.
+   - Reject unspecified defaults that can introduce nondeterminism.
+2. **Policy Builder**
+   - Emit a stable, sorted policy structure used by NSE scripts (hash, mode, owner/group constraints, integrity predicates).
+3. **Command Planner**
+   - Build a constrained Nmap command that always includes:
+     - `-Pn -sn` (state isolation / host-discovery bypass)
+     - `-oX <artifact>` (canonical machine-readable output)
+     - explicit NSE script invocation and script-args
+   - Derive timing template (`-T2`..`-T4`) from measured filesystem latency.
+4. **Execution + Telemetry**
+   - Run via `subprocess` or `asyncio`.
+   - Track operation-level latency (manifest load, policy write, scan, XML validation).
+5. **Verification Gate**
+   - Parse XML status fields produced by NSE and enforce Clean/Dirty semantics.
+   - Return non-zero exit on any policy deviation.
 
-- **Deterministic assurance core**: the Lean verification plane is the authoritative source for isolation and non-interference invariants.
-- **Bidirectional traceability**: scanner outputs can be validated against formal constraints, and formal constraints can be stress-checked with legacy intake data.
-- **Policy-gated orchestration**: migration/build scripts form the execution substrate that binds proofs, scans, and artifact generation into a repeatable control workflow.
-- **Target-oriented migration**: FEAT_RME world partitioning is the substrate boundary where worker workloads are transformed into auditable deployment units.
-- **Audit-ready outputs**: the final layer emits machine-verifiable evidence consumable by governance, risk, and compliance reviewers.
-- **JBoss EAP 7 alignment**: substrate outputs (target manifests + evidence artifacts) are structured to support JBoss EAP 7 migration planning and review.
+### 4) Deterministic Behavior Requirements
+- **Stable ordering:** all configured paths and rules must be lexicographically sorted before policy serialization.
+- **Stable artifact mapping:** XML output path is derived from a deterministic tuple:
+  - `(manifest fingerprint, target root, schema version)`.
+- **Stable invocation:** command argument order must be fixed.
+- **Stable environment:** pin Nmap version and disallow mutable runtime options that alter scan semantics.
+
+### 5) Nmap / NSE Contract
+#### 5.1 Mandatory Nmap Flags
+- `-Pn -sn`: enforce local audit mode and skip ping/host discovery behavior.
+- `-oX <path>`: emit canonical XML artifact.
+- `--script <path_audit.nse>`: execute IĀTŌ‑V7 integrity checks in-process.
+- `--script-args ...`: pass root path, policy file, schema version, project metadata.
+
+#### 5.2 NSE Script Duties
+Custom Lua NSE scripts are authoritative for:
+- cryptographic hash checks,
+- ownership and permission checks,
+- structural integrity predicates,
+- producing machine-readable `Clean` or `Dirty` status in XML.
+
+Any mismatch (hash, ACL/mode/ownership, forbidden mutation) must set a failing status consumable by the orchestrator.
+
+### 6) Timing & I/O Strategy (WSL2/9P-Aware)
+- Run a short, bounded I/O latency probe at startup (sample reads/stats on configured target paths).
+- Map probe results to Nmap timing template:
+  - low latency → `-T4`,
+  - medium latency → `-T3`,
+  - high latency / 9P contention → `-T2`.
+- Never exceed bounded scan scope:
+  - **no unbounded recursive DFS traversal**,
+  - only explicit manifest target paths and rule entries.
+
+### 7) Progress and Latency Telemetry
+The orchestrator must asynchronously emit progress records with operation timestamps and durations, for example:
+- `manifest.parse.ms`
+- `policy.write.ms`
+- `nmap.exec.ms`
+- `xml.validate.ms`
+
+Telemetry output should be append-only JSONL or structured logs suitable for later evidence packaging.
+
+### 8) Verification and Exit Semantics
+- **Exit code 0:** XML is schema-valid and NSE reports `Clean` for all evaluated targets.
+- **Non-zero exit:** any of the following:
+  - XML schema mismatch,
+  - NSE-reported `Dirty` condition,
+  - policy serialization or deterministic mapping failure,
+  - orchestrator runtime failure (Nmap unavailable, malformed config, etc.).
+
+### 9) Implementation Constraints
+- **Language:** Python (`subprocess` or `asyncio`) or Go.
+- **No external parser dependency at hand-off:** final decision should be made from canonical XML/NSE outputs without additional ad hoc transforms.
+- **Environment priority:** minimize filesystem interrupts and metadata churn in WSL2/Minikube.
+
+### 10) Reference Integration Path
+A practical Python entrypoint is expected at:
+- `lean/iato_v7/scripts/nmap_path_audit_orchestrator.py`
+
+NSE policy logic is expected at:
+- `lean/iato_v7/nse/path_audit.nse`
+
+This design section defines the acceptance baseline for those components.
+
+### 11) Acceptance Criteria
+The orchestration layer is accepted when it demonstrably:
+1. Converts a valid TOML manifest into a deterministic Nmap invocation.
+2. Produces canonical XML via `-oX` and validates it against the IĀTŌ‑V7 schema.
+3. Returns `Clean`/`Dirty` based on NSE in-process checks only.
+4. Emits non-zero exit status for any integrity deviation.
+5. Maintains bounded, explicit path scanning with latency-aware timing behavior.
 
 ## Repository Layout
 
@@ -129,7 +220,7 @@ cd Intent-to-Auditable-Trust-Object
 
 ```bash
 sudo apt update
-sudo apt install -y git curl python3 python3-pip build-essential
+sudo apt install -y git curl python3 python3-pip build-essential nmap
 ```
 
 ### 3) Initialize deterministic audit manifest
@@ -148,7 +239,7 @@ The `config.toml` file is the canonical schema template for IĀTŌ‑V7 path-aud
 ./scripts/setup-lean-ci-deps.sh
 ```
 
-### 5) Build + validate
+### 4) Build + validate core models
 
 ```bash
 # run Lean model tests
@@ -163,11 +254,22 @@ python3 scripts/scan_workers.py data/legacy_workers.csv
 ./scripts/lake_build.sh
 ```
 
+### 5) Run orchestrator (dry-run then execute)
+
+```bash
+# view deterministic Nmap command and generated policy without scanning
+python3 lean/iato_v7/scripts/nmap_path_audit_orchestrator.py --dry-run
+
+# execute orchestrator to produce canonical XML artifact
+python3 lean/iato_v7/scripts/nmap_path_audit_orchestrator.py
+```
+
 ### 6) Target outcome (what success looks like)
 
 - Lean tests complete successfully (`lake test` exits 0).
 - Worker scan writes compatibility/risk output without errors.
 - Audit evidence artifacts are generated by `scripts/lake_build.sh`.
+- Orchestrator emits deterministic policy and canonical XML output via `-oX`.
 - Validation outputs are ready to support JBoss EAP 7 migration planning workflows.
 
 If a command fails in WSL2, run:
@@ -178,47 +280,6 @@ If a command fails in WSL2, run:
 
 Then rerun the failed step.
 
-## Compliance Commands
-
-```bash
-# Essential 8 ML4: validate formal model and tests
-cd lean/iato_v7 && lake test
-
-# SOC2 CC6.6 / PI1.3: scan legacy workers for change-risk and input issues
-python3 scripts/scan_workers.py data/legacy_workers.csv
-
-# Setup a new worker scaffold for migration planning
-./scripts/setup_worker.sh worker3 rme alpha|beta
-
-# ISM 0457-0460: run migration workflow for FEAT_RME alignment
-./scripts/migrate.sh
-
-# Build evidence artifacts for audit chains
-./scripts/lake_build.sh
-```
-
-## Nmap Orchestrator Config Reference (`config.toml`)
-
-Use `config.toml` as the source of truth for deterministic orchestration inputs.
-
-| Section | Required Keys | Purpose |
-|---|---|---|
-| Root | `schema_version`, `project`, `release` | Declares schema compatibility and build identity. |
-| `[orchestrator]` | `engine`, `flags`, `output_format` | Enforces Nmap engine usage and required `-Pn -sn` XML pipeline behavior. |
-| `[audit]` | `root_path`, `target`, `nse_script`, `fail_on_deviation` | Sets host-path root, local loopback target, Lua NSE logic entrypoint, and non-zero exit policy. |
-| `[timing]` | `template`, `max_template`, `scan_interval_seconds` | Captures WSL2/9P-safe timing profile (`T2` by default; `T3` only after validation). |
-| `[artifacts]` | `xml_output`, `policy_output` | Defines canonical XML output and optional expanded policy output. |
-| `[[targets]]` | `id`, `path`, `required`, `sha256`, `owner`, `group`, `mode` | Declares each audited target and expected state constraints. |
-
-Example schema template is provided at repository root: `config.toml`.
-
-## Compliance Dashboard
-
-```text
-Essential 8 ML4:  80% (8/10 controls)
-SOC2:             60% (6/10 controls)
-ISM 0457-0460:   100% (4/4 controls)
-```
 
 ## Architecture Non-Goals
 
@@ -232,10 +293,6 @@ To keep the scope explicit, the architecture defines non-goals **NG-001** throug
 
 IATO-V7 makes **no assertion of affiliation with Common Criteria**.
 
-## Audit Readiness
-
-IATO-V7 is structured for enterprise compliance teams that need implementation controls backed by formal assurance. The repository unifies mechanized proofs, migration automation, and documented operational controls to support repeatable, reviewable evidence for high-assurance environments.
-
 ---
 
-IATO-V7 is the formal verification bridge from legacy workers to auditable trust objects.
+
