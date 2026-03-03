@@ -42,9 +42,7 @@ The worker loads `lean/iato_v7/k8s-build-job.yaml` as read-only scaffold input, 
 
 ## Deterministic host-path audit (Nmap NSE)
 
-Edit `lean/iato_v7/config.toml` and declare all audit intent there (targets, NSE script path, performance flags, and path rules).
-
-Run the orchestrator in dry-run mode first to verify deterministic command construction from `config.toml`:
+Run the orchestrator in dry-run mode first to verify deterministic command construction from `lakefile.toml`, this setup file, `k8s-ci-proxy-worker.yaml`, and `run-ci-proxy.sh`:
 
 ```bash
 python3 lean/iato_v7/scripts/nmap_path_audit_orchestrator.py --dry-run
@@ -54,12 +52,24 @@ Execute the scan to generate the canonical XML artifact consumed by IĀTŌ‑V7:
 
 ```bash
 python3 lean/iato_v7/scripts/nmap_path_audit_orchestrator.py \
-  --config lean/iato_v7/config.toml \
   --xml-out lean/iato_v7/nmap-path-state.xml
 ```
 
 Execution profile:
 - Uses `nmap --noninteractive -Pn -sn` for headless execution while suppressing host discovery and network probing semantics.
 - Uses `-oX` output for stable machine-consumable XML.
-- Dynamically applies `-T<level>` from host metadata (WSL2/Kubernetes/Linux) declared in the TOML manifest.
-- Executes Lua NSE integrity checks (hash/permissions/ownership) in-process and returns non-zero when schema or integrity checks fail.
+- Passes strict schema/release/script arguments to `lean/iato_v7/nse/path_audit.nse`.
+- Writes `lean/iato_v7/.nmap-path-policy.json` as a deterministic intermediate policy payload.
+
+## Release binary assets
+
+Build deterministic release assets for distribution:
+
+```bash
+python3 lean/iato_v7/scripts/build_nmap_release_assets.py
+```
+
+This produces:
+- `lean/iato_v7/release/iato-v7-nmap-audit-<version>.py` (headless executable Python orchestrator)
+- `lean/iato_v7/release/SHA256SUMS`
+- `lean/iato_v7/release/release-manifest.json`
