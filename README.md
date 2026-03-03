@@ -10,13 +10,18 @@ Formal verification bridge from legacy workers to a compliance-ready FEAT_RME mu
 
 ## Executive Summary
 
-IATO-V7 provides a formal, auditable path to move from legacy worker deployments to verified FEAT_RME isolation boundaries. It combines Lean4/mathlib proofs, conflict scanning, and migration workflows to support enterprise security assurance and regulatory evidence production.
+**IĀTŌ‑V7** is a deterministic, configuration-driven transformation and validation engine. Its objective is to transmute raw, real-world data—specifically host-path file systems—into structured, auditable XML artifacts. By enforcing formal logic at the orchestration layer, we ensure reproducibility across SOC environments.
 
-Core capabilities:
-- Prove worker compatibility with non-interference invariants.
-- Detect dependency and domain conflicts in legacy workers.
-- Migrate worker sets into FEAT_RME-aligned multi-world boundaries.
-- Generate mechanized proof artifacts for high-assurance audit review.
+### Architecture: The Nmap Audit Pattern
+
+We have moved away from traditional, labor-intensive file-system parsers. Instead, IĀTŌ‑V7 leverages **Nmap** as a stateless, high-concurrency discovery engine. By repurposing Nmap within a WSL2/Minikube environment, we treat host-path auditing as a canonical state-discovery process.
+
+| Component | Role |
+| --- | --- |
+| **TOML Manifest** | Source of truth for paths, hash expectations, and audit rules. |
+| **Nmap (Orchestrator)** | Executes path discovery and integrity checks via NSE scripts. |
+| **XML Artifacts** | Canonical output format for downstream formal validation. |
+| **IĀTŌ‑V7 Engine** | Consumes XML to validate observed state against the original TOML manifest. |
 
 ## Compliance Coverage
 
@@ -127,14 +132,23 @@ sudo apt update
 sudo apt install -y git curl python3 python3-pip build-essential
 ```
 
-### 3) Install Lean toolchain dependencies
+### 3) Initialize deterministic audit manifest
+
+```bash
+cp config.toml config.local.toml
+# edit config.local.toml and set root_path/targets for your environment
+```
+
+The `config.toml` file is the canonical schema template for IĀTŌ‑V7 path-audit orchestration. It defines all audit targets, expected hashes/ownership, timing profile (`T2`/`T3`), and XML artifact locations.
+
+### 4) Install Lean toolchain dependencies
 
 ```bash
 ./scripts/install-formal-verification-deps.sh
 ./scripts/setup-lean-ci-deps.sh
 ```
 
-### 4) Build + validate
+### 5) Build + validate
 
 ```bash
 # run Lean model tests
@@ -149,7 +163,7 @@ python3 scripts/scan_workers.py data/legacy_workers.csv
 ./scripts/lake_build.sh
 ```
 
-### 5) Target outcome (what success looks like)
+### 6) Target outcome (what success looks like)
 
 - Lean tests complete successfully (`lake test` exits 0).
 - Worker scan writes compatibility/risk output without errors.
@@ -182,6 +196,21 @@ python3 scripts/scan_workers.py data/legacy_workers.csv
 # Build evidence artifacts for audit chains
 ./scripts/lake_build.sh
 ```
+
+## Nmap Orchestrator Config Reference (`config.toml`)
+
+Use `config.toml` as the source of truth for deterministic orchestration inputs.
+
+| Section | Required Keys | Purpose |
+|---|---|---|
+| Root | `schema_version`, `project`, `release` | Declares schema compatibility and build identity. |
+| `[orchestrator]` | `engine`, `flags`, `output_format` | Enforces Nmap engine usage and required `-Pn -sn` XML pipeline behavior. |
+| `[audit]` | `root_path`, `target`, `nse_script`, `fail_on_deviation` | Sets host-path root, local loopback target, Lua NSE logic entrypoint, and non-zero exit policy. |
+| `[timing]` | `template`, `max_template`, `scan_interval_seconds` | Captures WSL2/9P-safe timing profile (`T2` by default; `T3` only after validation). |
+| `[artifacts]` | `xml_output`, `policy_output` | Defines canonical XML output and optional expanded policy output. |
+| `[[targets]]` | `id`, `path`, `required`, `sha256`, `owner`, `group`, `mode` | Declares each audited target and expected state constraints. |
+
+Example schema template is provided at repository root: `config.toml`.
 
 ## Compliance Dashboard
 
