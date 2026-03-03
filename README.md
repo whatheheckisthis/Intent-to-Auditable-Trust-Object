@@ -1,7 +1,5 @@
 # Intent-to-Auditable-Trust-Object (IATO-V7)
 
-Formal verification bridge from legacy workers to a compliance-ready FEAT_RME multi-world architecture.
-
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](lean/iato_v7/lakefile.lean)
 [![Essential%208](https://img.shields.io/badge/Essential%208-ML4-blue)](docs/cyber-risk-controls.md)
 [![SOC2](https://img.shields.io/badge/SOC2-CC6.1%20%7C%20CC6.6-orange)](docs/ARCHITECTURE.md)
@@ -291,7 +289,7 @@ To keep the scope explicit, the architecture defines non-goals **NG-001** throug
 - **NG-004**: Not an automatic compliance attestation without organization-specific controls/evidence.
 - **NG-005**: Not a claim of certification, endorsement, or affiliation with **Common Criteria**.
 
-IATO-V7 makes **no assertion of affiliation with Common Criteria**.
+***IATO-V7 does not assert affiliation with Common Criteria***.
 
 ---
 
