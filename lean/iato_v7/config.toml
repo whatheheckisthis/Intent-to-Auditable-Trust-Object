@@ -1,0 +1,34 @@
+[orchestrator]
+project = "IATO-V7"
+release = "0.7.0"
+
+[nmap]
+binary = "nmap"
+target = "127.0.0.1"
+script = "lean/iato_v7/nse/path_audit.nse"
+xml_output = "lean/iato_v7/nmap-path-state.xml"
+flags = ["-Pn", "-sn"]
+performance = ["--max-retries 1", "--host-timeout 30s"]
+
+[nmap.timing]
+default_env = "linux"
+
+[nmap.timing.templates]
+linux = "T3"
+wsl2 = "T2"
+kubernetes = "T4"
+
+[nse]
+root_path = "/workspace"
+enforce_strict = true
+
+[[nse.rules]]
+path = "lakefile.toml"
+permissions = "rw-r--r--"
+
+[[nse.rules]]
+path = "lean/iato_v7/run-ci-proxy.sh"
+permissions = "rwxr-xr-x"
+
+[schema]
+expected_version = "1.0.0"
