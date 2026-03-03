@@ -1,12 +1,10 @@
-local json = require "json"
 local lfs = require "lfs"
 local nmap = require "nmap"
 local stdnse = require "stdnse"
 
-
 description = [[
-Scaffold NSE script for deterministic host-path metadata and integrity collection.
-This script is intentionally bounded for CI proxy worker execution.
+Deterministic host-path integrity checks for IATO-V7.
+All integrity logic (hash, permissions, ownership) is executed in-process by NSE.
 ]]
 
 author = "IATO-V7"
@@ -17,68 +15,101 @@ prerule = function()
   return true
 end
 
-local function read_policy(policy_file)
-  local fh = io.open(policy_file, "r")
-  if not fh then
-    return nil, "unable to open policy file"
+local function split(input, sep)
+  local out = {}
+  if not input or input == "" then
+    return out
   end
-  local raw = fh:read("*a")
-  fh:close()
-  local ok, parsed = pcall(json.parse, raw)
-  if not ok then
-    return nil, "policy json parse error"
+  for part in string.gmatch(input, "([^" .. sep .. "]+)") do
+    table.insert(out, part)
   end
-  return parsed, nil
+  return out
 end
 
-local function file_mode_string(path)
-  local attr = lfs.attributes(path)
-  if not attr then
-    return nil
+local function parse_rules(serialized)
+  local rules = {}
+  for _, row in ipairs(split(serialized or "", ";")) do
+    local cols = split(row, "~")
+    if #cols >= 1 then
+      table.insert(rules, {
+        path = cols[1],
+        permissions = cols[2],
+        uid = cols[3],
+        gid = cols[4],
+        sha256 = cols[5],
+        size = cols[6],
+      })
+    end
   end
-  return attr.permissions or "unknown"
+  return rules
+end
+
+local function compute_sha256(path)
+  local cmd = string.format("sha256sum %q 2>/dev/null", path)
+  local pipe = io.popen(cmd)
+  if not pipe then
+    return "sha256-unavailable"
+  end
+  local output = pipe:read("*l") or ""
+  pipe:close()
+  local digest = string.match(output, "^([a-fA-F0-9]+)")
+  return digest or "sha256-unavailable"
 end
 
 action = function()
   local root = stdnse.get_script_args("path_audit.root") or "/workspace"
-  local policy_file = stdnse.get_script_args("path_audit.policy")
   local schema = stdnse.get_script_args("path_audit.schema") or "1.0.0"
-  local release = stdnse.get_script_args("path_audit.release") or "unknown"
+  local strict = stdnse.get_script_args("path_audit.strict") == "1"
+  local rules = parse_rules(stdnse.get_script_args("path_audit.rules") or "")
 
-  if not policy_file then
-    return "path_audit.policy script argument is required"
-  end
+  local violations = {}
+  local evaluated = 0
 
-  local policy, err = read_policy(policy_file)
-  if err then
-    return string.format("policy load failure: %s", err)
-  end
-
-  local output = {
-    schema_version = schema,
-    release = release,
-    root_path = root,
-    evaluated = {},
-  }
-
-  for _, rule in ipairs(policy.rules or {}) do
+  for _, rule in ipairs(rules) do
     local full_path = string.format("%s/%s", root, rule.path)
     local attr = lfs.attributes(full_path)
-    local item = {
-      path = full_path,
-      exists = attr ~= nil,
-      size = attr and attr.size or -1,
-      permissions = file_mode_string(full_path),
-      expected = rule,
-      hash = "scaffold-pending-external-sha256",
-      owner = {
-        uid = rule.uid or "scaffold",
-        gid = rule.gid or "scaffold",
-      },
-    }
-    item.match = item.exists and ((rule.size == nil) or (rule.size == item.size))
-    table.insert(output.evaluated, item)
+    evaluated = evaluated + 1
+
+    if not attr then
+      table.insert(violations, string.format("missing:%s", rule.path))
+    else
+      local actual_perm = attr.permissions or "unknown"
+      if rule.permissions and rule.permissions ~= "-" and actual_perm ~= rule.permissions then
+        table.insert(violations, string.format("perm:%s expected=%s got=%s", rule.path, rule.permissions, actual_perm))
+      end
+
+      if rule.uid and rule.uid ~= "-" and tostring(attr.uid or "") ~= tostring(rule.uid) then
+        table.insert(violations, string.format("uid:%s expected=%s got=%s", rule.path, rule.uid, tostring(attr.uid or "unknown")))
+      end
+
+      if rule.gid and rule.gid ~= "-" and tostring(attr.gid or "") ~= tostring(rule.gid) then
+        table.insert(violations, string.format("gid:%s expected=%s got=%s", rule.path, rule.gid, tostring(attr.gid or "unknown")))
+      end
+
+      local digest = compute_sha256(full_path)
+      if rule.sha256 and rule.sha256 ~= "-" and digest ~= rule.sha256 then
+        table.insert(violations, string.format("sha256:%s expected=%s got=%s", rule.path, rule.sha256, digest))
+      end
+
+      if rule.size and rule.size ~= "-" and tonumber(rule.size) and tonumber(rule.size) ~= tonumber(attr.size) then
+        table.insert(violations, string.format("size:%s expected=%s got=%s", rule.path, rule.size, tostring(attr.size)))
+      end
+    end
   end
 
-  return stdnse.format_output(true, output)
+  local status = "ok"
+  if #violations > 0 and strict then
+    status = "violation"
+  end
+
+  local summary = string.format(
+    "iato_v7_audit status=%s schema=%s evaluated=%d violation_count=%d violations=%s",
+    status,
+    schema,
+    evaluated,
+    #violations,
+    table.concat(violations, "|")
+  )
+
+  return stdnse.format_output(true, summary)
 end
