@@ -10,13 +10,18 @@ Formal verification bridge from legacy workers to a compliance-ready FEAT_RME mu
 
 ## Executive Summary
 
-IATO-V7 provides a formal, auditable path to move from legacy worker deployments to verified FEAT_RME isolation boundaries. It combines Lean4/mathlib proofs, conflict scanning, and migration workflows to support enterprise security assurance and regulatory evidence production.
+**IĀTŌ‑V7** is a deterministic, configuration-driven transformation and validation engine. Its objective is to transmute raw, real-world data—specifically host-path file systems—into structured, auditable XML artifacts. By enforcing formal logic at the orchestration layer, we ensure reproducibility across SOC environments.
 
-Core capabilities:
-- Prove worker compatibility with non-interference invariants.
-- Detect dependency and domain conflicts in legacy workers.
-- Migrate worker sets into FEAT_RME-aligned multi-world boundaries.
-- Generate mechanized proof artifacts for high-assurance audit review.
+### Architecture: The Nmap Audit Pattern
+
+We have moved away from traditional, labor-intensive file-system parsers. Instead, IĀTŌ‑V7 leverages **Nmap** as a stateless, high-concurrency discovery engine. By repurposing Nmap within a WSL2/Minikube environment, we treat host-path auditing as a canonical state-discovery process.
+
+| Component | Role |
+| --- | --- |
+| **TOML Manifest** | Source of truth for paths, hash expectations, and audit rules. |
+| **Nmap (Orchestrator)** | Executes path discovery and integrity checks via NSE scripts. |
+| **XML Artifacts** | Canonical output format for downstream formal validation. |
+| **IĀTŌ‑V7 Engine** | Consumes XML to validate observed state against the original TOML manifest. |
 
 ## Compliance Coverage
 
@@ -218,7 +223,16 @@ sudo apt update
 sudo apt install -y git curl python3 python3-pip build-essential nmap
 ```
 
-### 3) Install Lean toolchain dependencies
+### 3) Initialize deterministic audit manifest
+
+```bash
+cp config.toml config.local.toml
+# edit config.local.toml and set root_path/targets for your environment
+```
+
+The `config.toml` file is the canonical schema template for IĀTŌ‑V7 path-audit orchestration. It defines all audit targets, expected hashes/ownership, timing profile (`T2`/`T3`), and XML artifact locations.
+
+### 4) Install Lean toolchain dependencies
 
 ```bash
 ./scripts/install-formal-verification-deps.sh
@@ -281,4 +295,4 @@ IATO-V7 makes **no assertion of affiliation with Common Criteria**.
 
 ---
 
-IATO-V7 is the formal verification bridge from legacy workers to auditable trust objects.
+
