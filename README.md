@@ -79,7 +79,7 @@ docs/ARCHITECTURE.md
 ### 1) Purpose
 The IĀTŌ‑V7 orchestration layer is a deterministic execution wrapper that converts a repository `config.toml` manifest into a canonical Nmap XML audit artifact for host-path filesystem assurance. It is optimized for WSL2/Minikube environments where metadata-heavy scans can amplify 9P I/O latency.
 
-This section defines the target design and implementation expectations for the orchestration module.
+This section outlines the target design and implementation expectations for the orchestration layer.
 
 ### 2) Design Goals
 - **Deterministic orchestration:** equivalent manifest inputs must produce equivalent command lines, policy payloads, and XML artifact paths.
@@ -242,7 +242,7 @@ The `config.toml` file is the canonical schema template for IĀTŌ‑V7 path-aud
 ./scripts/setup-lean-ci-deps.sh
 ```
 
-### 4) Build + validate core models
+### 5) Build + validate core models
 
 ```bash
 # run Lean model tests
@@ -257,7 +257,7 @@ python3 scripts/scan_workers.py data/legacy_workers.csv
 ./scripts/lake_build.sh
 ```
 
-### 5) Run orchestrator (dry-run then execute)
+### 6) Run orchestrator (dry-run then execute)
 
 ```bash
 # view deterministic Nmap command and generated policy without scanning
@@ -267,7 +267,7 @@ python3 lean/iato_v7/scripts/nmap_path_audit_orchestrator.py --dry-run
 python3 lean/iato_v7/scripts/nmap_path_audit_orchestrator.py
 ```
 
-### 6) Target outcome (what success looks like)
+### Target outcome (what success looks like)
 
 - Lean tests complete successfully (`lake test` exits 0).
 - Worker scan writes compatibility/risk output without errors.
