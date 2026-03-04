@@ -11,7 +11,7 @@ A terminal-native toolkit for auditing host-path file systems and generating con
 ## Executive Summary:
 
 **IĀTŌ‑V7** is a configuration-driven engine that scans host path file systems, applies predefined rules, and produces clean, standardised XML reports that capture exactly what was found.
-The output is consistent and repeatable — the same config and files always produce the same result — giving teams reliable evidence for audits, compliance reviews, and secure system migrations, especially for legacy JBoss EAP 7 worker environments.legacy JBoss EAP 7 worker environments.
+The output is consistent and repeatable — the same config and files always produce the same result — giving teams reliable evidence for audits, compliance reviews, and secure system migrations, especially for legacy JBoss EAP 7 worker environments. 
 
 ## Overview: 
 
