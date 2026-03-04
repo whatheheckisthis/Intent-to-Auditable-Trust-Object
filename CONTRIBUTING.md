@@ -9,7 +9,7 @@
 
 ## Development
 1. Install Lean toolchain from `lean-toolchain`.
-2. Run `./scripts/lake_build.sh` to build Lean artifacts.
+2. Run `scripts/lake_build.sh` to build Lean artifacts.
 3. Run project tests relevant to your area before opening a PR.
 
 ## Pull requests
