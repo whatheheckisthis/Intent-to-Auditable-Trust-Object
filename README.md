@@ -1,5 +1,7 @@
 # Intent-to-Auditable-Trust-Object (IATO-V7)
 
+A terminal-native toolkit for auditing host-path file systems and generating consistent, auditable evidence for compliance and legacy system migrations.
+
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)](lean/iato_v7/lakefile.lean)
 [![Essential%208](https://img.shields.io/badge/Essential%208-ML4-blue)](docs/cyber-risk-controls.md)
 [![SOC2](https://img.shields.io/badge/SOC2-CC6.1%20%7C%20CC6.6-orange)](docs/ARCHITECTURE.md)
@@ -9,7 +11,7 @@
 ## Executive Summary:
 
 **IĀTŌ‑V7** is a configuration-driven engine that scans host path file systems, applies predefined rules, and produces clean, standardised XML reports that capture exactly what was found.
-The output is consistent and repeatable — the same config and files always produce the same result — giving teams reliable evidence for audits, compliance reviews, and secure system migrations, especially true for legacy JBoss EAP 7 worker environments.
+The output is consistent and repeatable — the same config and files always produce the same result — giving teams reliable evidence for audits, compliance reviews, and secure system migrations, especially for legacy JBoss EAP 7 worker environments.legacy JBoss EAP 7 worker environments.
 
 ## Overview: 
 
@@ -77,7 +79,7 @@ docs/ARCHITECTURE.md
 ### 1) Purpose
 The IĀTŌ‑V7 orchestration layer is a deterministic execution wrapper that converts a repository `config.toml` manifest into a canonical Nmap XML audit artifact for host-path filesystem assurance. It is optimized for WSL2/Minikube environments where metadata-heavy scans can amplify 9P I/O latency.
 
-This section defines the target design, implementation expectations, and formal assurance behavior for the orchestration module.
+This section defines the target design and implementation expectations for the orchestration module.
 
 ### 2) Design Goals
 - **Deterministic orchestration:** equivalent manifest inputs must produce equivalent command lines, policy payloads, and XML artifact paths.
