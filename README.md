@@ -215,7 +215,7 @@ Use this path if you are on Windows with WSL2 (Ubuntu recommended), especially f
 
 ```bash
 cd ~
-git clone https://github.com/<your-org>/Intent-to-Auditable-Trust-Object.git
+git clone https://github.com/<whatheheckisthis>/Intent-to-Auditable-Trust-Object.git
 cd Intent-to-Auditable-Trust-Object
 ```
 
