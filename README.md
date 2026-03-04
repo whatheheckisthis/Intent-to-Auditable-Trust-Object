@@ -6,13 +6,16 @@
 [![ISM](https://img.shields.io/badge/ISM-0457--0460-green)](docs/threat-model.md)
 
 
-## Executive Summary
+## Executive Summary:
 
-**IĀTŌ‑V7** is a deterministic, configuration-driven transformation and validation engine. Its objective is to transmute raw, real-world data—specifically host-path file systems—into structured, auditable XML artifacts. By enforcing formal logic at the orchestration layer, we ensure reproducibility across SOC environments.
+**IĀTŌ‑V7** is a configuration-driven engine that scans host path file systems, applies predefined rules, and produces clean, standardised XML reports that capture exactly what was found.
+The output is consistent and repeatable — the same config and files always produce the same result — giving teams reliable evidence for audits, compliance reviews, and secure system migrations, especially true for legacy JBoss EAP 7 worker environments.
 
-### Architecture: The Nmap Audit Pattern
+## Overview: 
 
-We have moved away from traditional, labor-intensive file-system parsers. Instead, IĀTŌ‑V7 leverages **Nmap** as a stateless, high-concurrency discovery engine. By repurposing Nmap within a WSL2/Minikube environment, we treat host-path auditing as a canonical state-discovery process.
+We ditched traditional filesystem parsers — which are slow, manual, and error-prone.
+Instead, IĀTŌ-V7 uses Nmap (network scanner) as a fast, stateless, high-concurrency engine to audit local file paths.
+Runs in WSL2, Minikube, or Ubuntu — works seamlessly in typical dev/test environments for Windows/Linux teams handling legacy JBoss migrations.
 
 | Component | Role |
 | --- | --- |
@@ -21,16 +24,16 @@ We have moved away from traditional, labor-intensive file-system parsers. Instea
 | **XML Artifacts** | Canonical output format for downstream formal validation. |
 | **IĀTŌ‑V7 Engine** | Consumes XML to validate observed state against the original TOML manifest. |
 
-## Compliance Coverage
+## Compliance Coverage:
 
-| Framework | Control Scope | IATO-V7 Coverage |
+| Framework | Control Scope | Coverage |
 |---|---|---|
 | Essential 8 (ML4) | Privilege separation, application control, patch governance | Worker isolation proofs and compatibility scanning |
 | SOC2 TSC | `CC6.1`, `CC6.6`, `A1.2`, `PI1.3` | Access/control enforcement and change evidence workflows |
 | ISM (ASD) | `0457`-`0460` privileged boundary and application control requirements | Administrative separation and migration control workflows |
 
 
-## Capability to Control Mapping
+## Control Mapping:
 
 | Capability | Compliance Mapping | Evidence Surface |
 |---|---|---|
@@ -40,14 +43,14 @@ We have moved away from traditional, labor-intensive file-system parsers. Instea
 | Privileged workflow hardening | ISM `0458`, `0459`; SOC2 `CC6.1` | Threat model and operational control procedures |
 | Architecture invariants | SOC2/ISM control objectives; EAL7+ readiness support | `lean/iato_v7/IATO/V7/Architecture.lean` |
 
-## Essential 8 Maturity Level 4 Focus
+## Essential 8 Maturity (Level 4)
 
 ```text
 [ ] Macro    [x] Privilege    [x] Application    [ ] Office
 [x] Web      [x] User         [x] Patch           [x] Backup
 ```
 
-IATO-V7 automation focus:
+Automation Focus:
 - Privilege separation across worker domains.
 - Application control through verification and migration gating.
 - Patch compatibility checks for legacy worker migration inputs.
@@ -69,9 +72,9 @@ docs/ARCHITECTURE.md
   docs/WORKER_COMPAT.md  # Audit and implementation narrative
 ```
 
-## IĀTŌ‑V7 Orchestration Design
+## IĀTŌ‑V7 Orchestration 
 
-### 1) Purpose and Scope
+### 1) Purpose
 The IĀTŌ‑V7 orchestration layer is a deterministic execution wrapper that converts a repository `config.toml` manifest into a canonical Nmap XML audit artifact for host-path filesystem assurance. It is optimized for WSL2/Minikube environments where metadata-heavy scans can amplify 9P I/O latency.
 
 This section defines the target design, implementation expectations, and formal assurance behavior for the orchestration module.
@@ -83,7 +86,7 @@ This section defines the target design, implementation expectations, and formal 
 - **Operational observability:** per-operation latency accounting is captured for forensic auditability.
 - **Schema-compliant hand-off:** generated XML is validated against the IĀTŌ‑V7 audit schema before acceptance.
 
-### 3) High-Level Architecture
+### 3) Architecture 
 ```text
 config.toml
    │
@@ -191,7 +194,7 @@ The orchestration layer is accepted when it demonstrably:
 1. Converts a valid TOML manifest into a deterministic Nmap invocation.
 2. Produces canonical XML via `-oX` and validates it against the IĀTŌ‑V7 schema.
 3. Returns `Clean`/`Dirty` based on NSE in-process checks only.
-4. Emits non-zero exit status for any integrity deviation.
+4. Emits a non-zero exit status for any integrity deviation.
 5. Maintains bounded, explicit path scanning with latency-aware timing behavior.
 
 ## Repository Layout
