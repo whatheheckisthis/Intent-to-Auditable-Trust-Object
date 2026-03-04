@@ -11,7 +11,7 @@ From the terminal: host-path auditing, reproducible XML artifacts, and traceable
 ## Executive Summary:
 
 **IĀTŌ‑V7** is a configuration-driven engine that scans host path file systems, applies predefined rules, and produces clean, standardised XML reports that capture exactly what was found.
-The output is consistent and repeatable — the same config and files always produce the same result — giving teams reliable evidence for audits, compliance reviews, and secure system migrations, especially for legacy JBoss EAP 7 worker environments. 
+The output is consistent and repeatable — the same config and files always produce the same result — giving teams reliable evidence for audits, compliance reviews, and secure system migrations, for legacy JBoss EAP 7 worker environments. 
 
 ## Overview: 
 
@@ -214,6 +214,33 @@ The orchestration layer is accepted when it demonstrably:
 
 Use this path if you are on Windows with WSL2 (Ubuntu recommended), especially for teams targeting JBoss EAP 7 worker migrations.
 
+### User Input  (config.toml - one text file, no coding required)
+  
+  **You tell IATO-V7:**                                                       
+                                                                           
+    targets   =  [ '/opt/jboss', '/etc/app' ]    # which folders to scan  
+                                                                           
+    [[rules.entry]]                                                        
+      path       = 'deployments/app.war'                                  
+      required   = true                           # must exist             
+      hash       = 'sha256:4b2e...'               # exact content match   
+      owner      = 'jboss'                        # owned by this user     
+      permission = '0640'                         # permissions must match 
+                                                                           
+  ***That is the entire user input. Figure 0-A - config.toml: the only file a user writes***
+
+### Invocation  (one command, cross-platform)
+
+```bash
+
+  $ iato scan --config iato.toml                                          
+                                                                           
+  Platform support:  Linux  |  macOS  |  Windows (WSL2)                   
+  Setup time:        approx. 5-10 minutes  (see README Quick Start)       
+  Exit code:         0 = CLEAN   |   1 = DIRTY  (CI/CD gate compatible)   
+```
+
+
 ### 1) Open WSL2 and clone
 
 ```bash
@@ -229,7 +256,7 @@ sudo apt update
 sudo apt install -y git curl python3 python3-pip build-essential nmap
 ```
 
-### 3) Initialize deterministic audit manifest
+### 3) Initialise deterministic audit manifest
 
 ```bash
 cp config.toml config.local.toml
