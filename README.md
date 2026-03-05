@@ -210,38 +210,16 @@ The orchestration layer is accepted when it demonstrably:
 - `scripts/`: Automation and tooling helpers.
 - `data/`: Static data manifests and reference files.
 
-## Quick Start (WSL2)
+## Quick Start (Linux)
 
-Use this path if you are on Windows with WSL2 (Ubuntu recommended), especially for teams targeting JBoss EAP 7 worker migrations.
+This workflow is for Linux-based execution in regulated IT environments. Run all commands from the repository root.
 
-### User Input  (config.toml - one text file, no coding required)
-  
-  **You tell IATO-V7:**                                                       
-                                                                           
-    targets   =  [ '/opt/jboss', '/etc/app' ]    # which folders to scan  
-                                                                           
-    [[rules.entry]]                                                        
-      path       = 'deployments/app.war'                                  
-      required   = true                           # must exist             
-      hash       = 'sha256:4b2e...'               # exact content match   
-      owner      = 'jboss'                        # owned by this user     
-      permission = '0640'                         # permissions must match 
-                                                                           
-  ***That is the entire user input. Figure 0-A - config.toml: the only file a user writes***
+### Entry point + destination (know this first)
+- **Run command from repo root:** `iato-scan --config config.local.toml`.
+- **Output destination:** XML artifact at `lean/iato_v7/nmap-path-state.xml` (audit evidence artifact).
+- **Exit semantics:** `0 = Clean` (observed state matched declared intent), non-zero = Dirty/error.
 
-### Invocation  (one command, cross-platform)
-
-```bash
-
-  $ iato scan --config iato.toml                                          
-                                                                           
-  Platform support:  Linux  |  macOS  |  Windows (WSL2)                   
-  Setup time:        approx. 5-10 minutes  (see README Quick Start)       
-  Exit code:         0 = CLEAN   |   1 = DIRTY  (CI/CD gate compatible)   
-```
-
-
-### 1) Open WSL2 and clone
+### 1) Open Linux shell and clone
 
 ```bash
 cd ~
@@ -249,69 +227,132 @@ git clone https://github.com/<whatheheckisthis>/Intent-to-Auditable-Trust-Object
 cd Intent-to-Auditable-Trust-Object
 ```
 
-### 2) Install base dependencies
+### 2) Install dependencies (nmap is required)
 
 ```bash
 sudo apt update
 sudo apt install -y git curl python3 python3-pip build-essential nmap
+command -v nmap && nmap --version | head -n 1
 ```
 
-### 3) Initialise deterministic audit manifest
+If you run inside Minikube/pod, install `python3` and `nmap` in that runtime as well, or execute from a Linux host that has access to the target mount points.
 
-```bash
-cp config.toml config.local.toml
-# edit config.local.toml and set root_path/targets for your environment
-```
-
-The `config.toml` file is the canonical schema template for IĀTŌ‑V7 path-audit orchestration. It defines all audit targets, expected hashes/ownership, timing profile (`T2`/`T3`), and XML artifact locations.
-
-### 4) Install Lean toolchain dependencies
+### 3) Install Lean toolchain dependencies
 
 ```bash
 ./scripts/install-formal-verification-deps.sh
 ./scripts/setup-lean-ci-deps.sh
 ```
 
-### 5) Build + validate core models
+### 4) Build + validate core models
 
 ```bash
-# run Lean model tests
 cd lean/iato_v7
 lake test
 cd ../..
 
-# run worker compatibility scanner
 python3 scripts/scan_workers.py data/legacy_workers.csv
-
-# generate audit evidence artifacts
 ./scripts/lake_build.sh
 ```
 
-### 6) Run orchestrator (dry-run then execute)
+### 5) Create `config.local.toml` with Linux defaults
 
 ```bash
-# view deterministic Nmap command and generated policy without scanning
-python3 lean/iato_v7/scripts/nmap_path_audit_orchestrator.py --dry-run
+cat > config.local.toml <<EOF
+# Linux local config for IĀTŌ-V7
+schema_version = "1.0.0"
+project = "iato-v7"
+release = "local"
 
-# execute orchestrator to produce canonical XML artifact
-python3 lean/iato_v7/scripts/nmap_path_audit_orchestrator.py
+[orchestrator]
+engine = "nmap"
+flags = ["-Pn", "-sn", "-n"]
+output_format = "xml"
+
+[audit]
+root_path = "/"
+target = "127.0.0.1"
+nse_script = "lean/iato_v7/nse/path_audit.nse"
+fail_on_deviation = true
+
+[timing]
+template = "T2"
+max_template = "T3"
+scan_interval_seconds = 0
+
+[artifacts]
+xml_output = "lean/iato_v7/nmap-path-state.xml"
+policy_output = "lean/iato_v7/.nmap-path-policy.json"
+
+[[targets]]
+id = "linux-var-lib"
+path = "/var/lib"
+required = false
+sha256 = "<expected_sha256_hex_or_manifest_hash>"
+owner = "root"
+group = "root"
+mode = "0755"
+
+[[targets]]
+id = "linux-opt-app"
+path = "/opt/app"
+required = false
+sha256 = "<expected_sha256_hex_or_manifest_hash>"
+owner = "root"
+group = "root"
+mode = "0755"
+EOF
+
+# Adjust target paths and integrity expectations for your Linux environment.
+nano config.local.toml
 ```
 
-### Target outcome (what success looks like)
-
-- Lean tests complete successfully (`lake test` exits 0).
-- Worker scan writes compatibility/risk output without errors.
-- Audit evidence artifacts are generated by `scripts/lake_build.sh`.
-- Orchestrator emits deterministic policy and canonical XML output via `-oX`.
-- Validation outputs are ready to support JBoss EAP 7 migration planning workflows.
-
-If a command fails in WSL2, run:
+### 6) Add short alias (`iato-scan`) and persist it
 
 ```bash
-./scripts/normalize_ci_env.sh
+alias iato-scan='python3 lean/iato_v7/scripts/nmap_path_audit_orchestrator.py'
+echo "alias iato-scan='python3 lean/iato_v7/scripts/nmap_path_audit_orchestrator.py'" >> ~/.bashrc
+source ~/.bashrc
 ```
 
-Then rerun the failed step.
+Run environment reminders anytime:
+
+```bash
+./scripts/context-clues.sh
+```
+
+### 7) Run audit (dry-run first, then real run)
+
+```bash
+# Dry-run = preview deterministic command only
+iato-scan --config config.local.toml --dry-run
+
+# Real run = produce XML audit artifact
+iato-scan --config config.local.toml
+```
+
+### Success / Failure indicators
+
+```bash
+# Exit code from last run
+echo $? 
+
+# XML artifact exists?
+ls -lh lean/iato_v7/nmap-path-state.xml
+
+# Optional quick inspection
+head -n 20 lean/iato_v7/nmap-path-state.xml
+```
+
+- **Success:** exit code `0` and XML file exists.
+- **Failure:** non-zero exit code, missing XML, or explicit mismatch/error output.
+
+Fallback (direct Python invocation, same entrypoint):
+
+```bash
+python3 lean/iato_v7/scripts/nmap_path_audit_orchestrator.py --config config.local.toml --dry-run
+python3 lean/iato_v7/scripts/nmap_path_audit_orchestrator.py --config config.local.toml
+```
 
 
 ## Architecture Non-Goals
@@ -327,5 +368,4 @@ To keep the scope explicit, the architecture defines non-goals **NG-001** throug
 ***IATO-V7 does not assert affiliation with Common Criteria***.
 
 ---
-
 
