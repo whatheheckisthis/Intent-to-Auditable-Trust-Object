@@ -257,8 +257,11 @@ python3 scripts/scan_workers.py data/legacy_workers.csv
 
 ### 5) Create `config.local.toml` with Linux defaults
 
+> ⚠️ **Be careful:** `config.local.toml` is machine-local intent/evidence input. Keep it out of version control and avoid committing sensitive path/hash material.
+
 ```bash
 cat > config.local.toml <<EOF
+# Be careful: replace placeholder hashes before running non-test audits.
 # Linux local config for IĀTŌ-V7
 schema_version = "1.0.0"
 project = "iato-v7"
@@ -304,10 +307,41 @@ mode = "0755"
 EOF
 
 # Adjust target paths and integrity expectations for your Linux environment.
+# Be careful: do not commit real environment hashes or secret-bearing paths.
 nano config.local.toml
 ```
 
-### 6) Add short alias (`iato-scan`) and persist it
+### 6) Populate `sha256` values in `config.local.toml` (required before any scan)
+
+`config.local.toml` comes first: define each `[[targets]]` path, required flag, owner/group, mode, and placeholder `sha256` values. Then run local Linux/WSL2 hash commands for those exact paths and replace each placeholder with the current result before any scan. Do not use online HTTPS hash generators; uploading audited content or path details weakens evidence integrity for SOC2/ISM/Essential 8 workflows.
+
+```bash
+# Single file target
+sha256sum /full/absolute/path/to/file
+
+# Directory target (deterministic recursive manifest hash)
+find /full/path/to/dir -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum
+```
+
+Path/behavior example (exact mapping expected):
+
+```toml
+[[targets]]
+id = "jboss-service-unit"
+path = "/etc/systemd/system/jboss.service"
+required = true
+sha256 = "<replace_with_current_64_hex_output>"
+owner = "root"
+group = "root"
+mode = "0644"
+```
+
+```bash
+sha256sum /etc/systemd/system/jboss.service
+# Paste the 64-hex output into the matching `sha256` field above.
+```
+
+### 7) Add short alias (`iato-scan`) and persist it
 
 ```bash
 alias iato-scan='python3 lean/iato_v7/scripts/nmap_path_audit_orchestrator.py'
@@ -321,7 +355,7 @@ Run environment reminders anytime:
 ./scripts/context-clues.sh
 ```
 
-### 7) Run audit (dry-run first, then real run)
+### 8) Run audit (dry-run first, then real run)
 
 ```bash
 # Dry-run = preview deterministic command only
