@@ -313,7 +313,7 @@ nano config.local.toml
 
 ### 6) Populate `sha256` values in `config.local.toml` (required before any scan)
 
-`config.local.toml` comes first: define each `[[targets]]` path, required flag, owner/group, mode, and placeholder `sha256` values. Then run local Linux/WSL2 hash commands for those exact paths and replace each placeholder with the current result before any scan. Do not use online HTTPS hash generators; uploading audited content or path details weakens evidence integrity for SOC2/ISM/Essential 8 workflows.
+`config.local.toml` comes first: define each `[[targets]]` path, required flag, owner/group, mode, and placeholder `sha256` values. Then run local Linux/WSL2 hash commands for those exact paths and replace each placeholder with the current result before any scan. Hashes must be computed locally on the audited system using trusted binaries (sha256sum, certutil, shasum) with no external transmission of file content or paths; uploading audited content or path details weakens evidence integrity for SOC2/ISM/Essential 8 workflows.
 
 ```bash
 # Single file target
